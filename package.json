@@ -1,0 +1,70 @@
+{
+  "name": "tiktok-live-system",
+  "version": "1.0.1",
+  "description": "TikTok 直播互動系統",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win",
+    "build:nsis": "electron-builder --win nsis",
+    "build:portable": "electron-builder --win portable"
+  },
+  "author": "TikTok Live",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "express": "^4.18.2",
+    "electron-updater": "^6.1.7"
+  },
+  "build": {
+    "appId": "com.tiktok.live.system",
+    "productName": "TikTok Live",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "web/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "tiktok-server",
+        "to": "tiktok-server",
+        "filter": ["**/*", "!node_modules/.bin/**"]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "tiktok-server/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TikTok Live",
+      "installerLanguages": ["zh_TW", "zh_CN", "en_US"],
+      "language": "2052"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "minyue1001",
+      "repo": "tiktok-live"
+    }
+  }
+}

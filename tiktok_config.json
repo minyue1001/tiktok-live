@@ -1,0 +1,169 @@
+{
+  "port": 10010,
+  "wheel_enabled": false,
+  "video_enabled": true,
+  "gifts": [
+    {
+      "name": "Rose",
+      "trigger_type": "gift",
+      "trigger_keyword": "",
+      "trigger_wheel": false,
+      "wheel_spins": 1,
+      "video_path": "D:\\caa9f9f438660d64d3a10da17e829867.mp4",
+      "video_priority": 1,
+      "video_repeat": 1,
+      "video_seconds": 0,
+      "video_speed": 1,
+      "video_volume": 31,
+      "force_interrupt": false
+    }
+  ],
+  "wheel_options": [
+    {
+      "name": "選項B",
+      "color": "#4ecca3",
+      "weight": 1
+    },
+    {
+      "name": "選項C",
+      "color": "#00d9ff",
+      "weight": 1
+    },
+    {
+      "name": "選項D",
+      "color": "#ffd93d",
+      "weight": 1
+    }
+  ],
+  "auto_open_green_screen": false,
+  "language": "zh-TW",
+  "wheel_gifts": [],
+  "video_gifts": [
+    {
+      "name": "Rose",
+      "trigger_type": "gift",
+      "trigger_keyword": "",
+      "video_path": "D:\\7e6a3785dde167db2882f89da921aa8e.mp4",
+      "video_priority": 1,
+      "video_repeat": 1,
+      "video_seconds": 0,
+      "video_speed": 1,
+      "video_volume": 100,
+      "force_interrupt": false,
+      "enabled": true
+    }
+  ],
+  "greenscreen_positions": {
+    "wheel": {
+      "width": 350,
+      "height": 350,
+      "left": 0,
+      "top": 150,
+      "visible": false
+    },
+    "giftbox": {
+      "width": 200,
+      "height": 200,
+      "left": 465,
+      "top": 245,
+      "visible": false,
+      "autoHide": true
+    },
+    "entryText": {
+      "left": 24,
+      "top": 339
+    },
+    "entryVideo": {
+      "width": 360,
+      "height": 667,
+      "left": 45,
+      "top": 62,
+      "visible": true
+    },
+    "videoContainers": {
+      "0": {
+        "width": 160,
+        "height": 149,
+        "left": 19,
+        "top": 46,
+        "visible": false,
+        "cropLeft": 0,
+        "cropTop": 0,
+        "originalWidth": 160,
+        "originalHeight": 149
+      }
+    },
+    "videoModuleVisible": false
+  },
+  "entry_enabled": true,
+  "entry_config": {
+    "enabled": false,
+    "media_path": "C:\\Users\\minyue\\Downloads\\PVVGAFRr.mp3",
+    "volume": 100,
+    "cooldown": 300,
+    "force_interrupt": true
+  },
+  "entry_list": [
+    {
+      "username": "7138381861675472676",
+      "media_path": "C:\\Users\\minyue\\Downloads\\回眸一笑百媚生.mp4",
+      "volume": 45,
+      "cooldown": 300,
+      "force_interrupt": true,
+      "enabled": false,
+      "show_text": false,
+      "text": "歡迎 {name} 進入直播間！",
+      "text_size": 48,
+      "text_color": "#ffffff",
+      "text_duration": 5
+    },
+    {
+      "username": "7296471666572608518",
+      "media_path": "C:\\Users\\minyue\\Downloads\\回眸一笑百媚生.mp4",
+      "volume": 100,
+      "cooldown": 300,
+      "force_interrupt": true,
+      "enabled": true,
+      "show_text": false,
+      "text": "歡迎 {name} 進入直播間！",
+      "text_size": 48,
+      "text_color": "#ffffff",
+      "text_duration": 5
+    }
+  ],
+  "api_key": "euler_ZjJjMjZmYzVlMDdlNWNhZDA0ZjBmMmI2NzIyNzk2Nzk5ZGYwYTFhZjRjZDZlOTFjMmY3MjM4",
+  "tiktok_username": "user6716936140415",
+  "giftbox_gifts": [
+    {
+      "name": "DG",
+      "count": 1
+    }
+  ],
+  "giftbox_options": [
+    {
+      "name": "1",
+      "color": "#ffd93d",
+      "weight": 1,
+      "video_path": "D:\\TIKTOK\\特效\\3比夹夹-暴走特效师出品.mp4",
+      "video_seconds": 0,
+      "video_volume": 46
+    },
+    {
+      "name": "2",
+      "color": "#11ff00",
+      "weight": 1,
+      "video_path": "D:\\TIKTOK\\特效\\挖蛤蜊 小狗版 9秒.mp4",
+      "video_seconds": 0,
+      "video_volume": 46
+    },
+    {
+      "name": "3",
+      "color": "#ffd93d",
+      "weight": 1,
+      "video_path": "D:\\TIKTOK\\特效\\天下第一新版-创作淘宝店路师傅的特效铺.mp4",
+      "video_seconds": 0,
+      "video_volume": 100
+    }
+  ],
+  "giftbox_enabled": true
+}

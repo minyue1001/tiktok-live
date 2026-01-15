@@ -1,0 +1,19 @@
+{
+  "name": "tiktok-websocket-server",
+  "version": "1.0.0",
+  "description": "TikTok Live WebSocket Server",
+  "main": "server.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "pkg . --targets node18-win-x64 --output tiktok-server.exe"
+  },
+  "pkg": {
+    "targets": ["node18-win-x64"],
+    "outputPath": "dist"
+  },
+  "dependencies": {
+    "tiktok-live-connector": "^2.1.0",
+    "ws": "^8.14.2"
+  }
+}

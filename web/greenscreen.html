@@ -1,0 +1,3687 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>綠幕視窗</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #00FF00;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Microsoft JhengHei', sans-serif;
+        }
+
+        /* 可拖曳可縮放容器 */
+        .draggable {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+        }
+
+        /* 8個調整點 */
+        .resize-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border: 2px solid #4ecca3;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+
+        .draggable:hover .resize-handle,
+        .debug-mode .resize-handle {
+            opacity: 1;
+        }
+
+        /* 四個角 */
+        .resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+
+        /* 四個邊 */
+        .resize-handle.n { top: -6px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+        .resize-handle.s { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+        .resize-handle.w { left: -6px; top: 50%; transform: translateY(-50%); cursor: w-resize; }
+        .resize-handle.e { right: -6px; top: 50%; transform: translateY(-50%); cursor: e-resize; }
+
+        /* 轉盤容器 */
+        .wheel-container {
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 350px;
+            height: 350px;
+        }
+
+        .wheel-container.hidden {
+            display: none;
+        }
+
+        #wheelCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 影片容器 */
+        .video-container {
+            position: absolute;
+            width: 300px;
+            height: 200px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .video-container.hidden {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        .video-container .thumbnail-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        .video-container.playing .thumbnail-video {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        .video-container .video-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 2;
+            display: none;
+            visibility: hidden;
+        }
+
+        .video-container.playing .video-player {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            z-index: 999 !important;
+        }
+
+        /* 調試面板 */
+        .debug-panel {
+            position: fixed;
+            top: 0;
+            right: -380px;
+            width: 380px;
+            height: 100vh;
+            background: rgba(22, 27, 34, 0.98);
+            border-left: 2px solid rgba(78, 204, 163, 0.5);
+            padding: 20px;
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            color: #f0f6fc;
+        }
+
+        .debug-panel.visible {
+            right: 0;
+        }
+
+        .debug-panel h3 {
+            color: #4ecca3;
+            margin-bottom: 20px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+
+        .debug-section {
+            margin-bottom: 20px;
+        }
+
+        .debug-section h4 {
+            color: #00d9ff;
+            margin-bottom: 12px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .debug-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .debug-label {
+            font-size: 13px;
+            color: #8b949e;
+        }
+
+        .debug-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #4ecca3, #3db892);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .debug-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(78, 204, 163, 0.4);
+        }
+
+        .debug-btn.small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .debug-btn.danger {
+            background: linear-gradient(135deg, #e94560, #d63950);
+        }
+
+        .debug-btn.secondary {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+        }
+
+        .debug-btn:disabled {
+            background: #444;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .debug-btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .debug-toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #21262d;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .debug-toggle.active {
+            background: #4ecca3;
+        }
+
+        .debug-toggle::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: left 0.2s;
+        }
+
+        .debug-toggle.active::after {
+            left: 23px;
+        }
+
+        /* 影片列表 */
+        .video-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .video-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .video-item.hidden-item {
+            opacity: 0.5;
+        }
+
+        .video-thumbnail {
+            width: 80px;
+            height: 60px;
+            background: #000;
+            border-radius: 6px;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .video-thumbnail video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-thumbnail .no-video {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 24px;
+        }
+
+        .video-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .video-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #f0f6fc;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-type {
+            font-size: 11px;
+            color: #8b949e;
+        }
+
+        .video-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .video-actions button {
+            padding: 5px 10px;
+            font-size: 11px;
+            min-width: 60px;
+        }
+
+        .empty-list {
+            text-align: center;
+            color: #8b949e;
+            padding: 30px;
+            font-size: 13px;
+        }
+
+        .refresh-btn {
+            font-size: 12px;
+            padding: 4px 8px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #8b949e;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #f0f6fc;
+        }
+
+        /* 視窗控制列 */
+        .window-controls {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 32px;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            z-index: 9999;
+            -webkit-app-region: drag;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+
+        /* 3秒後自動隱藏 */
+        .window-controls.auto-hide {
+            opacity: 0;
+        }
+
+        .window-controls:hover,
+        .window-controls.auto-hide:hover,
+        .debug-mode .window-controls {
+            opacity: 1;
+        }
+
+        .window-controls .title {
+            color: #fff;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .window-controls .buttons {
+            display: flex;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .window-controls .btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .window-controls .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .window-controls .btn.close:hover {
+            background: #e94560;
+        }
+
+        /* 提示 */
+        .debug-hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .debug-hint.visible {
+            opacity: 1;
+        }
+
+        /* 右鍵選單 */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: rgba(22, 27, 34, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 8px 0;
+            min-width: 180px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .context-menu.visible {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .context-menu-item:hover {
+            background: rgba(78, 204, 163, 0.2);
+        }
+
+        .context-menu-item .checkmark {
+            width: 16px;
+            color: #4ecca3;
+        }
+
+        /* 滾動條 */
+        .debug-panel::-webkit-scrollbar,
+        .video-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .debug-panel::-webkit-scrollbar-track,
+        .video-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .debug-panel::-webkit-scrollbar-thumb,
+        .video-list::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+
+        /* 全屏進場影片容器 */
+        .entry-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2000;
+            background: transparent;
+        }
+
+        .entry-container.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .entry-video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+
+        /* 可拖曳進場影片容器 */
+        .entry-video-container {
+            position: absolute;
+            width: 400px;
+            height: 300px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            top: 100px;
+            left: 100px;
+        }
+
+        .entry-video-container.hidden {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        .entry-video-container .entry-thumbnail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        .entry-video-container.playing .entry-thumbnail {
+            display: none !important;
+        }
+
+        .entry-video-container .entry-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 2;
+            display: none;
+        }
+
+        .entry-video-container.playing .entry-player {
+            display: block !important;
+        }
+
+        .entry-audio {
+            display: none;
+        }
+
+        /* 進場文字容器 */
+        .entry-text-container {
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 200px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2500;  /* 比影片容器(2000)更高，確保文字在上面 */
+        }
+
+        .entry-text-container.hidden {
+            display: none !important;
+        }
+
+        .entry-text {
+            font-weight: bold;
+            text-shadow:
+                3px 3px 6px rgba(0,0,0,0.8),
+                -1px -1px 0 rgba(0,0,0,0.5),
+                1px -1px 0 rgba(0,0,0,0.5),
+                -1px 1px 0 rgba(0,0,0,0.5),
+                1px 1px 0 rgba(0,0,0,0.5);
+            white-space: nowrap;
+            animation: entryTextFadeIn 0.5s ease-out;
+        }
+
+        @keyframes entryTextFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes entryTextFadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: scale(1.1);
+            }
+        }
+
+        .entry-text.fade-out {
+            animation: entryTextFadeOut 0.5s ease-in forwards;
+        }
+
+        /* 盲盒容器 */
+        .giftbox-container {
+            top: 150px;
+            right: 50px;
+            width: 200px;
+            height: 200px;
+        }
+
+        .giftbox-container.hidden {
+            display: none;
+        }
+
+        .giftbox-box {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            perspective: 1000px;
+        }
+
+        .giftbox-base {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 100px;
+            background: linear-gradient(135deg, #e94560, #c13550);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .giftbox-base::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 100%;
+            background: linear-gradient(135deg, #ffd93d, #f5c800);
+        }
+
+        .giftbox-lid {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 40px;
+            background: linear-gradient(135deg, #e94560, #c13550);
+            border-radius: 10px 10px 0 0;
+            transform-origin: bottom center;
+            transition: transform 0.5s ease;
+        }
+
+        .giftbox-lid::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 30px;
+            background: linear-gradient(135deg, #ffd93d, #f5c800);
+            border-radius: 50% 50% 0 0;
+        }
+
+        .giftbox-box.opening .giftbox-lid {
+            transform: translateX(-50%) rotateX(-120deg);
+        }
+
+        .giftbox-box.rolling {
+            animation: box-shake 0.15s ease-in-out infinite;
+        }
+
+        @keyframes box-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px) rotate(-1deg); }
+            75% { transform: translateX(3px) rotate(1deg); }
+        }
+
+        .giftbox-result {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #4ecca3, #38b892);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(78, 204, 163, 0.5);
+        }
+
+        .giftbox-box.rolling .giftbox-result {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+            animation: roll-flip 0.1s ease-out;
+        }
+
+        @keyframes roll-flip {
+            0% {
+                transform: translateX(-50%) scale(0.8) translateY(10px);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateX(-50%) scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .giftbox-box.showing-result .giftbox-result {
+            transform: translateX(-50%) scale(1.2);
+            opacity: 1;
+            animation: result-bounce 0.5s ease-out, result-glow 1.5s ease-in-out infinite;
+        }
+
+        @keyframes result-bounce {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.4); }
+            100% { transform: translateX(-50%) scale(1.2); }
+        }
+
+        @keyframes result-glow {
+            0%, 100% {
+                box-shadow: 0 5px 20px rgba(78, 204, 163, 0.5),
+                            0 0 30px rgba(255, 255, 255, 0.3);
+            }
+            50% {
+                box-shadow: 0 5px 30px rgba(78, 204, 163, 0.8),
+                            0 0 50px rgba(255, 255, 255, 0.5),
+                            0 0 80px rgba(78, 204, 163, 0.4);
+            }
+        }
+
+        /* 盲盒彩帶效果 */
+        .giftbox-confetti {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(200px) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* 盲盒倒數計時 */
+        .giftbox-countdown {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            font-size: 72px;
+            font-weight: bold;
+            color: #ffd93d;
+            text-shadow: 0 0 20px rgba(255, 217, 61, 0.8), 0 4px 8px rgba(0,0,0,0.5);
+            opacity: 0;
+            z-index: 10;
+        }
+
+        .giftbox-countdown.active {
+            animation: countdown-pop 1s ease-out;
+        }
+
+        @keyframes countdown-pop {
+            0% {
+                transform: translateX(-50%) scale(0);
+                opacity: 0;
+            }
+            30% {
+                transform: translateX(-50%) scale(1.3);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(-50%) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* 盲盒影片容器 */
+        .giftbox-video-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            z-index: 100;
+        }
+
+        .giftbox-video-container.active {
+            display: block;
+        }
+
+        .giftbox-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 盲盒自動顯示狀態 */
+        .giftbox-container.auto-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: scale(0.8);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out, visibility 0s 0.3s;
+        }
+
+        .giftbox-container.auto-hidden.triggered {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: scale(1);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out, visibility 0s 0s;
+        }
+    </style>
+</head>
+<body>
+    <!-- 視窗控制列 (滑鼠移到頂部顯示) -->
+    <div class="window-controls" id="windowControls">
+        <span class="title">綠幕視窗 (按 Tab 調整設定)</span>
+        <div class="buttons">
+            <button class="btn" onclick="minimizeWindow()" title="最小化">─</button>
+            <button class="btn" onclick="toggleMaximize()" title="最大化/還原">□</button>
+            <button class="btn close" onclick="closeWindow()" title="關閉">✕</button>
+        </div>
+    </div>
+
+    <!-- 全屏進場容器 -->
+    <div class="entry-container" id="entryContainer">
+        <video class="entry-video" id="entryVideo"></video>
+        <audio class="entry-audio" id="entryAudio"></audio>
+    </div>
+
+    <!-- 進場文字 -->
+    <div class="draggable entry-text-container hidden" id="entryTextContainer">
+        <span class="entry-text" id="entryText"></span>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 進場影片容器 -->
+    <div class="draggable entry-video-container hidden" id="entryVideoContainer">
+        <video class="entry-thumbnail" id="entryThumbnail" muted preload="metadata"></video>
+        <video class="entry-player" id="entryPlayer"></video>
+        <audio class="entry-player-audio" id="entryPlayerAudio"></audio>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 轉盤 -->
+    <div class="draggable wheel-container" id="wheelContainer">
+        <canvas id="wheelCanvas" width="350" height="350"></canvas>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 盲盒 -->
+    <div class="draggable giftbox-container" id="giftboxContainer">
+        <div class="giftbox-box" id="giftboxBox">
+            <div class="giftbox-confetti" id="giftboxConfetti"></div>
+            <div class="giftbox-base"></div>
+            <div class="giftbox-lid"></div>
+            <div class="giftbox-result" id="giftboxResult"></div>
+            <div class="giftbox-countdown" id="giftboxCountdown">3</div>
+        </div>
+        <div class="giftbox-video-container" id="giftboxVideoContainer">
+            <video class="giftbox-video" id="giftboxVideo"></video>
+        </div>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 影片容器區域 - 動態生成 -->
+    <div id="videoContainersArea"></div>
+
+    <!-- 調試面板 -->
+    <div class="debug-panel" id="debugPanel">
+        <h3>🛠️ 調試面板</h3>
+
+        <div class="debug-section">
+            <h4>模組控制</h4>
+            <div class="debug-row">
+                <span class="debug-label">顯示轉盤</span>
+                <div class="debug-toggle active" id="toggleWheel" onclick="toggleWheelVisibility()"></div>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">顯示盲盒</span>
+                <div class="debug-toggle active" id="toggleGiftbox" onclick="toggleGiftboxVisibility()"></div>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">盲盒自動隱藏</span>
+                <div class="debug-toggle" id="toggleGiftboxAutoHide" onclick="toggleGiftboxAutoHide()"></div>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">顯示影片區</span>
+                <div class="debug-toggle active" id="toggleVideo" onclick="toggleVideoVisibility()"></div>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">顯示進場影片</span>
+                <div class="debug-toggle" id="toggleEntryVideo" onclick="toggleEntryVideoVisibility()"></div>
+            </div>
+            <div style="margin-top: 15px;">
+                <button class="debug-btn" id="testWheelBtn" onclick="testWheelSpin()" style="width: 100%;">🎡 測試轉盤</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="debug-btn" id="testGiftboxBtn" onclick="testGiftboxOpen()" style="width: 100%;">🎁 測試盲盒</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="debug-btn" onclick="testEntryText()" style="width: 100%;">📝 測試進場文字</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="debug-btn" onclick="testEntryVideo()" style="width: 100%;">🎬 測試進場影片</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="debug-btn secondary" onclick="reloadAllThumbnails()" style="width: 100%;">🖼️ 重新載入縮圖</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="debug-btn danger" onclick="resetAllCropStates()" style="width: 100%;">🔄 重置所有裁切</button>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h4>
+                進場效果列表
+                <button class="refresh-btn" onclick="loadEntryList()">🔄 重新整理</button>
+            </h4>
+            <div class="video-list" id="entryList">
+                <div class="empty-list">載入中...</div>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h4>
+                影片列表
+                <button class="refresh-btn" onclick="loadVideoGifts()">🔄 重新整理</button>
+            </h4>
+            <div class="video-list" id="videoList">
+                <div class="empty-list">載入中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示 -->
+    <div class="debug-hint" id="debugHint">按 Tab 鍵開啟調試面板</div>
+
+    <!-- 右鍵選單 -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="toggleWheelVisibility()">
+            <span class="checkmark" id="wheelCheck">✓</span>
+            <span>顯示轉盤</span>
+        </div>
+        <div class="context-menu-item" onclick="toggleGiftboxVisibility()">
+            <span class="checkmark" id="giftboxCheck">✓</span>
+            <span>顯示盲盒</span>
+        </div>
+        <div class="context-menu-item" onclick="toggleGiftboxAutoHide()">
+            <span class="checkmark" id="giftboxAutoHideCheck"></span>
+            <span>盲盒自動隱藏</span>
+        </div>
+        <div class="context-menu-item" onclick="toggleVideoVisibility()">
+            <span class="checkmark" id="videoCheck">✓</span>
+            <span>顯示影片</span>
+        </div>
+        <div class="context-menu-item" onclick="toggleDebugPanel()">
+            <span class="checkmark" id="debugCheck"></span>
+            <span>開啟調試面板</span>
+        </div>
+    </div>
+
+    <script>
+        // === 全域變數 ===
+        let wheelOptions = [];
+        let giftboxOptions = [];
+        let videoGifts = [];
+        let wheelAngle = 0;
+        let wheelVisible = true;
+        let giftboxVisible = true;
+        let giftboxAutoHide = false;  // 盲盒自動隱藏模式
+        let videoVisible = true;
+        let wheelModuleEnabled = true;  // 轉盤模組是否啟用
+        let giftboxModuleEnabled = false;  // 盲盒模組是否啟用
+        let isSpinning = false;
+        let isGiftboxOpening = false;
+        let debugPanelVisible = false;
+
+        // 影片容器資料 (每個影片一個容器)
+        let videoContainers = {};  // { index: { visible, width, height, left, top } }
+
+        // 各容器的播放狀態
+        let containerPlayingState = {};  // { index: { isPlaying, queue, wasHidden } }
+
+        // 每個影片容器的裁切狀態
+        let videoCropState = {};  // { index: { cropLeft, cropTop, originalWidth, originalHeight } }
+
+        // 儲存的位置資料（從配置載入）
+        let savedPositions = null;
+
+        // === 初始化 ===
+        document.addEventListener('DOMContentLoaded', async () => {
+            await waitForPywebview();
+
+            // 1. 先載入儲存的位置資料
+            savedPositions = await loadSavedPositions();
+
+            // 2. 載入轉盤選項、盲盒選項、影片列表和進場列表
+            await loadWheelOptions();
+            await loadGiftboxOptions();
+            await loadVideoGifts();  // 這裡會生成容器並套用位置
+            await loadEntryList();   // 載入進場效果列表
+
+            // 3. 套用轉盤、盲盒、進場文字、進場影片位置
+            applyWheelPosition();
+            applyGiftboxPosition();
+            applyEntryTextPosition();
+            applyEntryVideoPosition();
+
+            // 4. 檢查模組狀態
+            await loadModuleStatus();
+
+            // 5. 初始化其他功能
+            drawWheel();
+            initDraggable();
+            initResizable();
+            initContextMenu();
+            initMessageListener();
+            initKeyboardShortcuts();
+            showHint();
+
+            // 3秒後自動隱藏視窗控制列（但滑鼠移上去還是會顯示）
+            setTimeout(() => {
+                const controls = document.getElementById('windowControls');
+                if (controls) {
+                    controls.classList.add('auto-hide');
+                }
+            }, 3000);
+
+            // 延遲重新載入縮圖
+            setTimeout(() => {
+                console.log('[初始化] 完成，重載縮圖');
+                reloadAllThumbnails();
+            }, 500);
+        });
+
+        // 載入儲存的位置資料
+        async function loadSavedPositions() {
+            try {
+                if (window.pywebview && window.pywebview.api) {
+                    const positions = await pywebview.api.get_greenscreen_positions();
+                    console.log('[位置] 載入儲存資料:', positions ? '有資料' : '無資料');
+                    return positions || null;
+                }
+            } catch (e) {
+                console.error('[位置] 載入失敗:', e);
+            }
+            return null;
+        }
+
+        // 套用轉盤位置
+        function applyWheelPosition() {
+            if (!savedPositions || !savedPositions.wheel) {
+                console.log('[轉盤] 使用預設位置');
+                return;
+            }
+
+            const wheel = document.getElementById('wheelContainer');
+            const canvas = document.getElementById('wheelCanvas');
+            const data = savedPositions.wheel;
+
+            // 套用尺寸和位置
+            const w = Math.max(50, data.width || 350);
+            const h = Math.max(50, data.height || 350);
+            wheel.style.width = w + 'px';
+            wheel.style.height = h + 'px';
+            wheel.style.left = (data.left || 0) + 'px';
+            wheel.style.top = (data.top || 150) + 'px';
+            wheel.style.transform = 'none';
+            canvas.width = w;
+            canvas.height = h;
+
+            // 套用顯示狀態
+            if (data.visible === false) {
+                wheelVisible = false;
+                setElementVisible(wheel, false);
+                document.getElementById('wheelCheck').textContent = '';
+                document.getElementById('toggleWheel').classList.remove('active');
+            } else {
+                wheelVisible = true;
+                setElementVisible(wheel, true);
+                document.getElementById('wheelCheck').textContent = '✓';
+                document.getElementById('toggleWheel').classList.add('active');
+            }
+
+            console.log('[轉盤] 已套用位置:', w, 'x', h, '顯示:', wheelVisible);
+        }
+
+        // 通用的顯示/隱藏函數
+        function setElementVisible(el, visible) {
+            if (visible) {
+                el.classList.remove('hidden');
+                el.style.display = 'block';
+                el.style.visibility = 'visible';
+                el.style.opacity = '1';
+            } else {
+                el.classList.add('hidden');
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                el.style.opacity = '0';
+            }
+        }
+
+        // 套用盲盒位置
+        function applyGiftboxPosition() {
+            const giftbox = document.getElementById('giftboxContainer');
+            if (!giftbox) return;
+
+            if (savedPositions && savedPositions.giftbox) {
+                const data = savedPositions.giftbox;
+                const w = Math.max(50, data.width || 200);
+                const h = Math.max(50, data.height || 200);
+                giftbox.style.width = w + 'px';
+                giftbox.style.height = h + 'px';
+                giftbox.style.left = (data.left || 0) + 'px';
+                giftbox.style.top = (data.top || 150) + 'px';
+                giftbox.style.right = 'auto';
+                giftbox.style.transform = 'none';
+
+                if (data.visible === false) {
+                    giftboxVisible = false;
+                    setElementVisible(giftbox, false);
+                    document.getElementById('giftboxCheck').textContent = '';
+                    document.getElementById('toggleGiftbox').classList.remove('active');
+                } else {
+                    giftboxVisible = true;
+                    setElementVisible(giftbox, true);
+                    document.getElementById('giftboxCheck').textContent = '✓';
+                    document.getElementById('toggleGiftbox').classList.add('active');
+                }
+
+                // 自動隱藏模式
+                if (data.autoHide === true) {
+                    giftboxAutoHide = true;
+                    giftbox.classList.add('auto-hidden');
+                    document.getElementById('giftboxAutoHideCheck').textContent = '✓';
+                    document.getElementById('toggleGiftboxAutoHide').classList.add('active');
+                } else {
+                    giftboxAutoHide = false;
+                    giftbox.classList.remove('auto-hidden');
+                    document.getElementById('giftboxAutoHideCheck').textContent = '';
+                    document.getElementById('toggleGiftboxAutoHide').classList.remove('active');
+                }
+
+                console.log('[盲盒] 已套用位置:', w, 'x', h, '顯示:', giftboxVisible, '自動隱藏:', giftboxAutoHide);
+            } else {
+                console.log('[盲盒] 使用預設位置');
+                giftbox.style.right = '50px';
+                giftbox.style.left = 'auto';
+            }
+        }
+
+        // 套用進場文字位置
+        function applyEntryTextPosition() {
+            const entryText = document.getElementById('entryTextContainer');
+            if (!entryText) return;
+
+            if (savedPositions && savedPositions.entryText) {
+                const data = savedPositions.entryText;
+                entryText.style.left = (data.left || 0) + 'px';
+                entryText.style.top = (data.top || 50) + 'px';
+                entryText.style.transform = 'none';
+                console.log('[進場文字] 已套用位置:', data.left, ',', data.top);
+            } else {
+                console.log('[進場文字] 使用預設位置');
+                // 預設置中
+                entryText.style.left = '50%';
+                entryText.style.top = '50px';
+                entryText.style.transform = 'translateX(-50%)';
+            }
+        }
+
+        function applyEntryVideoPosition() {
+            const entryVideo = document.getElementById('entryVideoContainer');
+            if (!entryVideo) return;
+
+            if (savedPositions && savedPositions.entryVideo) {
+                const data = savedPositions.entryVideo;
+                entryVideo.style.width = (data.width || 400) + 'px';
+                entryVideo.style.height = (data.height || 300) + 'px';
+                entryVideo.style.left = (data.left || 100) + 'px';
+                entryVideo.style.top = (data.top || 100) + 'px';
+
+                // 設定顯示狀態
+                entryVideoVisible = data.visible || false;
+                setElementVisible(entryVideo, entryVideoVisible);
+                document.getElementById('toggleEntryVideo')?.classList.toggle('active', entryVideoVisible);
+
+                // 更新進場列表中的按鈕狀態
+                updateEntryVisibilityButtons();
+
+                console.log('[進場影片] 已套用位置:', data);
+            } else {
+                console.log('[進場影片] 使用預設位置');
+                entryVideo.style.width = '400px';
+                entryVideo.style.height = '300px';
+                entryVideo.style.left = '100px';
+                entryVideo.style.top = '100px';
+                setElementVisible(entryVideo, false);
+            }
+        }
+
+        // 載入盲盒選項
+        async function loadGiftboxOptions() {
+            try {
+                if (window.pywebview && window.pywebview.api) {
+                    giftboxOptions = await pywebview.api.get_giftbox_options();
+                } else {
+                    giftboxOptions = [
+                        { name: '大獎', color: '#ffd93d', weight: 1 },
+                        { name: '中獎', color: '#4ecca3', weight: 2 },
+                        { name: '小獎', color: '#00d9ff', weight: 3 },
+                        { name: '謝謝參與', color: '#e94560', weight: 4 }
+                    ];
+                }
+            } catch (e) {
+                giftboxOptions = [
+                    { name: '大獎', color: '#ffd93d', weight: 1 },
+                    { name: '中獎', color: '#4ecca3', weight: 2 },
+                    { name: '小獎', color: '#00d9ff', weight: 3 },
+                    { name: '謝謝參與', color: '#e94560', weight: 4 }
+                ];
+            }
+        }
+
+        // 載入模組狀態（主控台的模組開關）
+        async function loadModuleStatus() {
+            try {
+                if (window.pywebview && window.pywebview.api) {
+                    const status = await pywebview.api.get_module_status();
+
+                    wheelModuleEnabled = status.wheel_enabled;
+                    giftboxModuleEnabled = status.giftbox_enabled;
+                    updateWheelTestButton();
+                    updateGiftboxTestButton();
+
+                    // 如果主控台關閉了轉盤模組，強制隱藏
+                    if (!status.wheel_enabled) {
+                        wheelVisible = false;
+                        setElementVisible(document.getElementById('wheelContainer'), false);
+                        document.getElementById('wheelCheck').textContent = '';
+                        document.getElementById('toggleWheel').classList.remove('active');
+                    }
+
+                    // 如果主控台關閉了盲盒模組，強制隱藏
+                    if (!status.giftbox_enabled) {
+                        giftboxVisible = false;
+                        setElementVisible(document.getElementById('giftboxContainer'), false);
+                        document.getElementById('giftboxCheck').textContent = '';
+                        document.getElementById('toggleGiftbox').classList.remove('active');
+                    }
+
+                    // 如果主控台關閉了影片模組，強制隱藏所有影片容器
+                    if (!status.video_enabled) {
+                        videoVisible = false;
+                        document.querySelectorAll('.video-container').forEach(vc => {
+                            setElementVisible(vc, false);
+                        });
+                        document.getElementById('videoCheck').textContent = '';
+                        document.getElementById('toggleVideo').classList.remove('active');
+                    }
+                }
+            } catch (e) {
+                console.error('[模組狀態] 載入失敗:', e);
+            }
+        }
+
+        // 載入影片列表並生成容器
+        async function loadVideoGifts() {
+            try {
+                if (window.pywebview && window.pywebview.api) {
+                    const config = await pywebview.api.get_config();
+                    videoGifts = config.video_gifts || [];
+                    renderVideoList();
+                    generateVideoContainers();
+                }
+            } catch (e) {
+                console.error('載入影片列表失敗:', e);
+                document.getElementById('videoList').innerHTML = '<div class="empty-list">載入失敗</div>';
+            }
+        }
+
+        // 生成影片容器
+        function generateVideoContainers() {
+            const area = document.getElementById('videoContainersArea');
+            area.innerHTML = '';
+
+            // 從 savedPositions 取得影片容器資料
+            const savedVideoData = (savedPositions && savedPositions.videoContainers) || {};
+
+            videoGifts.forEach((gift, index) => {
+                if (!gift.video_path) return;
+
+                // 取得儲存的資料
+                const saved = savedVideoData[index] || {};
+
+                // 計算容器屬性（優先使用儲存的值）
+                const width = Math.max(50, saved.width || 300);
+                const height = Math.max(50, saved.height || 200);
+                const left = saved.left ?? (50 + (index % 3) * 320);
+                const top = saved.top ?? (100 + Math.floor(index / 3) * 220);
+                const visible = (saved.visible !== false) && (gift.visible !== false);
+
+                // 裁切狀態
+                const cropLeft = saved.cropLeft || 0;
+                const cropTop = saved.cropTop || 0;
+                const originalWidth = saved.originalWidth || width;
+                const originalHeight = saved.originalHeight || height;
+
+                // 儲存到 videoContainers 供後續使用
+                videoContainers[index] = {
+                    visible, width, height, left, top,
+                    cropLeft, cropTop, originalWidth, originalHeight
+                };
+
+                // 儲存裁切狀態
+                videoCropState[index] = { cropLeft, cropTop, originalWidth, originalHeight };
+
+                console.log(`[容器 ${index}] 尺寸:${width}x${height} 位置:(${left},${top}) 顯示:${visible} 裁切:(${cropLeft},${cropTop}) 原始:${originalWidth}x${originalHeight}`);
+
+                // 建立容器元素
+                const container = document.createElement('div');
+                container.className = 'draggable video-container';
+                container.id = `videoContainer_${index}`;
+                container.dataset.index = index;
+                container.style.width = width + 'px';
+                container.style.height = height + 'px';
+                container.style.left = left + 'px';
+                container.style.top = top + 'px';
+
+                // 明確設定顯示狀態
+                setElementVisible(container, visible);
+
+                container.innerHTML = `
+                    <video class="thumbnail-video" muted preload="metadata" src="${formatVideoPath(gift.video_path)}"></video>
+                    <video class="video-player"></video>
+                    <div class="resize-handle nw"></div>
+                    <div class="resize-handle n"></div>
+                    <div class="resize-handle ne"></div>
+                    <div class="resize-handle w"></div>
+                    <div class="resize-handle e"></div>
+                    <div class="resize-handle sw"></div>
+                    <div class="resize-handle s"></div>
+                    <div class="resize-handle se"></div>
+                `;
+
+                area.appendChild(container);
+
+                // 設定縮圖和影片的裁切樣式
+                const thumbnail = container.querySelector('.thumbnail-video');
+                const player = container.querySelector('.video-player');
+
+                thumbnail.style.width = originalWidth + 'px';
+                thumbnail.style.height = originalHeight + 'px';
+                thumbnail.style.left = -cropLeft + 'px';
+                thumbnail.style.top = -cropTop + 'px';
+                thumbnail.style.position = 'absolute';
+
+                player.style.width = originalWidth + 'px';
+                player.style.height = originalHeight + 'px';
+                player.style.left = -cropLeft + 'px';
+                player.style.top = -cropTop + 'px';
+                player.style.position = 'absolute';
+
+                // 設定縮圖載入事件
+                thumbnail.onloadedmetadata = () => {
+                    console.log(`[縮圖] 容器 ${index} 載入成功`);
+                    try { thumbnail.currentTime = 1; } catch (e) {}
+                };
+                thumbnail.onerror = (e) => {
+                    console.error(`[縮圖] 容器 ${index} 載入失敗:`, thumbnail.src, e);
+                    thumbnail.style.display = 'none';
+                    container.style.background = 'rgba(255, 0, 0, 0.3)';
+                };
+            });
+
+            // 重新初始化拖曳和縮放
+            initDraggable();
+            initResizable();
+        }
+
+        // 渲染影片列表
+        function renderVideoList() {
+            const container = document.getElementById('videoList');
+
+            if (videoGifts.length === 0) {
+                container.innerHTML = '<div class="empty-list">尚無影片設定<br><small>請在主控台新增影片觸發</small></div>';
+                return;
+            }
+
+            const typeLabels = { gift: '禮物', chat: '彈幕', like: '點讚' };
+
+            container.innerHTML = videoGifts.map((gift, index) => {
+                const isVisible = gift.visible !== false;
+                const videoPath = gift.video_path || '';
+
+                return `
+                    <div class="video-item ${!isVisible ? 'hidden-item' : ''}" data-index="${index}">
+                        <div class="video-thumbnail">
+                            ${videoPath ? `<video src="${formatVideoPath(videoPath)}" muted preload="metadata" onloadedmetadata="this.currentTime=1" onerror="console.error('[列表縮圖] 載入失敗:', this.src); this.parentElement.innerHTML='<div class=\\'no-video\\'>❌</div>'"></video>` : '<div class="no-video">🎬</div>'}
+                        </div>
+                        <div class="video-info">
+                            <div class="video-name">${gift.name || '未命名'}</div>
+                            <div class="video-type">${typeLabels[gift.trigger_type] || '禮物'}</div>
+                        </div>
+                        <div class="video-actions">
+                            <button class="debug-btn small" onclick="testVideoByIndex(${index})">▶️ 測試</button>
+                            <button class="debug-btn small ${isVisible ? 'secondary' : 'danger'}" onclick="toggleVideoGiftVisible(${index})">
+                                ${isVisible ? '👁️ 顯示' : '🚫 隱藏'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 格式化影片路徑 - 使用本地檔案伺服器
+        const FILE_SERVER_PORT = 18888;
+
+        function formatVideoPath(path) {
+            if (!path) return '';
+            // 使用本地伺服器提供影片 (注意: /media 路徑)
+            return `http://127.0.0.1:${FILE_SERVER_PORT}/media?path=${encodeURIComponent(path)}`;
+        }
+
+        // 測試單個影片
+        async function testVideoByIndex(index) {
+            const gift = videoGifts[index];
+            if (!gift || !gift.video_path) return;
+
+            triggerVideoInContainer(index, {
+                path: gift.video_path,
+                speed: gift.video_speed || 1.0,
+                volume: gift.video_volume || 100,
+                seconds: gift.video_seconds || 0,
+                repeat: 1
+            });
+        }
+
+        // 在指定容器播放影片
+        function triggerVideoInContainer(index, videoData) {
+            console.log(`[DEBUG] triggerVideoInContainer 被呼叫: index=${index}, path=${videoData.path}, count=${videoData.count || 1}`);
+
+            const container = document.getElementById(`videoContainer_${index}`);
+            if (!container) {
+                console.error(`[ERROR] 找不到影片容器: videoContainer_${index}`);
+                // 列出所有現有容器
+                const allContainers = document.querySelectorAll('.video-container');
+                console.log(`[DEBUG] 現有容器數量: ${allContainers.length}`);
+                allContainers.forEach(c => console.log(`  - ${c.id}`));
+                return;
+            }
+
+            console.log(`[DEBUG] 找到容器: ${container.id}, 尺寸: ${container.offsetWidth}x${container.offsetHeight}`);
+
+            // 初始化容器狀態
+            if (!containerPlayingState[index]) {
+                containerPlayingState[index] = { isPlaying: false, queue: [], wasHidden: false };
+            }
+
+            const state = containerPlayingState[index];
+
+            // 檢查容器是否被隱藏，如果是的話記錄並暫時顯示
+            if (container.classList.contains('hidden') && !state.isPlaying) {
+                state.wasHidden = true;
+                // 暫時顯示容器
+                container.classList.remove('hidden');
+                container.style.display = 'block';
+                container.style.visibility = 'visible';
+                container.style.opacity = '1';
+                console.log(`容器 [${index}] 原本隱藏，暫時顯示以播放影片`);
+            }
+
+            // 根據 count 加入佇列（送幾個禮物就播放幾次）
+            const playCount = Math.min(videoData.count || 1, 100);  // 最多 100 次，避免過多
+            const priority = videoData.priority || 1;  // 預設優先級 1
+
+            for (let i = 0; i < playCount; i++) {
+                const newItem = {...videoData, count: 1, priority: priority};
+
+                // 根據優先級插入佇列（數字越大優先級越高，排越前面）
+                let inserted = false;
+                for (let j = 0; j < state.queue.length; j++) {
+                    if (priority > (state.queue[j].priority || 1)) {
+                        state.queue.splice(j, 0, newItem);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) {
+                    state.queue.push(newItem);
+                }
+            }
+            console.log(`[DEBUG] 加入佇列 ${playCount} 次 (優先級: ${priority})，目前佇列長度: ${state.queue.length}`);
+
+            // 如果有強制插隊且正在播放，停止當前播放
+            if (videoData.force_interrupt && state.isPlaying) {
+                stopVideoInContainer(index);
+            }
+
+            playNextVideoInContainer(index);
+        }
+
+        // 播放容器中的下一個影片
+        function playNextVideoInContainer(index) {
+            const state = containerPlayingState[index];
+            if (!state || state.isPlaying || state.queue.length === 0) return;
+
+            const container = document.getElementById(`videoContainer_${index}`);
+            if (!container) {
+                console.error(`找不到容器: videoContainer_${index}`);
+                return;
+            }
+
+            const data = state.queue.shift();
+            if (!data.path) {
+                playNextVideoInContainer(index);
+                return;
+            }
+
+            state.isPlaying = true;
+
+            const videoPlayer = container.querySelector('.video-player');
+            const thumbnail = container.querySelector('.thumbnail-video');
+            const videoSrc = formatVideoPath(data.path);
+
+            console.log(`準備播放影片 [${index}]:`, videoSrc);
+
+            // 清除舊的事件
+            videoPlayer.onloadedmetadata = null;
+            videoPlayer.oncanplay = null;
+            videoPlayer.onended = null;
+            videoPlayer.onerror = null;
+            videoPlayer.onloadeddata = null;
+
+            let currentRepeat = 0;
+            const maxRepeat = data.repeat || 1;
+            let hasStarted = false;
+
+            const startPlayback = () => {
+                if (hasStarted) return;
+                hasStarted = true;
+
+                console.log(`[DEBUG] 開始播放影片 [${index}]`);
+                console.log(`[DEBUG] 容器狀態: display=${container.style.display}, visibility=${container.style.visibility}, hidden=${container.classList.contains('hidden')}`);
+
+                // 確保容器可見
+                if (container.classList.contains('hidden')) {
+                    container.classList.remove('hidden');
+                    container.style.display = 'block';
+                    container.style.visibility = 'visible';
+                    container.style.opacity = '1';
+                }
+
+                // 確保容器有 playing class
+                container.classList.add('playing');
+                console.log(`[DEBUG] 容器 playing class 已添加: ${container.classList.contains('playing')}`);
+
+                // 隱藏縮圖
+                if (thumbnail) {
+                    thumbnail.style.display = 'none';
+                    thumbnail.style.visibility = 'hidden';
+                }
+
+                // 確保影片播放器顯示
+                videoPlayer.style.display = 'block';
+                videoPlayer.style.visibility = 'visible';
+                videoPlayer.style.opacity = '1';
+                videoPlayer.style.zIndex = '999';
+                console.log(`[DEBUG] 播放器樣式已設置: display=${videoPlayer.style.display}, visibility=${videoPlayer.style.visibility}`);
+
+                // 確保播放器有正確的尺寸和位置（繼承裁切狀態）
+                const cropState = videoCropState[index];
+                let playerWidth = container.offsetWidth || 300;
+                let playerHeight = container.offsetHeight || 200;
+                let playerLeft = 0;
+                let playerTop = 0;
+
+                if (cropState && cropState.originalWidth > 50 && cropState.originalHeight > 50) {
+                    playerWidth = cropState.originalWidth;
+                    playerHeight = cropState.originalHeight;
+                    playerLeft = -(cropState.cropLeft || 0);
+                    playerTop = -(cropState.cropTop || 0);
+                }
+
+                console.log(`[DEBUG] 播放影片 [${index}] 尺寸: ${playerWidth}x${playerHeight}, 偏移: ${playerLeft},${playerTop}`);
+
+                videoPlayer.style.position = 'absolute';
+                videoPlayer.style.width = playerWidth + 'px';
+                videoPlayer.style.height = playerHeight + 'px';
+                videoPlayer.style.left = playerLeft + 'px';
+                videoPlayer.style.top = playerTop + 'px';
+
+                if (data.seconds > 0) {
+                    setTimeout(() => {
+                        if (state.isPlaying) {
+                            videoPlayer.pause();
+                            handleVideoEndInContainer(index);
+                        }
+                    }, data.seconds * 1000);
+                }
+
+                videoPlayer.play().then(() => {
+                    console.log(`影片播放中 [${index}]`);
+                }).catch((err) => {
+                    console.error(`影片播放失敗 [${index}]:`, err);
+                    handleVideoEndInContainer(index);
+                });
+            };
+
+            videoPlayer.onloadedmetadata = () => {
+                console.log(`影片 metadata 已載入 [${index}]`);
+                startPlayback();
+            };
+
+            videoPlayer.onloadeddata = () => {
+                console.log(`影片資料已載入 [${index}]`);
+                startPlayback();
+            };
+
+            videoPlayer.oncanplay = () => {
+                console.log(`影片可播放 [${index}]`);
+                startPlayback();
+            };
+
+            videoPlayer.onended = () => {
+                console.log(`影片播放結束 [${index}]`);
+                currentRepeat++;
+                if (currentRepeat < maxRepeat) {
+                    videoPlayer.currentTime = 0;
+                    videoPlayer.play();
+                } else {
+                    handleVideoEndInContainer(index);
+                }
+            };
+
+            videoPlayer.onerror = (e) => {
+                console.error(`影片載入錯誤 [${index}]:`, e);
+                handleVideoEndInContainer(index, true);  // 傳遞 isError = true
+            };
+
+            // 設定影片源
+            videoPlayer.src = videoSrc;
+            videoPlayer.playbackRate = data.speed || 1.0;
+            videoPlayer.volume = (data.volume || 100) / 100;
+            videoPlayer.muted = false;
+            videoPlayer.load();
+
+            // 備用：如果 1 秒後還沒開始播放，強制嘗試
+            setTimeout(() => {
+                if (!hasStarted && state.isPlaying) {
+                    console.log(`強制嘗試播放 [${index}]`);
+                    startPlayback();
+                }
+            }, 1000);
+        }
+
+        // 處理容器影片結束
+        function handleVideoEndInContainer(index, isError = false) {
+            const state = containerPlayingState[index];
+            if (!state) return;
+
+            // 防止重複觸發
+            if (!state.isPlaying) return;
+            state.isPlaying = false;
+
+            const container = document.getElementById(`videoContainer_${index}`);
+            if (container) {
+                container.classList.remove('playing');
+
+                // 隱藏播放器，顯示縮圖
+                const videoPlayer = container.querySelector('.video-player');
+                const thumbnail = container.querySelector('.thumbnail-video');
+
+                if (videoPlayer) {
+                    // 先清除所有事件，防止 src='' 觸發 onerror
+                    videoPlayer.onloadedmetadata = null;
+                    videoPlayer.onloadeddata = null;
+                    videoPlayer.oncanplay = null;
+                    videoPlayer.onended = null;
+                    videoPlayer.onerror = null;
+
+                    videoPlayer.pause();
+                    videoPlayer.removeAttribute('src');
+                    videoPlayer.load();  // 重置影片元素
+                    videoPlayer.style.display = 'none';
+                }
+
+                if (thumbnail) {
+                    // 完整重置縮圖顯示狀態
+                    thumbnail.style.display = 'block';
+                    thumbnail.style.visibility = 'visible';
+                    thumbnail.style.opacity = '1';
+
+                    // 重新設定 currentTime 以顯示縮圖畫面
+                    // （播放器可能影響了縮圖的時間位置）
+                    try {
+                        if (thumbnail.readyState >= 1) {
+                            thumbnail.currentTime = 1;
+                        } else {
+                            // 如果縮圖尚未載入，重新載入
+                            const src = thumbnail.src;
+                            if (src) {
+                                thumbnail.onloadedmetadata = () => {
+                                    thumbnail.currentTime = 1;
+                                };
+                                thumbnail.load();
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`[WARN] 重置縮圖時間失敗 [${index}]:`, e);
+                    }
+                }
+            }
+
+            console.log(`影片容器 [${index}] 播放完成${isError ? ' (發生錯誤)' : ''}`);
+
+            // 如果是錯誤，清空佇列避免無限重試
+            if (isError) {
+                state.queue = [];
+            }
+
+            // 檢查佇列是否還有影片
+            if (state.queue.length > 0) {
+                // 還有影片要播放，延遲一下再播放
+                setTimeout(() => playNextVideoInContainer(index), 100);
+            } else {
+                // 佇列已空，如果原本是隱藏的，恢復隱藏狀態
+                if (state.wasHidden && container) {
+                    container.classList.add('hidden');
+                    container.style.display = 'none';
+                    container.style.visibility = 'hidden';
+                    container.style.opacity = '0';
+                    console.log(`容器 [${index}] 播放完成，恢復隱藏狀態`);
+                }
+                // 重置 wasHidden 狀態
+                state.wasHidden = false;
+            }
+        }
+
+        // 停止容器中的影片
+        function stopVideoInContainer(index) {
+            const container = document.getElementById(`videoContainer_${index}`);
+            if (!container) return;
+
+            const videoPlayer = container.querySelector('.video-player');
+            const thumbnail = container.querySelector('.thumbnail-video');
+
+            if (videoPlayer) {
+                // 先清除所有事件
+                videoPlayer.onloadedmetadata = null;
+                videoPlayer.onloadeddata = null;
+                videoPlayer.oncanplay = null;
+                videoPlayer.onended = null;
+                videoPlayer.onerror = null;
+
+                videoPlayer.pause();
+                videoPlayer.removeAttribute('src');
+                videoPlayer.load();
+                videoPlayer.style.display = 'none';
+            }
+
+            if (thumbnail) {
+                // 完整重置縮圖顯示狀態
+                thumbnail.style.display = 'block';
+                thumbnail.style.visibility = 'visible';
+                thumbnail.style.opacity = '1';
+
+                // 重新設定 currentTime 以顯示縮圖畫面
+                try {
+                    if (thumbnail.readyState >= 1) {
+                        thumbnail.currentTime = 1;
+                    }
+                } catch (e) {
+                    console.warn(`[WARN] 停止時重置縮圖時間失敗 [${index}]:`, e);
+                }
+            }
+
+            container.classList.remove('playing');
+
+            const state = containerPlayingState[index];
+            if (state) {
+                state.isPlaying = false;
+                // 停止時不恢復隱藏狀態（因為是強制中斷，會立即播放下一個）
+            }
+        }
+
+        // 切換影片顯示/隱藏
+        async function toggleVideoGiftVisible(index) {
+            if (!videoGifts[index]) return;
+
+            const gift = videoGifts[index];
+            gift.visible = gift.visible === false ? true : false;
+
+            // 更新容器狀態
+            if (videoContainers[index]) {
+                videoContainers[index].visible = gift.visible;
+            }
+
+            // 更新綠幕上的容器
+            const container = document.getElementById(`videoContainer_${index}`);
+            if (container) {
+                setElementVisible(container, gift.visible);
+            }
+
+            // 重要：先保存當前所有容器的位置和裁切狀態
+            // 這樣當 configUpdated 觸發 regenerate 時，會使用最新的狀態
+            await savePositions();
+
+            try {
+                if (window.pywebview && window.pywebview.api) {
+                    // 標記這是僅可見性更新，不需要重新生成容器
+                    window._skipContainerRegeneration = true;
+                    await pywebview.api.update_config({ video_gifts: videoGifts });
+                    // 延遲重置標記，確保 configUpdated 事件已處理
+                    setTimeout(() => { window._skipContainerRegeneration = false; }, 100);
+                }
+            } catch (e) {
+                console.error('更新失敗:', e);
+                window._skipContainerRegeneration = false;
+            }
+
+            renderVideoList();
+        }
+
+        function waitForPywebview() {
+            return new Promise((resolve) => {
+                // 檢查 API 是否完全可用（包括具體方法）
+                const checkApi = () => {
+                    if (window.pywebview && window.pywebview.api &&
+                        typeof window.pywebview.api.get_greenscreen_positions === 'function') {
+                        console.log('[DEBUG] pywebview API 已就緒');
+                        resolve();
+                        return true;
+                    }
+                    return false;
+                };
+
+                if (checkApi()) return;
+
+                // 監聽 pywebviewready 事件
+                window.addEventListener('pywebviewready', () => {
+                    // 事件觸發後仍需等待 API 方法綁定
+                    let attempts = 0;
+                    const waitInterval = setInterval(() => {
+                        attempts++;
+                        if (checkApi() || attempts > 50) {
+                            clearInterval(waitInterval);
+                            if (attempts > 50) {
+                                console.warn('[WARN] 等待 pywebview API 超時');
+                                resolve();
+                            }
+                        }
+                    }, 100);
+                });
+
+                // 備用：輪詢檢查
+                let pollAttempts = 0;
+                const pollInterval = setInterval(() => {
+                    pollAttempts++;
+                    if (checkApi() || pollAttempts > 50) {
+                        clearInterval(pollInterval);
+                        if (pollAttempts > 50) {
+                            console.warn('[WARN] 輪詢等待 pywebview API 超時');
+                            resolve();
+                        }
+                    }
+                }, 100);
+            });
+        }
+
+        // === 視窗控制 ===
+        function closeWindow() {
+            if (window.electronAPI && window.electronAPI.closeGreenScreen) {
+                window.electronAPI.closeGreenScreen();
+            } else {
+                window.close();
+            }
+        }
+
+        function minimizeWindow() {
+            if (window.electronAPI && window.electronAPI.minimizeGreenScreen) {
+                window.electronAPI.minimizeGreenScreen();
+            }
+        }
+
+        function toggleMaximize() {
+            if (window.electronAPI && window.electronAPI.toggleMaximizeGreenScreen) {
+                window.electronAPI.toggleMaximizeGreenScreen();
+            }
+        }
+
+        // 顯示提示
+        function showHint() {
+            const hint = document.getElementById('debugHint');
+            hint.classList.add('visible');
+            setTimeout(() => hint.classList.remove('visible'), 3000);
+        }
+
+        // 鍵盤快捷鍵
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    toggleDebugPanel();
+                }
+            });
+        }
+
+        // 切換調試面板
+        function toggleDebugPanel() {
+            debugPanelVisible = !debugPanelVisible;
+            const panel = document.getElementById('debugPanel');
+            const check = document.getElementById('debugCheck');
+            panel.classList.toggle('visible', debugPanelVisible);
+            check.textContent = debugPanelVisible ? '✓' : '';
+
+            if (debugPanelVisible) {
+                document.body.classList.add('debug-mode');
+                // 只更新列表，不重新生成容器
+                refreshVideoListOnly();
+            } else {
+                document.body.classList.remove('debug-mode');
+            }
+        }
+
+        // 只更新影片列表 UI，不重新生成容器
+        async function refreshVideoListOnly() {
+            try {
+                if (window.pywebview && window.pywebview.api) {
+                    const config = await pywebview.api.get_config();
+                    videoGifts = config.video_gifts || [];
+                    renderVideoList();
+                }
+            } catch (e) {
+                console.error('更新影片列表失敗:', e);
+            }
+        }
+
+        // 監聽訊息
+        function initMessageListener() {
+            console.log('=== 初始化事件監聽器 ===');
+
+            // 監聽來自 Electron 主進程的事件
+            if (window.electronAPI && window.electronAPI.onGreenScreenEvent) {
+                console.log('設定 electronAPI 事件監聽');
+                window.electronAPI.onGreenScreenEvent((event, data) => {
+                    console.log('收到主進程事件:', event, data);
+                    // 派發對應的自定義事件
+                    window.dispatchEvent(new CustomEvent(event, { detail: data }));
+                });
+            } else {
+                console.warn('electronAPI.onGreenScreenEvent 不可用');
+            }
+
+            // 監聽配置更新 - 即時同步不需重開
+            // 配置更新節流（避免頻繁更新造成卡頓）
+            let configUpdateTimer = null;
+            if (window.electronAPI && window.electronAPI.onConfigUpdate) {
+                console.log('設定配置更新監聽');
+                window.electronAPI.onConfigUpdate(async (config) => {
+                    // 使用節流，300ms 內只處理最後一次
+                    if (configUpdateTimer) clearTimeout(configUpdateTimer);
+                    configUpdateTimer = setTimeout(async () => {
+                        console.log('[配置更新] 收到配置變更，即時同步...');
+                        // 重新載入進場列表
+                        await loadEntryList();
+                        // 重新載入影片列表
+                        await loadVideoGifts();
+                        // 重新載入轉盤選項
+                        await loadWheelOptions();
+                        // 重新載入盲盒選項
+                        await loadGiftboxOptions();
+                        console.log('[配置更新] 同步完成');
+                    }, 300);
+                });
+            }
+
+            window.addEventListener('triggerWheel', (event) => {
+                const data = event.detail;
+                console.log('收到轉盤事件:', data);
+                triggerWheel(data.spins);
+            });
+
+            window.addEventListener('triggerVideo', (event) => {
+                const data = event.detail;
+                console.log('收到影片事件:', data);
+                triggerVideo(data);
+            });
+
+            // 進場效果事件
+            window.addEventListener('triggerEntry', (event) => {
+                const data = event.detail;
+                console.log('收到進場事件:', data);
+                triggerEntry(data);
+            });
+
+            // 盲盒事件
+            window.addEventListener('triggerGiftbox', (event) => {
+                const data = event.detail;
+                console.log('收到盲盒事件:', data);
+                triggerGiftbox(data.opens);
+            });
+
+            // 全域測試函數 - 可從控制台呼叫
+            window.testTriggerVideo = function(index) {
+                console.log('測試觸發影片:', index);
+                if (videoGifts[index]) {
+                    triggerVideoInContainer(index, {
+                        path: videoGifts[index].video_path,
+                        speed: 1.0,
+                        volume: 100,
+                        seconds: 0,
+                        repeat: 1
+                    });
+                }
+            };
+
+            console.log('事件監聽器已註冊，videoGifts:', videoGifts);
+
+            // 監聽模組狀態變化
+            window.addEventListener('moduleStatusChanged', (event) => {
+                const data = event.detail;
+                console.log('模組狀態變化:', data);
+
+                if (data.module === 'wheel') {
+                    wheelModuleEnabled = data.enabled;
+                    updateWheelTestButton();
+
+                    const wc = document.getElementById('wheelContainer');
+                    if (data.enabled) {
+                        wheelVisible = true;
+                        wc.classList.remove('hidden');
+                        wc.style.display = 'block';
+                        document.getElementById('wheelCheck').textContent = '✓';
+                        document.getElementById('toggleWheel').classList.add('active');
+                    } else {
+                        wheelVisible = false;
+                        wc.classList.add('hidden');
+                        wc.style.display = 'none';
+                        document.getElementById('wheelCheck').textContent = '';
+                        document.getElementById('toggleWheel').classList.remove('active');
+                    }
+                }
+
+                if (data.module === 'video') {
+                    if (data.enabled) {
+                        videoVisible = true;
+                        document.querySelectorAll('.video-container').forEach(vc => {
+                            const idx = vc.dataset.index;
+                            // 只顯示未被單獨隱藏的容器
+                            if (videoGifts[idx]?.visible !== false) {
+                                vc.classList.remove('hidden');
+                                vc.style.display = 'block';
+                                vc.style.visibility = 'visible';
+                                vc.style.opacity = '1';
+                            }
+                        });
+                        document.getElementById('videoCheck').textContent = '✓';
+                        document.getElementById('toggleVideo').classList.add('active');
+                    } else {
+                        videoVisible = false;
+                        document.querySelectorAll('.video-container').forEach(vc => {
+                            vc.classList.add('hidden');
+                            vc.style.display = 'none';
+                            vc.style.visibility = 'hidden';
+                            vc.style.opacity = '0';
+                        });
+                        document.getElementById('videoCheck').textContent = '';
+                        document.getElementById('toggleVideo').classList.remove('active');
+                    }
+                }
+            });
+
+            // 監聯配置更新
+            window.addEventListener('configUpdated', async () => {
+                console.log('[DEBUG] 收到 configUpdated 事件');
+
+                // 如果是僅可見性更新，跳過容器重新生成
+                if (window._skipContainerRegeneration) {
+                    console.log('[DEBUG] 跳過容器重新生成（僅可見性更新）');
+                    // 只更新影片列表 UI，不重新生成容器
+                    await refreshVideoListOnly();
+                    return;
+                }
+
+                // 保存當前容器位置到 savedPositions，避免重新生成時位置被重置
+                if (savedPositions) {
+                    // 從 DOM 和 videoCropState 收集最新狀態
+                    const currentVideoData = {};
+                    document.querySelectorAll('.video-container').forEach(vc => {
+                        const idx = parseInt(vc.dataset.index);
+                        const crop = videoCropState[idx] || {};
+                        const cached = videoContainers[idx] || {};
+
+                        currentVideoData[idx] = {
+                            width: vc.offsetWidth || parseInt(vc.style.width) || cached.width || 300,
+                            height: vc.offsetHeight || parseInt(vc.style.height) || cached.height || 200,
+                            left: vc.offsetLeft || parseInt(vc.style.left) || cached.left || 0,
+                            top: vc.offsetTop || parseInt(vc.style.top) || cached.top || 0,
+                            visible: !vc.classList.contains('hidden'),
+                            cropLeft: crop.cropLeft || 0,
+                            cropTop: crop.cropTop || 0,
+                            originalWidth: crop.originalWidth || cached.originalWidth || vc.offsetWidth || 300,
+                            originalHeight: crop.originalHeight || cached.originalHeight || vc.offsetHeight || 200
+                        };
+                        console.log(`[DEBUG] 容器 ${idx} 狀態:`, currentVideoData[idx]);
+                    });
+
+                    // 更新 videoContainers 和 savedPositions
+                    Object.assign(videoContainers, currentVideoData);
+                    savedPositions.videoContainers = currentVideoData;
+                    console.log('[DEBUG] 已保存當前容器位置和裁切狀態到 savedPositions');
+                }
+
+                console.log('[DEBUG] 重新載入影片設定');
+                await loadVideoGifts();
+                // 延遲後重新載入縮圖，確保 DOM 已更新
+                setTimeout(() => {
+                    console.log('[DEBUG] 延遲重載縮圖');
+                    reloadAllThumbnails();
+                }, 300);
+            });
+
+            window.addEventListener('message', (event) => {
+                const data = event.data;
+                if (!data || !data.type) return;
+
+                if (data.type === 'wheel') {
+                    triggerWheel(data.spins);
+                } else if (data.type === 'video') {
+                    triggerVideo(data);
+                }
+            });
+        }
+
+        async function loadWheelOptions() {
+            try {
+                if (window.pywebview && window.pywebview.api) {
+                    wheelOptions = await pywebview.api.get_wheel_options();
+                } else {
+                    wheelOptions = [
+                        { name: '選項A', color: '#e94560', weight: 1 },
+                        { name: '選項B', color: '#4ecca3', weight: 1 },
+                        { name: '選項C', color: '#00d9ff', weight: 1 },
+                        { name: '選項D', color: '#ffd93d', weight: 1 }
+                    ];
+                }
+            } catch (e) {
+                wheelOptions = [
+                    { name: '選項A', color: '#e94560', weight: 1 },
+                    { name: '選項B', color: '#4ecca3', weight: 1 },
+                    { name: '選項C', color: '#00d9ff', weight: 1 },
+                    { name: '選項D', color: '#ffd93d', weight: 1 }
+                ];
+            }
+        }
+
+        // === 顯示控制 ===
+        function toggleWheelVisibility() {
+            wheelVisible = !wheelVisible;
+            setElementVisible(document.getElementById('wheelContainer'), wheelVisible);
+            document.getElementById('wheelCheck').textContent = wheelVisible ? '✓' : '';
+            document.getElementById('toggleWheel').classList.toggle('active', wheelVisible);
+            savePositions();
+        }
+
+        function toggleGiftboxVisibility() {
+            giftboxVisible = !giftboxVisible;
+            setElementVisible(document.getElementById('giftboxContainer'), giftboxVisible);
+            document.getElementById('giftboxCheck').textContent = giftboxVisible ? '✓' : '';
+            document.getElementById('toggleGiftbox').classList.toggle('active', giftboxVisible);
+            savePositions();
+        }
+
+        function toggleGiftboxAutoHide() {
+            giftboxAutoHide = !giftboxAutoHide;
+            const container = document.getElementById('giftboxContainer');
+            container.classList.toggle('auto-hidden', giftboxAutoHide);
+            document.getElementById('giftboxAutoHideCheck').textContent = giftboxAutoHide ? '✓' : '';
+            document.getElementById('toggleGiftboxAutoHide').classList.toggle('active', giftboxAutoHide);
+            savePositions();
+        }
+
+        function toggleVideoVisibility() {
+            videoVisible = !videoVisible;
+            document.querySelectorAll('.video-container').forEach(vc => {
+                const idx = parseInt(vc.dataset.index);
+                // 只顯示未被單獨隱藏的容器
+                const shouldShow = videoVisible && (videoGifts[idx]?.visible !== false);
+                setElementVisible(vc, shouldShow);
+            });
+            document.getElementById('videoCheck').textContent = videoVisible ? '✓' : '';
+            document.getElementById('toggleVideo').classList.toggle('active', videoVisible);
+            savePositions();
+        }
+
+        // 進場影片容器相關
+        let entryVideoVisible = false;
+        let entryList = [];
+
+        function toggleEntryVideoVisibility() {
+            entryVideoVisible = !entryVideoVisible;
+            const container = document.getElementById('entryVideoContainer');
+            if (container) {
+                setElementVisible(container, entryVideoVisible);
+            }
+            document.getElementById('toggleEntryVideo').classList.toggle('active', entryVideoVisible);
+
+            // 更新所有進場列表中的顯示/隱藏按鈕狀態
+            updateEntryVisibilityButtons();
+
+            savePositions();
+        }
+
+        // 更新所有進場效果的顯示/隱藏按鈕狀態
+        function updateEntryVisibilityButtons() {
+            // 更新專屬進場的按鈕
+            entryList.forEach((entry, index) => {
+                const btn = document.getElementById(`entryVisBtn_${index}`);
+                if (btn) {
+                    btn.className = `debug-btn small ${entryVideoVisible ? 'secondary' : 'danger'}`;
+                    btn.innerHTML = entryVideoVisible ? '👁️' : '🚫';
+                }
+            });
+
+            // 更新全局進場的按鈕
+            const globalBtn = document.getElementById('entryVisBtn_global');
+            if (globalBtn) {
+                globalBtn.className = `debug-btn small ${entryVideoVisible ? 'secondary' : 'danger'}`;
+                globalBtn.innerHTML = entryVideoVisible ? '👁️' : '🚫';
+            }
+        }
+
+        async function loadEntryList() {
+            try {
+                const config = await pywebview.api.get_config();
+                entryList = config.entry_list || [];
+                const entryConfig = config.entry_config || {};
+
+                const container = document.getElementById('entryList');
+                if (!container) return;
+
+                if (entryList.length === 0 && !entryConfig.media_path) {
+                    container.innerHTML = '<div class="empty-list">尚未設定進場效果</div>';
+                    return;
+                }
+
+                let html = '';
+
+                // 顯示專屬進場列表
+                entryList.forEach((entry, index) => {
+                    if (!entry.media_path) return;
+                    const isVideo = /\.(mp4|avi|mov|mkv|webm)$/i.test(entry.media_path);
+                    const enabled = entry.enabled !== false;
+                    html += `
+                        <div class="video-item ${enabled ? '' : 'disabled'}">
+                            <div class="video-thumbnail">
+                                ${isVideo
+                                    ? `<video src="${formatVideoPath(entry.media_path)}" muted preload="metadata"></video>`
+                                    : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#333;color:#fff;">🎵</div>`
+                                }
+                            </div>
+                            <div class="video-info">
+                                <div class="video-name">👤 ${entry.username || '未命名'}</div>
+                                <div class="video-path">${entry.media_path.split('\\').pop()}</div>
+                            </div>
+                            <button class="debug-btn small" onclick="testEntryByIndex(${index})">▶️</button>
+                            <button class="debug-btn small ${entryVideoVisible ? 'secondary' : 'danger'}" onclick="toggleEntryVideoVisibility()" id="entryVisBtn_${index}">
+                                ${entryVideoVisible ? '👁️' : '🚫'}
+                            </button>
+                        </div>
+                    `;
+                });
+
+                // 顯示全局進場（如果有設定）
+                if (entryConfig.media_path) {
+                    const isVideo = /\.(mp4|avi|mov|mkv|webm)$/i.test(entryConfig.media_path);
+                    const enabled = entryConfig.enabled !== false;
+                    html += `
+                        <div class="video-item ${enabled ? '' : 'disabled'}">
+                            <div class="video-thumbnail">
+                                ${isVideo
+                                    ? `<video src="${formatVideoPath(entryConfig.media_path)}" muted preload="metadata"></video>`
+                                    : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#333;color:#fff;">🎵</div>`
+                                }
+                            </div>
+                            <div class="video-info">
+                                <div class="video-name">🌐 全局進場</div>
+                                <div class="video-path">${entryConfig.media_path.split('\\').pop()}</div>
+                            </div>
+                            <button class="debug-btn small" onclick="testGlobalEntry()">▶️</button>
+                            <button class="debug-btn small ${entryVideoVisible ? 'secondary' : 'danger'}" onclick="toggleEntryVideoVisibility()" id="entryVisBtn_global">
+                                ${entryVideoVisible ? '👁️' : '🚫'}
+                            </button>
+                        </div>
+                    `;
+                }
+
+                container.innerHTML = html || '<div class="empty-list">尚未設定進場效果</div>';
+
+                // 更新進場縮圖
+                updateEntryThumbnail();
+            } catch (e) {
+                console.error('[進場列表] 載入失敗:', e);
+            }
+        }
+
+        function updateEntryThumbnail() {
+            const thumbnail = document.getElementById('entryThumbnail');
+            if (!thumbnail) return;
+
+            // 使用第一個專屬進場或全局進場的影片作為縮圖
+            let videoPath = '';
+            for (const entry of entryList) {
+                if (entry.media_path && /\.(mp4|avi|mov|mkv|webm)$/i.test(entry.media_path)) {
+                    videoPath = entry.media_path;
+                    break;
+                }
+            }
+
+            if (videoPath) {
+                thumbnail.src = formatVideoPath(videoPath);
+            }
+        }
+
+        async function testEntryByIndex(index) {
+            if (!entryList[index]) return;
+            const entry = entryList[index];
+            const isAudio = /\.(mp3|wav|ogg|m4a|aac)$/i.test(entry.media_path);
+
+            triggerEntry({
+                username: entry.username || '測試用戶',
+                level: 30,
+                path: entry.media_path,
+                volume: entry.volume || 100,
+                force_interrupt: entry.force_interrupt !== false,
+                is_audio: isAudio,
+                show_text: entry.show_text || false,
+                text: entry.text || '',
+                text_size: entry.text_size || 48,
+                text_color: entry.text_color || '#ffffff',
+                text_duration: entry.text_duration || 5,
+                is_specific: true
+            });
+        }
+
+        async function testGlobalEntry() {
+            const config = await pywebview.api.get_config();
+            const entry = config.entry_config || {};
+            if (!entry.media_path) return;
+
+            const isAudio = /\.(mp3|wav|ogg|m4a|aac)$/i.test(entry.media_path);
+            triggerEntry({
+                username: '測試用戶',
+                level: 0,
+                path: entry.media_path,
+                volume: entry.volume || 100,
+                force_interrupt: entry.force_interrupt !== false,
+                is_audio: isAudio,
+                show_text: false,
+                is_specific: false
+            });
+        }
+
+        // 保存位置和狀態（使用 API 保存到配置文件，確保持久化）
+        // 保存所有位置和狀態
+        // 節流版本的 savePositions（避免頻繁調用造成卡頓）
+        let savePositionsTimer = null;
+        function savePositionsDebounced() {
+            if (savePositionsTimer) clearTimeout(savePositionsTimer);
+            savePositionsTimer = setTimeout(() => {
+                savePositions();
+            }, 300);
+        }
+
+        async function savePositions() {
+            const wheel = document.getElementById('wheelContainer');
+            const giftbox = document.getElementById('giftboxContainer');
+            const entryText = document.getElementById('entryTextContainer');
+            const entryVideo = document.getElementById('entryVideoContainer');
+
+            // 收集影片容器資料
+            const videoData = {};
+            document.querySelectorAll('.video-container').forEach(vc => {
+                const idx = parseInt(vc.dataset.index);
+                const cached = videoContainers[idx] || {};
+                const crop = videoCropState[idx] || {};
+
+                // 取得尺寸（隱藏時可能是0，用 style 或快取值）
+                let w = vc.offsetWidth || parseInt(vc.style.width) || cached.width || 300;
+                let h = vc.offsetHeight || parseInt(vc.style.height) || cached.height || 200;
+
+                videoData[idx] = {
+                    width: Math.max(50, w),
+                    height: Math.max(50, h),
+                    left: vc.offsetLeft || parseInt(vc.style.left) || cached.left || 0,
+                    top: vc.offsetTop || parseInt(vc.style.top) || cached.top || 0,
+                    visible: !vc.classList.contains('hidden'),
+                    cropLeft: crop.cropLeft || 0,
+                    cropTop: crop.cropTop || 0,
+                    originalWidth: crop.originalWidth || w,
+                    originalHeight: crop.originalHeight || h
+                };
+            });
+
+            // 組合完整資料
+            const positions = {
+                wheel: {
+                    width: Math.max(50, wheel.offsetWidth || 350),
+                    height: Math.max(50, wheel.offsetHeight || 350),
+                    left: wheel.offsetLeft || 0,
+                    top: wheel.offsetTop || 150,
+                    visible: wheelVisible
+                },
+                giftbox: {
+                    width: Math.max(50, giftbox.offsetWidth || 200),
+                    height: Math.max(50, giftbox.offsetHeight || 200),
+                    left: giftbox.offsetLeft || parseInt(giftbox.style.left) || 0,
+                    top: giftbox.offsetTop || parseInt(giftbox.style.top) || 150,
+                    visible: giftboxVisible,
+                    autoHide: giftboxAutoHide
+                },
+                entryText: {
+                    left: entryText ? (entryText.offsetLeft || parseInt(entryText.style.left) || 0) : 0,
+                    top: entryText ? (entryText.offsetTop || parseInt(entryText.style.top) || 50) : 50
+                },
+                entryVideo: {
+                    width: entryVideo ? Math.max(50, entryVideo.offsetWidth || parseInt(entryVideo.style.width) || 400) : 400,
+                    height: entryVideo ? Math.max(50, entryVideo.offsetHeight || parseInt(entryVideo.style.height) || 300) : 300,
+                    left: entryVideo ? (entryVideo.offsetLeft || parseInt(entryVideo.style.left) || 100) : 100,
+                    top: entryVideo ? (entryVideo.offsetTop || parseInt(entryVideo.style.top) || 100) : 100,
+                    visible: entryVideoVisible
+                },
+                videoContainers: videoData,
+                videoModuleVisible: videoVisible
+            };
+
+            // 保存到配置文件
+            try {
+                if (window.pywebview && window.pywebview.api) {
+                    await pywebview.api.save_greenscreen_positions(positions);
+                    // 同步更新 savedPositions，確保下次重新生成容器時位置正確
+                    savedPositions = positions;
+                    console.log('[保存] 綠幕位置已保存');
+                }
+            } catch (e) {
+                console.error('[保存] 失敗:', e);
+            }
+        }
+
+        // (已移除 - 位置現在在 applyWheelPosition 和 generateVideoContainers 中直接套用)
+
+        // === 測試功能 ===
+        function updateWheelTestButton() {
+            const btn = document.getElementById('testWheelBtn');
+            if (btn) {
+                btn.disabled = !wheelModuleEnabled;
+                btn.textContent = wheelModuleEnabled ? '🎡 測試轉盤' : '🎡 模組已關閉';
+            }
+        }
+
+        function updateGiftboxTestButton() {
+            const btn = document.getElementById('testGiftboxBtn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '🎁 測試盲盒';
+            }
+        }
+
+        function testGiftboxOpen() {
+            console.log('[盲盒測試] 觸發');
+            triggerGiftbox(1);
+        }
+
+        function testEntryText() {
+            console.log('[進場文字測試] 觸發');
+            showEntryText({
+                username: '測試用戶',
+                text: '歡迎 {name} 進入直播間！',
+                text_size: 48,
+                text_color: '#ffffff',
+                text_duration: 5
+            });
+        }
+
+        async function testEntryVideo() {
+            console.log('[進場影片測試] 觸發');
+            try {
+                // 從配置獲取進場列表
+                const config = await pywebview.api.get_config();
+                const entryList = config.entry_list || [];
+                const entryConfig = config.entry_config || {};
+
+                // 優先使用專屬進場列表中的第一個
+                let testEntry = null;
+                if (entryList.length > 0 && entryList[0].media_path) {
+                    testEntry = entryList[0];
+                } else if (entryConfig.media_path) {
+                    testEntry = entryConfig;
+                }
+
+                if (!testEntry || !testEntry.media_path) {
+                    alert('沒有設定進場效果！請先在主介面設定進場媒體。');
+                    return;
+                }
+
+                const isAudio = /\.(mp3|wav|ogg|m4a|aac)$/i.test(testEntry.media_path);
+
+                triggerEntry({
+                    username: '測試用戶',
+                    level: 30,
+                    path: testEntry.media_path,
+                    volume: testEntry.volume || 100,
+                    force_interrupt: testEntry.force_interrupt !== false,
+                    is_audio: isAudio,
+                    show_text: testEntry.show_text || false,
+                    text: testEntry.text || '',
+                    text_size: testEntry.text_size || 48,
+                    text_color: testEntry.text_color || '#ffffff',
+                    text_duration: testEntry.text_duration || 5,
+                    is_specific: true
+                });
+            } catch (e) {
+                console.error('[進場影片測試] 錯誤:', e);
+                alert('測試失敗: ' + e.message);
+            }
+        }
+
+        // === 盲盒功能 ===
+        function triggerGiftbox(opens) {
+            console.log('[盲盒] 觸發，選項數量:', giftboxOptions.length, '正在開盒:', isGiftboxOpening);
+
+            if (isGiftboxOpening) {
+                console.log('[盲盒] 正在開盒中，忽略');
+                return;
+            }
+
+            // 如果沒有選項，使用預設選項進行測試
+            if (giftboxOptions.length === 0) {
+                console.log('[盲盒] 沒有選項，使用預設');
+                giftboxOptions = [
+                    { name: '大獎', color: '#ffd93d', weight: 1 },
+                    { name: '中獎', color: '#4ecca3', weight: 2 },
+                    { name: '小獎', color: '#00d9ff', weight: 3 }
+                ];
+            }
+
+            isGiftboxOpening = true;
+            const container = document.getElementById('giftboxContainer');
+            const box = document.getElementById('giftboxBox');
+            const resultEl = document.getElementById('giftboxResult');
+            const confettiEl = document.getElementById('giftboxConfetti');
+            const countdownEl = document.getElementById('giftboxCountdown');
+            const videoContainer = document.getElementById('giftboxVideoContainer');
+            const videoEl = document.getElementById('giftboxVideo');
+
+            // 顯示盲盒容器（如果是隱藏的）
+            if (!giftboxVisible) {
+                setElementVisible(container, true);
+            }
+
+            // 如果是自動隱藏模式，先顯示盲盒
+            if (giftboxAutoHide) {
+                // 清除強制隱藏的 inline style
+                container.style.opacity = '';
+                container.style.visibility = '';
+                container.style.pointerEvents = '';
+                container.classList.add('triggered');
+            }
+
+            // 隨機選擇結果（根據權重）
+            const totalWeight = giftboxOptions.reduce((sum, opt) => sum + (opt.weight || 1), 0);
+            let random = Math.random() * totalWeight;
+            let selectedOption = giftboxOptions[0];
+            for (const opt of giftboxOptions) {
+                random -= (opt.weight || 1);
+                if (random <= 0) {
+                    selectedOption = opt;
+                    break;
+                }
+            }
+
+            // 開盒動畫
+            box.classList.add('opening');
+
+            // 創建彩帶效果（先準備好，但不啟動）
+            confettiEl.innerHTML = '';
+            const colors = ['#e94560', '#4ecca3', '#ffd93d', '#00d9ff', '#ff6b9d'];
+            for (let i = 0; i < 20; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'confetti-piece';
+                piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.left = Math.random() * 100 + '%';
+                piece.style.animationDelay = Math.random() * 0.5 + 's';
+                piece.style.animationDuration = (1 + Math.random()) + 's';
+                confettiEl.appendChild(piece);
+            }
+
+            // 0.3秒後開始滾動動畫
+            setTimeout(() => {
+                box.classList.add('rolling');
+
+                // 滾動參數
+                let currentIndex = 0;
+                let interval = 50;  // 初始速度（毫秒）
+                const maxInterval = 400;  // 最慢速度
+                const acceleration = 1.15;  // 減速係數
+                const minSpins = 15;  // 最少滾動次數
+                let spinCount = 0;
+
+                // 找到選中選項的索引
+                const selectedIndex = giftboxOptions.indexOf(selectedOption);
+
+                const spin = () => {
+                    // 顯示當前選項（重置動畫）
+                    const currentOption = giftboxOptions[currentIndex];
+                    resultEl.style.animation = 'none';
+                    void resultEl.offsetWidth;  // 強制重繪
+                    resultEl.style.animation = '';
+                    resultEl.textContent = currentOption.name;
+                    resultEl.style.backgroundColor = currentOption.color || '#4ecca3';
+
+                    // 移動到下一個選項
+                    currentIndex = (currentIndex + 1) % giftboxOptions.length;
+                    spinCount++;
+
+                    // 減速
+                    interval = Math.min(interval * acceleration, maxInterval);
+
+                    // 判斷是否停止：已經轉夠了，速度夠慢，且停在選中的選項上
+                    if (spinCount >= minSpins && interval >= maxInterval &&
+                        currentIndex === (selectedIndex + 1) % giftboxOptions.length) {
+                        // 停止滾動，顯示最終結果
+                        resultEl.textContent = selectedOption.name;
+                        resultEl.style.backgroundColor = selectedOption.color || '#4ecca3';
+
+                        // 切換到顯示結果狀態
+                        box.classList.remove('rolling');
+                        box.classList.add('showing-result');
+
+                        // 啟動彩帶動畫
+                        confettiEl.querySelectorAll('.confetti-piece').forEach(piece => {
+                            piece.style.animation = `confetti-fall ${1 + Math.random()}s ease-out forwards`;
+                        });
+
+                        console.log('盲盒結果:', selectedOption.name);
+
+                        // 滾動完成後，如果有影片設定，啟動倒數計時
+                        if (selectedOption.video_path) {
+                            // 延遲0.5秒讓結果彈跳動畫完成，再開始倒數
+                            setTimeout(() => {
+                                startGiftboxCountdown(selectedOption);
+                            }, 500);
+                        } else {
+                            // 沒有影片，3秒後重置
+                            setTimeout(() => {
+                                resetGiftbox();
+                            }, 3000);
+                        }
+                    } else {
+                        // 繼續滾動
+                        setTimeout(spin, interval);
+                    }
+                };
+
+                // 開始滾動
+                spin();
+            }, 300);
+        }
+
+        // 盲盒倒數計時
+        function startGiftboxCountdown(option) {
+            const countdownEl = document.getElementById('giftboxCountdown');
+            let count = 3;
+
+            const doCountdown = () => {
+                countdownEl.textContent = count;
+                countdownEl.classList.remove('active');
+                // 強制重繪以重新觸發動畫
+                void countdownEl.offsetWidth;
+                countdownEl.classList.add('active');
+
+                if (count > 1) {
+                    count--;
+                    setTimeout(doCountdown, 1000);
+                } else {
+                    // 倒數完成，播放影片
+                    setTimeout(() => {
+                        countdownEl.classList.remove('active');
+                        playGiftboxVideo(option);
+                    }, 1000);
+                }
+            };
+
+            doCountdown();
+        }
+
+        // 播放盲盒影片
+        function playGiftboxVideo(option) {
+            const box = document.getElementById('giftboxBox');
+            const videoContainer = document.getElementById('giftboxVideoContainer');
+            const videoEl = document.getElementById('giftboxVideo');
+
+            // 隱藏盒子，顯示影片
+            box.style.display = 'none';
+            videoContainer.classList.add('active');
+
+            // 設定影片
+            const videoSrc = formatVideoPath(option.video_path);
+            videoEl.src = videoSrc;
+            videoEl.volume = (option.video_volume || 100) / 100;
+            videoEl.muted = false;
+
+            // 設定播放時長限制
+            const videoSeconds = option.video_seconds || 0;
+            let playTimeout = null;
+
+            videoEl.onloadeddata = () => {
+                videoEl.play().then(() => {
+                    console.log('盲盒影片開始播放');
+
+                    if (videoSeconds > 0) {
+                        playTimeout = setTimeout(() => {
+                            videoEl.pause();
+                            endGiftboxVideo();
+                        }, videoSeconds * 1000);
+                    }
+                }).catch(e => {
+                    console.error('盲盒影片播放失敗:', e);
+                    endGiftboxVideo();
+                });
+            };
+
+            videoEl.onended = () => {
+                if (playTimeout) clearTimeout(playTimeout);
+                endGiftboxVideo();
+            };
+
+            videoEl.onerror = () => {
+                console.error('盲盒影片載入錯誤');
+                endGiftboxVideo();
+            };
+
+            videoEl.load();
+        }
+
+        // 結束盲盒影片播放
+        function endGiftboxVideo() {
+            console.log('[盲盒] 影片結束，開始重置');
+            const videoContainer = document.getElementById('giftboxVideoContainer');
+            const videoEl = document.getElementById('giftboxVideo');
+            const box = document.getElementById('giftboxBox');
+
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+            videoEl.load();
+            videoContainer.classList.remove('active');
+            box.style.display = '';
+
+            resetGiftbox();
+        }
+
+        // 重置盲盒狀態
+        function resetGiftbox() {
+            const container = document.getElementById('giftboxContainer');
+            const box = document.getElementById('giftboxBox');
+            const confettiEl = document.getElementById('giftboxConfetti');
+            const resultEl = document.getElementById('giftboxResult');
+            const countdownEl = document.getElementById('giftboxCountdown');
+            const videoContainer = document.getElementById('giftboxVideoContainer');
+            const videoEl = document.getElementById('giftboxVideo');
+
+            box.classList.remove('opening', 'rolling', 'showing-result');
+            box.style.display = '';
+            confettiEl.innerHTML = '';
+
+            // 重置影片容器
+            videoContainer.classList.remove('active');
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+
+            // 重置結果和倒數顯示
+            resultEl.textContent = '';
+            resultEl.style.animation = '';
+            resultEl.style.backgroundColor = '';
+            countdownEl.classList.remove('active');
+            countdownEl.textContent = '3';
+
+            // 如果是自動隱藏模式，隱藏盲盒
+            if (giftboxAutoHide) {
+                console.log('[盲盒] 自動隱藏 - 強制隱藏');
+                container.classList.remove('triggered');
+                // 強制隱藏
+                container.style.opacity = '0';
+                container.style.visibility = 'hidden';
+                container.style.pointerEvents = 'none';
+            }
+
+            isGiftboxOpening = false;
+            console.log('[盲盒] 已重置');
+        }
+
+        // 重新載入所有縮圖
+        function reloadAllThumbnails() {
+            console.log('[DEBUG] 重新載入所有縮圖');
+
+            document.querySelectorAll('.video-container').forEach((container, i) => {
+                const thumbnail = container.querySelector('.thumbnail-video');
+                if (!thumbnail) return;
+
+                const idx = container.dataset.index;
+                const src = thumbnail.src || thumbnail.getAttribute('src');
+
+                console.log(`[DEBUG] 重新載入縮圖 [${idx}], src=${src ? src.substring(0, 80) : 'empty'}`);
+
+                if (!src || src === 'undefined' || src === '') {
+                    console.warn(`[WARN] 縮圖 [${idx}] 沒有有效的 src`);
+                    container.style.background = 'rgba(255, 165, 0, 0.3)';  // 橙色表示無 src
+                    return;
+                }
+
+                // 重置容器背景（如果之前顯示錯誤）
+                container.style.background = 'rgba(0, 0, 0, 0.3)';
+                thumbnail.style.display = 'block';
+                thumbnail.style.visibility = 'visible';
+                thumbnail.style.opacity = '1';
+
+                // 清除舊事件
+                thumbnail.onloadedmetadata = null;
+                thumbnail.onloadeddata = null;
+                thumbnail.onerror = null;
+                thumbnail.oncanplay = null;
+
+                // 強制重新載入
+                thumbnail.removeAttribute('src');
+
+                // 設定事件處理
+                thumbnail.onloadedmetadata = () => {
+                    console.log(`[DEBUG] 縮圖重載 metadata 成功 [${idx}], readyState=${thumbnail.readyState}`);
+                    try {
+                        thumbnail.currentTime = 1;
+                    } catch (e) {
+                        console.warn(`[WARN] 設定縮圖時間失敗 [${idx}]:`, e);
+                    }
+                };
+
+                thumbnail.onloadeddata = () => {
+                    console.log(`[DEBUG] 縮圖重載 data 成功 [${idx}], readyState=${thumbnail.readyState}, currentTime=${thumbnail.currentTime}`);
+                    if (thumbnail.currentTime === 0) {
+                        try {
+                            thumbnail.currentTime = 1;
+                        } catch (e) {
+                            console.warn(`[WARN] 設定縮圖時間失敗 (loadeddata) [${idx}]:`, e);
+                        }
+                    }
+                };
+
+                thumbnail.oncanplay = () => {
+                    console.log(`[DEBUG] 縮圖可播放 [${idx}], currentTime=${thumbnail.currentTime}`);
+                };
+
+                thumbnail.onerror = (e) => {
+                    console.error(`[ERROR] 縮圖重載失敗 [${idx}]:`, e, thumbnail.error);
+                    thumbnail.style.display = 'none';
+                    container.style.background = 'rgba(255, 0, 0, 0.3)';
+                };
+
+                // 重新設定 src 並載入
+                setTimeout(() => {
+                    console.log(`[DEBUG] 設定縮圖 src [${idx}]`);
+                    thumbnail.src = src;
+                    thumbnail.load();
+                }, 50 * i);  // 錯開載入時間
+            });
+
+            console.log('[DEBUG] 縮圖重載已觸發');
+        }
+
+        // 重置所有裁切狀態
+        async function resetAllCropStates() {
+            console.log('[DEBUG] 重置所有裁切狀態');
+
+            // 重置每個容器
+            document.querySelectorAll('.video-container').forEach(vc => {
+                const idx = vc.dataset.index;
+                const width = 300;
+                const height = 200;
+
+                // 重置裁切狀態
+                videoCropState[idx] = {
+                    cropLeft: 0,
+                    cropTop: 0,
+                    originalWidth: width,
+                    originalHeight: height
+                };
+
+                // 更新容器尺寸
+                vc.style.width = width + 'px';
+                vc.style.height = height + 'px';
+
+                // 重置縮圖和播放器
+                const thumbnail = vc.querySelector('.thumbnail-video');
+                const player = vc.querySelector('.video-player');
+
+                if (thumbnail) {
+                    thumbnail.style.width = width + 'px';
+                    thumbnail.style.height = height + 'px';
+                    thumbnail.style.left = '0px';
+                    thumbnail.style.top = '0px';
+                }
+                if (player) {
+                    player.style.width = width + 'px';
+                    player.style.height = height + 'px';
+                    player.style.left = '0px';
+                    player.style.top = '0px';
+                }
+
+                // 更新容器資料
+                if (videoContainers[idx]) {
+                    videoContainers[idx].width = width;
+                    videoContainers[idx].height = height;
+                    videoContainers[idx].cropLeft = 0;
+                    videoContainers[idx].cropTop = 0;
+                    videoContainers[idx].originalWidth = width;
+                    videoContainers[idx].originalHeight = height;
+                }
+            });
+
+            // 保存到配置文件
+            await savePositions();
+            console.log('[DEBUG] 裁切狀態已重置並保存');
+            alert('裁切狀態已重置！');
+        }
+
+        function testWheelSpin() {
+            if (!wheelModuleEnabled) return;
+            triggerWheel(1);
+        }
+
+        // === 轉盤繪製 ===
+        function drawWheel() {
+            const canvas = document.getElementById('wheelCanvas');
+            const ctx = canvas.getContext('2d');
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const radius = Math.max(10, Math.min(cx, cy) - 15);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (wheelOptions.length === 0 || radius < 10) return;
+
+            const totalWeight = wheelOptions.reduce((sum, opt) => sum + opt.weight, 0);
+            let startAngle = (wheelAngle * Math.PI / 180);
+
+            wheelOptions.forEach(opt => {
+                const sweep = (2 * Math.PI * opt.weight / totalWeight);
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, startAngle, startAngle + sweep);
+                ctx.closePath();
+                ctx.fillStyle = opt.color;
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                const textAngle = startAngle + sweep / 2;
+                const textRadius = radius * 0.65;
+                const textX = cx + textRadius * Math.cos(textAngle);
+                const textY = cy + textRadius * Math.sin(textAngle);
+
+                ctx.save();
+                ctx.translate(textX, textY);
+                ctx.rotate(textAngle + Math.PI / 2);
+                ctx.fillStyle = '#000';
+                ctx.font = `bold ${Math.max(12, radius / 12)}px Microsoft JhengHei`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(opt.name, 0, 0);
+                ctx.restore();
+
+                startAngle += sweep;
+            });
+
+            // 中心圓
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius * 0.1, 0, Math.PI * 2);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 指針
+            const pointerSize = radius * 0.12;
+            ctx.beginPath();
+            ctx.moveTo(cx - pointerSize, 10);
+            ctx.lineTo(cx + pointerSize, 10);
+            ctx.lineTo(cx, 10 + pointerSize * 2);
+            ctx.closePath();
+            ctx.fillStyle = '#e94560';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // === 轉盤動畫 ===
+        function triggerWheel(spins) {
+            if (isSpinning) return;
+            spinWheel(spins);
+        }
+
+        function spinWheel(spins) {
+            if (isSpinning || wheelOptions.length === 0) return;
+
+            isSpinning = true;
+
+            const startAngle = wheelAngle;
+            const extraSpins = 5 + Math.floor(Math.random() * 3);
+            const targetAngle = startAngle + 360 * extraSpins + Math.random() * 360;
+            const duration = 4000;
+            const startTime = Date.now();
+
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                wheelAngle = startAngle + (targetAngle - startAngle) * eased;
+
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isSpinning = false;
+                    wheelAngle = wheelAngle % 360;
+                    const result = getWheelResult();
+                    console.log('轉盤結果:', result);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function getWheelResult() {
+            const pointerAngle = (270 - wheelAngle % 360 + 360) % 360;
+            const totalWeight = wheelOptions.reduce((sum, opt) => sum + opt.weight, 0);
+
+            let cumAngle = 0;
+            for (const opt of wheelOptions) {
+                const optAngle = 360 * opt.weight / totalWeight;
+                if (pointerAngle >= cumAngle && pointerAngle < cumAngle + optAngle) {
+                    return opt;
+                }
+                cumAngle += optAngle;
+            }
+            return wheelOptions[0];
+        }
+
+        // === 影片播放 ===
+        // 根據影片路徑找到對應的容器並播放
+        function triggerVideo(videoData) {
+            if (!videoData.path) return;
+
+            // 找到對應的容器 (根據路徑匹配)
+            let foundIndex = -1;
+            for (let i = 0; i < videoGifts.length; i++) {
+                if (videoGifts[i].video_path === videoData.path) {
+                    foundIndex = i;
+                    break;
+                }
+            }
+
+            if (foundIndex === -1) {
+                console.warn('找不到對應的影片容器:', videoData.path);
+                return;
+            }
+
+            // 使用對應容器播放
+            triggerVideoInContainer(foundIndex, videoData);
+        }
+
+        // === 進場效果 ===
+        let entryPlaying = false;
+
+        function triggerEntry(data) {
+            console.log('[ENTRY] 觸發進場效果:', data);
+
+            // 決定使用哪個容器（縮圖容器或全屏容器）
+            const useSmallContainer = entryVideoVisible && !data.is_audio;
+
+            const fullContainer = document.getElementById('entryContainer');
+            const fullVideo = document.getElementById('entryVideo');
+            const audio = document.getElementById('entryAudio');
+
+            const smallContainer = document.getElementById('entryVideoContainer');
+            const smallPlayer = document.getElementById('entryPlayer');
+            const smallAudio = document.getElementById('entryPlayerAudio');
+
+            // 如果設定強制中斷，先停止所有其他影片
+            if (data.force_interrupt) {
+                console.log('[ENTRY] 強制中斷其他播放');
+                // 停止所有影片容器
+                document.querySelectorAll('.video-container').forEach(vc => {
+                    const idx = vc.dataset.index;
+                    if (idx !== undefined) {
+                        stopVideoInContainer(parseInt(idx));
+                    }
+                });
+            }
+
+            // 準備影片路徑
+            const videoSrc = formatVideoPath(data.path);
+
+            if (data.is_audio) {
+                // 音效模式 - 使用縮圖容器的 audio 或全屏容器的 audio
+                const targetAudio = entryVideoVisible ? smallAudio : audio;
+                if (!targetAudio) {
+                    console.error('[ENTRY] 找不到音訊元素');
+                    return;
+                }
+                targetAudio.src = videoSrc;
+                targetAudio.volume = (data.volume || 100) / 100;
+                targetAudio.onended = () => {
+                    console.log('[ENTRY] 音效播放結束');
+                    entryPlaying = false;
+                };
+                targetAudio.onerror = (e) => {
+                    console.error('[ENTRY] 音效播放錯誤:', e);
+                    entryPlaying = false;
+                };
+                targetAudio.play().catch(e => {
+                    console.error('[ENTRY] 音效播放失敗:', e);
+                });
+                entryPlaying = true;
+            } else if (useSmallContainer && smallContainer && smallPlayer) {
+                // 影片模式 - 在縮圖容器中播放
+                console.log('[ENTRY] 使用縮圖容器播放');
+                smallPlayer.src = videoSrc;
+                smallPlayer.volume = (data.volume || 100) / 100;
+                smallPlayer.muted = false;
+
+                smallPlayer.onloadedmetadata = () => {
+                    console.log('[ENTRY] 影片已載入（縮圖容器）');
+                };
+
+                smallPlayer.onended = () => {
+                    console.log('[ENTRY] 影片播放結束（縮圖容器）');
+                    smallContainer.classList.remove('playing');
+                    smallPlayer.src = '';
+                    entryPlaying = false;
+                };
+
+                smallPlayer.onerror = (e) => {
+                    console.error('[ENTRY] 影片播放錯誤（縮圖容器）:', e);
+                    smallContainer.classList.remove('playing');
+                    smallPlayer.src = '';
+                    entryPlaying = false;
+                };
+
+                // 顯示容器並播放
+                smallContainer.classList.add('playing');
+                entryPlaying = true;
+
+                smallPlayer.play().then(() => {
+                    console.log('[ENTRY] 影片開始播放（縮圖容器）');
+                }).catch(e => {
+                    console.error('[ENTRY] 影片播放失敗（縮圖容器）:', e);
+                    smallContainer.classList.remove('playing');
+                    entryPlaying = false;
+                });
+            } else {
+                // 影片模式 - 全屏顯示
+                if (!fullContainer || !fullVideo) {
+                    console.error('[ENTRY] 找不到全屏進場容器');
+                    return;
+                }
+                fullVideo.src = videoSrc;
+                fullVideo.volume = (data.volume || 100) / 100;
+                fullVideo.muted = false;
+
+                fullVideo.onloadedmetadata = () => {
+                    console.log('[ENTRY] 影片已載入');
+                };
+
+                fullVideo.onended = () => {
+                    console.log('[ENTRY] 影片播放結束');
+                    fullContainer.classList.remove('active');
+                    fullVideo.src = '';
+                    entryPlaying = false;
+                };
+
+                fullVideo.onerror = (e) => {
+                    console.error('[ENTRY] 影片播放錯誤:', e);
+                    fullContainer.classList.remove('active');
+                    fullVideo.src = '';
+                    entryPlaying = false;
+                };
+
+                // 顯示容器並播放
+                fullContainer.classList.add('active');
+                entryPlaying = true;
+
+                fullVideo.play().then(() => {
+                    console.log('[ENTRY] 影片開始播放');
+                }).catch(e => {
+                    console.error('[ENTRY] 影片播放失敗:', e);
+                    fullContainer.classList.remove('active');
+                    entryPlaying = false;
+                });
+            }
+
+            // 顯示進場文字
+            if (data.show_text && data.text) {
+                showEntryText(data);
+            }
+        }
+
+        // 進場文字計時器
+        let entryTextTimer = null;
+
+        function showEntryText(data) {
+            const textContainer = document.getElementById('entryTextContainer');
+            const textElement = document.getElementById('entryText');
+
+            if (!textContainer || !textElement) return;
+
+            // 清除之前的計時器
+            if (entryTextTimer) {
+                clearTimeout(entryTextTimer);
+                entryTextTimer = null;
+            }
+
+            // 替換 {name} 為用戶名
+            const displayText = (data.text || '').replace(/\{name\}/g, data.username || '');
+
+            // 設定文字樣式
+            textElement.textContent = displayText;
+            textElement.style.fontSize = (data.text_size || 48) + 'px';
+            textElement.style.color = data.text_color || '#ffffff';
+            textElement.classList.remove('fade-out');
+
+            // 顯示容器
+            textContainer.classList.remove('hidden');
+
+            // 設定自動隱藏
+            const duration = (data.text_duration || 5) * 1000;
+            entryTextTimer = setTimeout(() => {
+                hideEntryText();
+            }, duration);
+
+            console.log('[ENTRY] 顯示進場文字:', displayText);
+        }
+
+        function hideEntryText() {
+            const textContainer = document.getElementById('entryTextContainer');
+            const textElement = document.getElementById('entryText');
+
+            if (!textElement) return;
+
+            // 添加淡出動畫
+            textElement.classList.add('fade-out');
+
+            // 動畫結束後隱藏
+            setTimeout(() => {
+                if (textContainer) {
+                    textContainer.classList.add('hidden');
+                }
+                textElement.classList.remove('fade-out');
+            }, 500);
+        }
+
+        // 停止進場效果
+        function stopEntry() {
+            const container = document.getElementById('entryContainer');
+            const video = document.getElementById('entryVideo');
+            const audio = document.getElementById('entryAudio');
+
+            if (video) {
+                video.pause();
+                video.src = '';
+            }
+            if (audio) {
+                audio.pause();
+                audio.src = '';
+            }
+            if (container) {
+                container.classList.remove('active');
+            }
+            entryPlaying = false;
+        }
+
+        // === 拖曳功能 ===
+        let dragState = { active: false, elem: null, offsetX: 0, offsetY: 0 };
+
+        function initDraggable() {
+            const draggables = document.querySelectorAll('.draggable');
+
+            draggables.forEach(elem => {
+                // 移除舊的監聽器（如果有的話）
+                elem.removeEventListener('mousedown', handleDragStart);
+                elem.addEventListener('mousedown', handleDragStart);
+            });
+        }
+
+        function handleDragStart(e) {
+            if (e.button !== 0) return;
+            if (e.target.classList.contains('resize-handle')) return;
+
+            const elem = e.currentTarget;
+            dragState.active = true;
+            dragState.elem = elem;
+            dragState.offsetX = e.clientX - elem.offsetLeft;
+            dragState.offsetY = e.clientY - elem.offsetTop;
+            elem.style.transform = 'none';
+            e.preventDefault();
+        }
+
+        // 全域拖曳事件（只註冊一次）
+        document.addEventListener('mousemove', (e) => {
+            if (!dragState.active || !dragState.elem) return;
+            dragState.elem.style.left = (e.clientX - dragState.offsetX) + 'px';
+            dragState.elem.style.top = (e.clientY - dragState.offsetY) + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (dragState.active) {
+                dragState.active = false;
+                dragState.elem = null;
+                savePositionsDebounced();
+            }
+        });
+
+        // === 縮放功能（8個方向） ===
+        let resizeState = {
+            active: false,
+            elem: null,
+            direction: '',
+            startX: 0, startY: 0,
+            startWidth: 0, startHeight: 0,
+            startLeft: 0, startTop: 0,
+            // 裁切用
+            videoIndex: -1,
+            startCropLeft: 0,
+            startCropTop: 0,
+            originalWidth: 0,
+            originalHeight: 0
+        };
+
+        function initResizable() {
+            const draggables = document.querySelectorAll('.draggable');
+
+            draggables.forEach(elem => {
+                const handles = elem.querySelectorAll('.resize-handle');
+
+                handles.forEach(handle => {
+                    // 移除舊的監聽器
+                    handle.removeEventListener('mousedown', handleResizeStart);
+                    handle.addEventListener('mousedown', handleResizeStart);
+                });
+            });
+        }
+
+        function handleResizeStart(e) {
+            e.stopPropagation();
+            e.preventDefault();
+
+            const handle = e.currentTarget;
+            const elem = handle.parentElement;
+
+            // 取得方向
+            let direction = '';
+            const classes = handle.className.split(' ');
+            for (const c of classes) {
+                if (['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'].includes(c)) {
+                    direction = c;
+                    break;
+                }
+            }
+
+            resizeState.active = true;
+            resizeState.elem = elem;
+            resizeState.direction = direction;
+            resizeState.startX = e.clientX;
+            resizeState.startY = e.clientY;
+            resizeState.startWidth = elem.offsetWidth;
+            resizeState.startHeight = elem.offsetHeight;
+            resizeState.startLeft = elem.offsetLeft;
+            resizeState.startTop = elem.offsetTop;
+            elem.style.transform = 'none';
+
+            // 影片容器的裁切狀態
+            if (elem.classList.contains('video-container')) {
+                const idx = parseInt(elem.dataset.index);
+                resizeState.videoIndex = idx;
+
+                // 初始化裁切狀態
+                if (!videoCropState[idx]) {
+                    videoCropState[idx] = {
+                        cropLeft: 0,
+                        cropTop: 0,
+                        originalWidth: elem.offsetWidth,
+                        originalHeight: elem.offsetHeight
+                    };
+                }
+
+                resizeState.startCropLeft = videoCropState[idx].cropLeft;
+                resizeState.startCropTop = videoCropState[idx].cropTop;
+                resizeState.originalWidth = videoCropState[idx].originalWidth;
+                resizeState.originalHeight = videoCropState[idx].originalHeight;
+            } else {
+                resizeState.videoIndex = -1;
+            }
+        }
+
+        // 全域縮放事件（只註冊一次）
+        document.addEventListener('mousemove', (e) => {
+            if (!resizeState.active || !resizeState.elem) return;
+
+            const deltaX = e.clientX - resizeState.startX;
+            const deltaY = e.clientY - resizeState.startY;
+            const direction = resizeState.direction;
+            const elem = resizeState.elem;
+
+            let newWidth = resizeState.startWidth;
+            let newHeight = resizeState.startHeight;
+            let newLeft = resizeState.startLeft;
+            let newTop = resizeState.startTop;
+
+            const isVideoContainer = elem.classList.contains('video-container');
+            const isSingleSide = ['w', 'e', 'n', 's'].includes(direction);
+
+            if (isVideoContainer && isSingleSide) {
+                // 影片容器的單邊調整 = 裁切模式
+                const idx = resizeState.videoIndex;
+                const cropState = videoCropState[idx];
+                const thumbnail = elem.querySelector('.thumbnail-video');
+                const player = elem.querySelector('.video-player');
+
+                if (direction === 'e') {
+                    // 右邊裁切
+                    newWidth = Math.max(50, resizeState.startWidth + deltaX);
+                    newWidth = Math.min(newWidth, resizeState.originalWidth - cropState.cropLeft);
+                }
+                if (direction === 'w') {
+                    // 左邊裁切
+                    const newCropLeft = Math.max(0, Math.min(resizeState.startCropLeft + deltaX, resizeState.originalWidth - 50));
+                    cropState.cropLeft = newCropLeft;
+                    newWidth = Math.max(50, resizeState.startWidth - deltaX);
+                    newWidth = Math.min(newWidth, resizeState.originalWidth - newCropLeft);
+                    newLeft = resizeState.startLeft + deltaX;
+
+                    if (thumbnail) thumbnail.style.left = -newCropLeft + 'px';
+                    if (player) player.style.left = -newCropLeft + 'px';
+                }
+                if (direction === 's') {
+                    // 下邊裁切
+                    newHeight = Math.max(50, resizeState.startHeight + deltaY);
+                    newHeight = Math.min(newHeight, resizeState.originalHeight - cropState.cropTop);
+                }
+                if (direction === 'n') {
+                    // 上邊裁切
+                    const newCropTop = Math.max(0, Math.min(resizeState.startCropTop + deltaY, resizeState.originalHeight - 50));
+                    cropState.cropTop = newCropTop;
+                    newHeight = Math.max(50, resizeState.startHeight - deltaY);
+                    newHeight = Math.min(newHeight, resizeState.originalHeight - newCropTop);
+                    newTop = resizeState.startTop + deltaY;
+
+                    if (thumbnail) thumbnail.style.top = -newCropTop + 'px';
+                    if (player) player.style.top = -newCropTop + 'px';
+                }
+            } else {
+                // 一般縮放模式
+                const isCorner = ['nw', 'ne', 'sw', 'se'].includes(direction);
+
+                if (isCorner) {
+                    // 四個角落：等比例縮放
+                    const aspectRatio = resizeState.startWidth / resizeState.startHeight;
+
+                    // 根據滑鼠移動方向決定縮放基準
+                    let scale;
+                    if (direction === 'se') {
+                        // 右下角：取較大的縮放值
+                        const scaleX = (resizeState.startWidth + deltaX) / resizeState.startWidth;
+                        const scaleY = (resizeState.startHeight + deltaY) / resizeState.startHeight;
+                        scale = Math.max(scaleX, scaleY);
+                        newWidth = Math.max(50, resizeState.startWidth * scale);
+                        newHeight = Math.max(50, newWidth / aspectRatio);
+                    } else if (direction === 'sw') {
+                        // 左下角
+                        const scaleX = (resizeState.startWidth - deltaX) / resizeState.startWidth;
+                        const scaleY = (resizeState.startHeight + deltaY) / resizeState.startHeight;
+                        scale = Math.max(scaleX, scaleY);
+                        newWidth = Math.max(50, resizeState.startWidth * scale);
+                        newHeight = Math.max(50, newWidth / aspectRatio);
+                        newLeft = resizeState.startLeft + resizeState.startWidth - newWidth;
+                    } else if (direction === 'ne') {
+                        // 右上角
+                        const scaleX = (resizeState.startWidth + deltaX) / resizeState.startWidth;
+                        const scaleY = (resizeState.startHeight - deltaY) / resizeState.startHeight;
+                        scale = Math.max(scaleX, scaleY);
+                        newWidth = Math.max(50, resizeState.startWidth * scale);
+                        newHeight = Math.max(50, newWidth / aspectRatio);
+                        newTop = resizeState.startTop + resizeState.startHeight - newHeight;
+                    } else if (direction === 'nw') {
+                        // 左上角
+                        const scaleX = (resizeState.startWidth - deltaX) / resizeState.startWidth;
+                        const scaleY = (resizeState.startHeight - deltaY) / resizeState.startHeight;
+                        scale = Math.max(scaleX, scaleY);
+                        newWidth = Math.max(50, resizeState.startWidth * scale);
+                        newHeight = Math.max(50, newWidth / aspectRatio);
+                        newLeft = resizeState.startLeft + resizeState.startWidth - newWidth;
+                        newTop = resizeState.startTop + resizeState.startHeight - newHeight;
+                    }
+                } else {
+                    // 四個邊：單向縮放
+                    if (direction === 'e') {
+                        newWidth = Math.max(50, resizeState.startWidth + deltaX);
+                    }
+                    if (direction === 'w') {
+                        newWidth = Math.max(50, resizeState.startWidth - deltaX);
+                        newLeft = resizeState.startLeft + deltaX;
+                        if (newWidth <= 50) newLeft = resizeState.startLeft + resizeState.startWidth - 50;
+                    }
+                    if (direction === 's') {
+                        newHeight = Math.max(50, resizeState.startHeight + deltaY);
+                    }
+                    if (direction === 'n') {
+                        newHeight = Math.max(50, resizeState.startHeight - deltaY);
+                        newTop = resizeState.startTop + deltaY;
+                        if (newHeight <= 50) newTop = resizeState.startTop + resizeState.startHeight - 50;
+                    }
+                }
+
+                // 影片容器角落調整時，更新原始尺寸並重置裁切
+                if (isVideoContainer) {
+                    const idx = resizeState.videoIndex;
+                    videoCropState[idx] = {
+                        cropLeft: 0,
+                        cropTop: 0,
+                        originalWidth: newWidth,
+                        originalHeight: newHeight
+                    };
+
+                    const thumbnail = elem.querySelector('.thumbnail-video');
+                    const player = elem.querySelector('.video-player');
+                    if (thumbnail) {
+                        thumbnail.style.left = '0px';
+                        thumbnail.style.top = '0px';
+                        thumbnail.style.width = newWidth + 'px';
+                        thumbnail.style.height = newHeight + 'px';
+                    }
+                    if (player) {
+                        player.style.left = '0px';
+                        player.style.top = '0px';
+                        player.style.width = newWidth + 'px';
+                        player.style.height = newHeight + 'px';
+                    }
+                }
+            }
+
+            // 轉盤保持正方形
+            if (elem.id === 'wheelContainer') {
+                const size = Math.max(newWidth, newHeight);
+                newWidth = size;
+                newHeight = size;
+            }
+
+            elem.style.width = newWidth + 'px';
+            elem.style.height = newHeight + 'px';
+            elem.style.left = newLeft + 'px';
+            elem.style.top = newTop + 'px';
+
+            // 更新轉盤 canvas
+            if (elem.id === 'wheelContainer') {
+                const canvas = document.getElementById('wheelCanvas');
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                drawWheel();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (resizeState.active) {
+                resizeState.active = false;
+                resizeState.elem = null;
+                savePositionsDebounced();
+            }
+        });
+
+        // === 右鍵選單 ===
+        function initContextMenu() {
+            const menu = document.getElementById('contextMenu');
+
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                menu.style.left = e.clientX + 'px';
+                menu.style.top = e.clientY + 'px';
+                menu.classList.add('visible');
+            });
+
+            document.addEventListener('click', () => {
+                menu.classList.remove('visible');
+            });
+        }
+
+        // 暴露給外部的函數
+        window.triggerWheel = triggerWheel;
+        window.triggerVideo = triggerVideo;
+        window.triggerVideoInContainer = triggerVideoInContainer;
+    </script>
+</body>
+</html>
