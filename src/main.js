@@ -16,6 +16,10 @@ try {
     autoUpdater = require('electron-updater').autoUpdater;
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
+    // 私有 repo 需要 token
+    autoUpdater.requestHeaders = {
+        'Authorization': 'token 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'
+    };
 } catch (e) {
     console.log('electron-updater not installed, auto-update disabled');
 }
