@@ -143,6 +143,50 @@ function saveHighLevelUsers() {
     }
 }
 
+// 記錄高等級用戶（從任何互動事件調用）
+function recordHighLevelUser(userId, nickname, uniqueId, level) {
+    if (!userId || !state.currentTikTokAccount) return;
+    if (level < 20) return;  // 只記錄 Lv20+
+
+    const account = state.currentTikTokAccount;
+    if (!state.highLevelUsers[account]) {
+        state.highLevelUsers[account] = {};
+    }
+
+    const existing = state.highLevelUsers[account][userId];
+    if (existing) {
+        // 更新暱稱（如果有更好的資訊）
+        let updated = false;
+        if (nickname && (!existing.nickname || existing.nickname.startsWith('Lv'))) {
+            existing.nickname = nickname;
+            updated = true;
+        }
+        if (uniqueId && !existing.uniqueId) {
+            existing.uniqueId = uniqueId;
+            updated = true;
+        }
+        if (level > existing.level) {
+            existing.level = level;
+            updated = true;
+        }
+        if (updated) {
+            saveHighLevelUsers();
+            console.log(`[HighLevelUser] 更新: userId=${userId} Lv${level} nickname="${nickname}"`);
+        }
+    } else {
+        // 新增用戶
+        state.highLevelUsers[account][userId] = {
+            nickname: nickname || uniqueId || `Lv${level}用戶`,
+            uniqueId: uniqueId || '',
+            userId,
+            level,
+            first_seen: new Date().toLocaleString('zh-TW')
+        };
+        saveHighLevelUsers();
+        console.log(`[HighLevelUser] 新增: userId=${userId} Lv${level} nickname="${nickname || '(無)'}"`);
+    }
+}
+
 // ============ 日誌管理 ============
 function addLog(message) {
     const timestamp = new Date().toLocaleTimeString('zh-TW', { hour12: false });
@@ -460,9 +504,15 @@ function handleTikTokMessage(msg) {
         const userId = data.userId || data.user?.userId || '';
         const giftName = data.giftName || data.gift_name || data.gift?.name || '';
         const count = parseInt(data.repeatCount || data.giftCount || data.count || 1);
+        const level = parseInt(data.level || data.user?.level || 0);
 
         // 快取用戶暱稱
         if (userId) cacheUserNickname(userId, data.nickname, uniqueId);
+
+        // 記錄高等級用戶
+        if (userId && level >= 20) {
+            recordHighLevelUser(userId, data.nickname, uniqueId, level);
+        }
 
         checkFirstInteraction(username, uniqueId, userId);
 
@@ -487,9 +537,15 @@ function handleTikTokMessage(msg) {
         const uniqueId = data.uniqueId || data.user?.uniqueId || '';
         const userId = data.userId || data.user?.userId || '';
         const comment = data.comment || data.content || data.text || '';
+        const level = parseInt(data.level || data.user?.level || 0);
 
         // 快取用戶暱稱
         if (userId) cacheUserNickname(userId, data.nickname, uniqueId);
+
+        // 記錄高等級用戶
+        if (userId && level >= 20) {
+            recordHighLevelUser(userId, data.nickname, uniqueId, level);
+        }
 
         addLog(`💬 ${username}: ${comment}`);
         checkFirstInteraction(username, uniqueId, userId);
@@ -507,9 +563,15 @@ function handleTikTokMessage(msg) {
         const uniqueId = data.uniqueId || data.user?.uniqueId || '';
         const userId = data.userId || data.user?.userId || '';
         const count = parseInt(data.likeCount || data.count || 1);
+        const level = parseInt(data.level || data.user?.level || 0);
 
         // 快取用戶暱稱
         if (userId) cacheUserNickname(userId, data.nickname, uniqueId);
+
+        // 記錄高等級用戶
+        if (userId && level >= 20) {
+            recordHighLevelUser(userId, data.nickname, uniqueId, level);
+        }
 
         addLog(`❤️ ${username} 點了 ${count} 個讚`);
         triggerEffects('like', username, '', count);

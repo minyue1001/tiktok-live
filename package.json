@@ -1,6 +1,6 @@
 {
   "name": "tiktok-live-system",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "TikTok 直播互動系統",
   "main": "src/main.js",
   "scripts": {
