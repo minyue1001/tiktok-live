@@ -13,17 +13,9 @@ const http = require('http');
 // ============ 自動更新設定 (可選) ============
 let autoUpdater = null;
 try {
-    // 設定環境變數給 electron-updater 使用（私有 repo 必須）
-    process.env.GH_TOKEN = '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';
-
     autoUpdater = require('electron-updater').autoUpdater;
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
-
-    // 額外設定 request headers 作為備用
-    autoUpdater.requestHeaders = {
-        'Authorization': 'token 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'
-    };
 } catch (e) {
     console.log('electron-updater not installed, auto-update disabled');
 }
