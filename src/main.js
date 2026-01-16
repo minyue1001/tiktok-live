@@ -13,10 +13,14 @@ const http = require('http');
 // ============ 自動更新設定 (可選) ============
 let autoUpdater = null;
 try {
+    // 設定環境變數給 electron-updater 使用（私有 repo 必須）
+    process.env.GH_TOKEN = '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';
+
     autoUpdater = require('electron-updater').autoUpdater;
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
-    // 私有 repo 需要 token
+
+    // 額外設定 request headers 作為備用
     autoUpdater.requestHeaders = {
         'Authorization': 'token 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'
     };
@@ -1463,6 +1467,7 @@ function setupAutoUpdater() {
 
     autoUpdater.on('error', (err) => {
         console.log('更新錯誤:', err.message);
+        addLog(`⚠️ 更新檢查失敗: ${err.message}`);
     });
 
     // IPC 處理
