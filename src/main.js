@@ -14,7 +14,7 @@ const http = require('http');
 let autoUpdater = null;
 try {
     autoUpdater = require('electron-updater').autoUpdater;
-    autoUpdater.autoDownload = false;
+    autoUpdater.autoDownload = true;  // 自動下載更新
     autoUpdater.autoInstallOnAppQuit = true;
 } catch (e) {
     console.log('electron-updater not installed, auto-update disabled');
