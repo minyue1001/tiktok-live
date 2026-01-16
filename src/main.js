@@ -474,6 +474,11 @@ function handleTikTokMessage(msg) {
 
         addLog(`🎁 ${username} 送出 ${giftName} x${count}`);
         triggerEffects('gift', username, giftName, count);
+
+        // 透過送禮回推進場
+        if (userId) {
+            checkChatBasedEntry(userId, username, uniqueId);
+        }
     }
 
     // 聊天消息
@@ -499,9 +504,20 @@ function handleTikTokMessage(msg) {
     // 點讚消息
     else if (['like', 'likemessage', 'webcastlikemessage'].includes(msgType)) {
         const username = data.nickname || data.uniqueId || '未知用戶';
+        const uniqueId = data.uniqueId || data.user?.uniqueId || '';
+        const userId = data.userId || data.user?.userId || '';
         const count = parseInt(data.likeCount || data.count || 1);
+
+        // 快取用戶暱稱
+        if (userId) cacheUserNickname(userId, data.nickname, uniqueId);
+
         addLog(`❤️ ${username} 點了 ${count} 個讚`);
         triggerEffects('like', username, '', count);
+
+        // 透過點讚回推進場
+        if (userId) {
+            checkChatBasedEntry(userId, username, uniqueId);
+        }
     }
 
     // 進場消息
@@ -789,24 +805,29 @@ function checkChatBasedEntry(userId, nickname, uniqueId) {
         return; // 已有進場記錄，跳過
     }
 
-    // 2. 檢查是否在最近 5 分鐘內透過聊天回推過（避免每條聊天都觸發）
+    // 2. 檢查是否在最近 60 秒內透過互動回推過（避免每條互動都觸發）
     const lastChatEntry = chatBasedEntryDedup.get(userId);
-    if (lastChatEntry && now - lastChatEntry < 300000) {
-        return; // 5 分鐘內已回推過
+    if (lastChatEntry && now - lastChatEntry < 60000) {
+        return; // 60 秒內已回推過
     }
 
-    // 3. 檢查是否有專屬進場設定（用 userId 或 uniqueId 匹配）
+    // 3. 檢查是否有專屬進場設定（用 userId、uniqueId 或暱稱匹配）
     const entryList = state.config.entry_list || [];
     let hasSpecificEntry = false;
+    const cleanedNick = cleanNickname(nickname).toLowerCase();
+
     for (const entry of entryList) {
         if (entry.enabled === false) continue;
-        const entryUsername = (entry.username || '').toLowerCase();
-        const entryUserId = entry.user_id || '';
+        const entryUsername = (entry.username || '').toLowerCase().trim();
+        const entryUserId = (entry.user_id || '').trim();
 
+        // 匹配方式：user_id、uniqueId、暱稱、或 username 欄位存的 userId
         if ((entryUserId && entryUserId === userId) ||
             (entryUsername && uniqueId && entryUsername === uniqueId.toLowerCase()) ||
+            (entryUsername && cleanedNick && entryUsername === cleanedNick) ||
             (entryUsername && /^7\d{18}$/.test(entry.username) && entry.username === userId)) {
             hasSpecificEntry = true;
+            console.log(`[EntryMatch] 匹配成功: entry.username="${entry.username}" userId=${userId} uniqueId=${uniqueId} nickname="${nickname}"`);
             break;
         }
     }
@@ -961,16 +982,20 @@ function triggerEntryEffect(nickname, uniqueId, userId, level = 0) {
 
     // 1. 先檢查是否有特定用戶的進場效果
     let specificEntry = null;
+    const cleanedNick = cleanNickname(nickname).toLowerCase();
+
     for (const entry of entryList) {
         if (entry.enabled === false) continue;
 
-        const entryUsername = (entry.username || '').toLowerCase();
-        const entryUserId = entry.user_id || '';
+        const entryUsername = (entry.username || '').toLowerCase().trim();
+        const entryUserId = (entry.user_id || '').trim();
 
         let matched = false;
         // 按 user_id 匹配
         if (entryUserId && userId && entryUserId === userId) matched = true;
-        // 按暱稱匹配
+        // 按清理後的暱稱匹配
+        else if (entryUsername && cleanedNick && entryUsername === cleanedNick) matched = true;
+        // 按原始暱稱匹配（fallback）
         else if (entryUsername && nickname && entryUsername === nickname.toLowerCase()) matched = true;
         // 按 uniqueId 匹配
         else if (entryUsername && uniqueId && entryUsername === uniqueId.toLowerCase()) matched = true;
@@ -979,7 +1004,7 @@ function triggerEntryEffect(nickname, uniqueId, userId, level = 0) {
 
         if (matched) {
             specificEntry = entry;
-            console.log(`[Entry Match] 匹配到專屬進場: ${entry.username} -> userId=${userId}`);
+            console.log(`[Entry Match] 匹配到專屬進場: ${entry.username} -> userId=${userId} nickname="${nickname}"`);
             break;
         }
     }
