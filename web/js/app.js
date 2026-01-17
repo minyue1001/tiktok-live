@@ -203,11 +203,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     initNavigation();  // 初始化側邊欄導航
     initLogFilters();  // 初始化日誌過濾器
     initConfigUpdateListener();  // 監聽配置更新（即時同步）
+    initDialogs();  // 初始化對話框事件
     await refreshAccountList();  // 載入帳號列表
     await updateChatDisplayStatus();  // 初始化彈幕顯示狀態
     setInterval(updateLogs, 1000);
     setInterval(updateStatus, 2000);
 });
+
+// === 初始化對話框 ===
+function initDialogs() {
+    // 確保所有對話框點擊不會傳播到遮罩層
+    document.querySelectorAll('.modal').forEach(dialog => {
+        dialog.addEventListener('click', (e) => e.stopPropagation());
+    });
+}
 
 // === 配置更新監聽（即時同步不需重開）===
 function initConfigUpdateListener() {
@@ -217,6 +226,7 @@ function initConfigUpdateListener() {
             config = newConfig;
             // 重新渲染所有列表
             renderVideoGiftList();
+            renderRandomVideoList();
             renderWheelOptionList();
             renderWheelGiftList();
             renderGiftboxGiftList();
@@ -229,29 +239,30 @@ function initConfigUpdateListener() {
 
 // === 側邊欄導航 ===
 function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item[data-panel]');
+    const navItems = document.querySelectorAll('.menu-item[data-panel]');
 
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             // 如果點擊的是開關，不切換面板
-            if (e.target.closest('.mini-switch')) return;
-
+            if (e.target.closest('.switch')) return;
             const panelId = item.getAttribute('data-panel');
             switchPanel(panelId);
         });
     });
 
-    // 初始載入時渲染列表
+    // 初始載入時渲染列表（轉盤+盲盒）
     renderWheelGiftList();
     renderWheelOptionList();
+    renderGiftboxGiftList();
+    renderGiftboxOptionList();
 }
 
 function switchPanel(panelId) {
     // 更新導航項目狀態
-    document.querySelectorAll('.nav-item').forEach(nav => {
+    document.querySelectorAll('.menu-item[data-panel]').forEach(nav => {
         nav.classList.remove('active');
     });
-    const activeNav = document.querySelector(`.nav-item[data-panel="${panelId}"]`);
+    const activeNav = document.querySelector(`.menu-item[data-panel="${panelId}"]`);
     if (activeNav) {
         activeNav.classList.add('active');
     }
@@ -268,14 +279,14 @@ function switchPanel(panelId) {
         if (panelId === 'wheel') {
             renderWheelGiftList();
             renderWheelOptionList();
+            renderGiftboxGiftList();
+            renderGiftboxOptionList();
         } else if (panelId === 'video') {
             renderVideoGiftList();
+            renderRandomVideoList();
         } else if (panelId === 'entry') {
             renderEntryList();
             updateHighLevelUserCount();
-        } else if (panelId === 'giftbox') {
-            renderGiftboxGiftList();
-            renderGiftboxOptionList();
         } else if (panelId === 'settings') {
             // 載入設定值
             document.getElementById('tiktokUsernameInput').value = config.tiktok_username || '';
@@ -287,6 +298,63 @@ function switchPanel(panelId) {
     }
 }
 
+// === 影片模組子分頁切換 ===
+function switchVideoSubTab(tabId) {
+    const panel = document.getElementById('panel-video');
+    if (!panel) return;
+
+    // 更新子分頁按鈕狀態
+    panel.querySelectorAll('.tab[data-subtab]').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    const activeTab = panel.querySelector(`.tab[data-subtab="${tabId}"]`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+
+    // 切換子面板顯示
+    panel.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    const activeSubPanel = document.getElementById(`subtab-${tabId}`);
+    if (activeSubPanel) {
+        activeSubPanel.classList.add('active');
+    }
+}
+
+// === 轉盤/盲盒模組子分頁切換 ===
+function switchWheelSubTab(tabId) {
+    const panel = document.getElementById('panel-wheel');
+    if (!panel) return;
+
+    // 更新子分頁按鈕狀態
+    panel.querySelectorAll('.tab[data-subtab]').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    const activeTab = panel.querySelector(`.tab[data-subtab="${tabId}"]`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+
+    // 切換子面板顯示
+    panel.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    const activeSubPanel = document.getElementById(`subtab-${tabId}`);
+    if (activeSubPanel) {
+        activeSubPanel.classList.add('active');
+    }
+}
+
+// === 子面板狀態更新 ===
+function updateSubtabStatus(module, enabled) {
+    const statusEl = document.getElementById(`${module}Status`);
+    if (statusEl) {
+        statusEl.textContent = enabled ? '已啟用' : '已停用';
+        statusEl.classList.toggle('enabled', enabled);
+    }
+}
+
 function waitForPywebview() {
     return new Promise((resolve) => {
         // 已經準備好
@@ -295,7 +363,7 @@ function waitForPywebview() {
             return;
         }
 
-        // 監聽事件
+        // 監聯事件
         const handler = () => {
             window.removeEventListener('pywebviewready', handler);
             resolve();
@@ -328,12 +396,21 @@ async function loadConfig() {
         }
         document.getElementById('wheelEnabled').checked = config.wheel_enabled;
         document.getElementById('videoEnabled').checked = config.video_enabled;
+        document.getElementById('duckCatchEnabled').checked = config.duck_catch_enabled || false;
         document.getElementById('entryEnabled').checked = config.entry_enabled || false;
         document.getElementById('giftboxEnabled').checked = config.giftbox_enabled || false;
         document.getElementById('portInput').value = config.port || 10010;
+
+        // 更新子面板狀態顯示
+        updateSubtabStatus('wheel', config.wheel_enabled);
+        updateSubtabStatus('giftbox', config.giftbox_enabled || false);
         document.getElementById('apiKeyInput').value = config.api_key || '';
         document.getElementById('autoOpenGreenScreen').checked = config.auto_open_green_screen || false;
         document.getElementById('languageSelect').value = config.language || 'zh-TW';
+
+        // 載入抓鴨子設定
+        loadDuckCatchConfig();
+        initDuckCatchEvents();
 
         // 設定語言
         currentLang = config.language || 'zh-TW';
@@ -409,6 +486,7 @@ document.getElementById('wheelEnabled')?.addEventListener('change', async (e) =>
     config.wheel_enabled = e.target.checked;
     await pywebview.api.update_config({ wheel_enabled: e.target.checked });
     addLogLocal(`轉盤模組: ${e.target.checked ? '已啟用' : '已停用'}`);
+    updateSubtabStatus('wheel', e.target.checked);
 
     // 通知綠幕視窗
     try {
@@ -451,11 +529,26 @@ document.getElementById('giftboxEnabled')?.addEventListener('change', async (e) 
     config.giftbox_enabled = e.target.checked;
     await pywebview.api.update_config({ giftbox_enabled: e.target.checked });
     addLogLocal(`盲盒模組: ${e.target.checked ? '已啟用' : '已停用'}`);
+    updateSubtabStatus('giftbox', e.target.checked);
 
     // 通知綠幕視窗
     try {
         await pywebview.api.trigger_green_screen('moduleStatusChanged', {
             module: 'giftbox',
+            enabled: e.target.checked
+        });
+    } catch (err) {}
+});
+
+document.getElementById('randomVideoEnabled')?.addEventListener('change', async (e) => {
+    config.random_video_enabled = e.target.checked;
+    await pywebview.api.update_config({ random_video_enabled: e.target.checked });
+    addLogLocal(`隨機影片模組: ${e.target.checked ? '已啟用' : '已停用'}`);
+
+    // 通知綠幕視窗
+    try {
+        await pywebview.api.trigger_green_screen('moduleStatusChanged', {
+            module: 'randomvideo',
             enabled: e.target.checked
         });
     } catch (err) {}
@@ -523,21 +616,21 @@ function updateConnectionStatus(isConnected) {
     if (isConnected) {
         if (statusBadge) {
             statusBadge.classList.add('connected');
-            const statusText = statusBadge.querySelector('.status-text');
-            if (statusText) statusText.textContent = t('connected');
+            const statusLabel = statusBadge.querySelector('.status-label');
+            if (statusLabel) statusLabel.textContent = t('connected');
         }
         if (btn) {
-            btn.innerHTML = `<span class="btn-icon">🔌</span><span class="btn-text" data-i18n="disconnect">${t('disconnect')}</span>`;
+            btn.innerHTML = `<span class="action-icon">⚡</span><span data-i18n="disconnect">${t('disconnect')}</span>`;
             btn.classList.add('connected');
         }
     } else {
         if (statusBadge) {
             statusBadge.classList.remove('connected');
-            const statusText = statusBadge.querySelector('.status-text');
-            if (statusText) statusText.textContent = t('disconnected');
+            const statusLabel = statusBadge.querySelector('.status-label');
+            if (statusLabel) statusLabel.textContent = t('disconnected');
         }
         if (btn) {
-            btn.innerHTML = `<span class="btn-icon">🔌</span><span class="btn-text" data-i18n="connect">${t('connect')}</span>`;
+            btn.innerHTML = `<span class="action-icon">⚡</span><span data-i18n="connect">${t('connect')}</span>`;
             btn.classList.remove('connected');
         }
     }
@@ -703,7 +796,7 @@ function renderWheelGiftList() {
     const gifts = config.wheel_gifts || [];
 
     if (gifts.length === 0) {
-        container.innerHTML = '<div class="list-empty">尚無設定</div>';
+        container.innerHTML = '<div class="empty-state">尚無設定</div>';
         return;
     }
 
@@ -785,7 +878,7 @@ function renderWheelOptionList() {
     const options = config.wheel_options || [];
 
     if (options.length === 0) {
-        container.innerHTML = '<div class="list-empty">尚無設定</div>';
+        container.innerHTML = '<div class="empty-state">尚無設定</div>';
         return;
     }
 
@@ -870,7 +963,7 @@ function renderGiftboxGiftList() {
     const gifts = config.giftbox_gifts || [];
 
     if (gifts.length === 0) {
-        container.innerHTML = '<div class="list-empty">尚無設定</div>';
+        container.innerHTML = '<div class="empty-state">尚無設定</div>';
         return;
     }
 
@@ -952,7 +1045,7 @@ function renderGiftboxOptionList() {
     const options = config.giftbox_options || [];
 
     if (options.length === 0) {
-        container.innerHTML = '<div class="list-empty">尚無設定</div>';
+        container.innerHTML = '<div class="empty-state">尚無設定</div>';
         return;
     }
 
@@ -1063,7 +1156,7 @@ function renderVideoGiftList() {
     const gifts = config.video_gifts || [];
 
     if (gifts.length === 0) {
-        container.innerHTML = '<div class="list-empty">尚無設定</div>';
+        container.innerHTML = '<div class="empty-state">尚無設定</div>';
         return;
     }
 
@@ -1214,6 +1307,1121 @@ async function toggleVideoGiftEnabled(index) {
     addLogLocal(`${gift.name} 觸發已${gift.enabled ? '啟用' : '禁用'}`);
 }
 
+// === 隨機影片管理 ===
+function renderRandomVideoList() {
+    const container = document.getElementById('randomVideoList');
+    const list = config.random_video_list || [];
+
+    if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state">尚無設定</div>';
+        return;
+    }
+
+    const typeLabels = { gift: '禮物', chat: '彈幕', like: '點讚' };
+
+    container.innerHTML = list.map((rv, index) => {
+        const isEnabled = rv.enabled !== false;
+        const triggerText = rv.trigger_type === 'gift' ? rv.trigger_gift :
+                          rv.trigger_type === 'chat' ? `"${rv.trigger_keyword}"` : '';
+
+        return `
+            <div class="list-item">
+                <div class="list-item-content">
+                    <label class="trigger-switch-sm" onclick="event.stopPropagation()">
+                        <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleRandomVideoEnabled(${index})">
+                        <span class="trigger-slider-sm"></span>
+                    </label>
+                    <span class="list-item-text" style="${isEnabled ? '' : 'opacity: 0.5;'}">
+                        ${rv.name}
+                        <span style="color: var(--text-muted)"> (${typeLabels[rv.trigger_type] || '禮物'}${triggerText ? ': ' + triggerText : ''})</span>
+                    </span>
+                </div>
+                <div class="list-item-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="showEditRandomVideoDialog(${index})">編輯</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRandomVideo(${index})">刪除</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showAddRandomVideoDialog() {
+    document.getElementById('randomVideoDialogTitle').textContent = '新增隨機影片';
+    document.getElementById('randomVideoEditIndex').value = -1;
+    document.getElementById('randomVideoName').value = '';
+    document.getElementById('randomVideoTriggerType').value = 'gift';
+    document.getElementById('randomVideoTriggerGift').value = '';
+    document.getElementById('randomVideoTriggerKeyword').value = '';
+    document.getElementById('randomVideoFolderPath').value = '';
+    document.getElementById('randomVideoFolderInfo').textContent = '';
+    document.getElementById('randomVideoPriority').value = 1;
+    document.getElementById('randomVideoRepeat').value = 1;
+    document.getElementById('randomVideoSeconds').value = 0;
+    document.getElementById('randomVideoSpeed').value = 1.0;
+    document.getElementById('randomVideoVolume').value = 100;
+    document.getElementById('randomVideoVolumeValue').textContent = '100%';
+    document.getElementById('randomVideoAvoidRepeat').checked = true;
+    document.getElementById('randomVideoForceInterrupt').checked = false;
+    // 清空權重列表
+    document.getElementById('randomVideoWeightsGroup').style.display = 'none';
+    document.getElementById('randomVideoWeightsList').innerHTML = '';
+    window.currentVideoWeights = {};
+    toggleRandomVideoTriggerOptions();
+    openDialog('randomVideoDialog');
+}
+
+function showEditRandomVideoDialog(index) {
+    const rv = config.random_video_list[index];
+    if (!rv) return;
+
+    document.getElementById('randomVideoDialogTitle').textContent = '編輯隨機影片';
+    document.getElementById('randomVideoEditIndex').value = index;
+    document.getElementById('randomVideoName').value = rv.name || '';
+    document.getElementById('randomVideoTriggerType').value = rv.trigger_type || 'gift';
+    document.getElementById('randomVideoTriggerGift').value = rv.trigger_gift || '';
+    document.getElementById('randomVideoTriggerKeyword').value = rv.trigger_keyword || '';
+    document.getElementById('randomVideoFolderPath').value = rv.folder_path || '';
+    document.getElementById('randomVideoPriority').value = rv.video_priority || 1;
+    document.getElementById('randomVideoRepeat').value = rv.video_repeat || 1;
+    document.getElementById('randomVideoSeconds').value = rv.video_seconds || 0;
+    document.getElementById('randomVideoSpeed').value = rv.video_speed || 1.0;
+    document.getElementById('randomVideoVolume').value = rv.video_volume || 100;
+    document.getElementById('randomVideoVolumeValue').textContent = `${rv.video_volume || 100}%`;
+    document.getElementById('randomVideoAvoidRepeat').checked = rv.avoid_repeat !== false;
+    document.getElementById('randomVideoForceInterrupt').checked = rv.force_interrupt || false;
+    // 載入現有權重設定
+    window.currentVideoWeights = rv.video_weights || {};
+    toggleRandomVideoTriggerOptions();
+    updateFolderInfo(rv.folder_path);
+    openDialog('randomVideoDialog');
+}
+
+function toggleRandomVideoTriggerOptions() {
+    const triggerType = document.getElementById('randomVideoTriggerType').value;
+    document.getElementById('randomVideoGiftGroup').style.display = triggerType === 'gift' ? 'block' : 'none';
+    document.getElementById('randomVideoKeywordGroup').style.display = triggerType === 'chat' ? 'block' : 'none';
+}
+
+async function selectRandomVideoFolder() {
+    try {
+        const folderPath = await pywebview.api.select_folder();
+        if (folderPath) {
+            document.getElementById('randomVideoFolderPath').value = folderPath;
+            await updateFolderInfo(folderPath);
+        }
+    } catch (e) {
+        console.error('選擇資料夾失敗:', e);
+    }
+}
+
+async function updateFolderInfo(folderPath) {
+    const infoEl = document.getElementById('randomVideoFolderInfo');
+    const weightsGroup = document.getElementById('randomVideoWeightsGroup');
+    const weightsList = document.getElementById('randomVideoWeightsList');
+
+    if (!folderPath) {
+        infoEl.textContent = '';
+        weightsGroup.style.display = 'none';
+        weightsList.innerHTML = '';
+        return;
+    }
+
+    try {
+        // 取得影片列表
+        const result = await pywebview.api.get_folder_videos(folderPath);
+
+        if (!result.success || result.videos.length === 0) {
+            infoEl.textContent = result.error || '找不到影片檔案';
+            infoEl.style.color = 'var(--danger)';
+            weightsGroup.style.display = 'none';
+            weightsList.innerHTML = '';
+            return;
+        }
+
+        infoEl.textContent = `找到 ${result.videos.length} 個影片檔案`;
+        infoEl.style.color = 'var(--success)';
+
+        // 渲染權重列表
+        renderVideoWeightsList(result.videos);
+        weightsGroup.style.display = 'block';
+    } catch (e) {
+        infoEl.textContent = '無法讀取資料夾';
+        infoEl.style.color = 'var(--danger)';
+        weightsGroup.style.display = 'none';
+        weightsList.innerHTML = '';
+    }
+}
+
+// 渲染影片權重列表
+function renderVideoWeightsList(videos) {
+    const container = document.getElementById('randomVideoWeightsList');
+    const weights = window.currentVideoWeights || {};
+
+    if (!videos || videos.length === 0) {
+        container.innerHTML = '<div class="video-weights-empty">沒有找到影片</div>';
+        return;
+    }
+
+    // 計算總權重
+    const totalWeight = videos.reduce((sum, v) => sum + (weights[v.name] || 1), 0);
+
+    container.innerHTML = videos.map(video => {
+        const weight = weights[video.name] || 1;
+        const percent = totalWeight > 0 ? ((weight / totalWeight) * 100).toFixed(1) : 0;
+        return `
+            <div class="video-weight-item" data-filename="${video.name}">
+                <span class="video-name" title="${video.name}">${video.name}</span>
+                <input type="number" class="weight-input" value="${weight}" min="0" max="100" step="1"
+                       onchange="updateVideoWeight('${video.name.replace(/'/g, "\\'")}', this.value)">
+                <span class="weight-percent">${percent}%</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// 更新單一影片權重
+function updateVideoWeight(filename, value) {
+    const weight = Math.max(0, parseInt(value) || 0);
+    if (!window.currentVideoWeights) {
+        window.currentVideoWeights = {};
+    }
+    window.currentVideoWeights[filename] = weight;
+
+    // 重新計算所有百分比
+    updateWeightPercents();
+}
+
+// 更新所有權重百分比顯示
+function updateWeightPercents() {
+    const container = document.getElementById('randomVideoWeightsList');
+    const items = container.querySelectorAll('.video-weight-item');
+    const weights = window.currentVideoWeights || {};
+
+    // 計算總權重
+    let totalWeight = 0;
+    items.forEach(item => {
+        const filename = item.dataset.filename;
+        totalWeight += (weights[filename] || 1);
+    });
+
+    // 更新百分比
+    items.forEach(item => {
+        const filename = item.dataset.filename;
+        const weight = weights[filename] || 1;
+        const percent = totalWeight > 0 ? ((weight / totalWeight) * 100).toFixed(1) : 0;
+        const percentEl = item.querySelector('.weight-percent');
+        if (percentEl) {
+            percentEl.textContent = `${percent}%`;
+        }
+    });
+}
+
+async function saveRandomVideo() {
+    const editIndex = parseInt(document.getElementById('randomVideoEditIndex').value);
+    const existingEnabled = (editIndex >= 0 && config.random_video_list[editIndex])
+        ? config.random_video_list[editIndex].enabled
+        : true;
+
+    const triggerType = document.getElementById('randomVideoTriggerType').value;
+
+    // 收集權重設定（只保留非預設值的權重）
+    const videoWeights = {};
+    if (window.currentVideoWeights) {
+        for (const [filename, weight] of Object.entries(window.currentVideoWeights)) {
+            if (weight !== 1) {
+                videoWeights[filename] = weight;
+            }
+        }
+    }
+
+    const rv = {
+        name: document.getElementById('randomVideoName').value.trim(),
+        trigger_type: triggerType,
+        trigger_gift: triggerType === 'gift' ? document.getElementById('randomVideoTriggerGift').value.trim() : '',
+        trigger_keyword: triggerType === 'chat' ? document.getElementById('randomVideoTriggerKeyword').value.trim() : '',
+        folder_path: document.getElementById('randomVideoFolderPath').value.trim(),
+        video_priority: parseInt(document.getElementById('randomVideoPriority').value) || 1,
+        video_repeat: parseInt(document.getElementById('randomVideoRepeat').value) || 1,
+        video_seconds: parseFloat(document.getElementById('randomVideoSeconds').value) || 0,
+        video_speed: parseFloat(document.getElementById('randomVideoSpeed').value) || 1.0,
+        video_volume: parseInt(document.getElementById('randomVideoVolume').value) || 100,
+        avoid_repeat: document.getElementById('randomVideoAvoidRepeat').checked,
+        force_interrupt: document.getElementById('randomVideoForceInterrupt').checked,
+        video_weights: Object.keys(videoWeights).length > 0 ? videoWeights : undefined,
+        enabled: existingEnabled
+    };
+
+    if (!rv.name) {
+        alert('請輸入名稱');
+        return;
+    }
+    if (!rv.folder_path) {
+        alert('請選擇影片資料夾');
+        return;
+    }
+    if (rv.trigger_type === 'gift' && !rv.trigger_gift) {
+        alert('請輸入觸發禮物名稱');
+        return;
+    }
+    if (rv.trigger_type === 'chat' && !rv.trigger_keyword) {
+        alert('請輸入彈幕關鍵字');
+        return;
+    }
+
+    if (!config.random_video_list) {
+        config.random_video_list = [];
+    }
+
+    if (editIndex >= 0) {
+        config.random_video_list[editIndex] = rv;
+    } else {
+        config.random_video_list.push(rv);
+    }
+
+    await pywebview.api.update_config({ random_video_list: config.random_video_list });
+    renderRandomVideoList();
+    closeDialog('randomVideoDialog');
+    addLogLocal(`已儲存隨機影片: ${rv.name}`);
+}
+
+async function deleteRandomVideo(index) {
+    if (confirm('確定要刪除此設定嗎？')) {
+        config.random_video_list.splice(index, 1);
+        await pywebview.api.update_config({ random_video_list: config.random_video_list });
+        renderRandomVideoList();
+        addLogLocal('已刪除隨機影片設定');
+    }
+}
+
+async function toggleRandomVideoEnabled(index) {
+    if (!config.random_video_list[index]) return;
+
+    const rv = config.random_video_list[index];
+    rv.enabled = rv.enabled === false ? true : false;
+
+    await pywebview.api.update_config({ random_video_list: config.random_video_list });
+    renderRandomVideoList();
+    addLogLocal(`${rv.name} 已${rv.enabled ? '啟用' : '禁用'}`);
+}
+
+async function testRandomVideo() {
+    const list = config.random_video_list || [];
+    if (list.length === 0) {
+        alert('請先新增隨機影片設定');
+        return;
+    }
+
+    // 使用第一個啟用的設定來測試
+    const enabledItem = list.find(rv => rv.enabled !== false);
+    if (!enabledItem) {
+        alert('沒有已啟用的隨機影片設定');
+        return;
+    }
+
+    if (!enabledItem.folder_path) {
+        alert('請先設定影片資料夾');
+        return;
+    }
+
+    try {
+        // 先開啟綠幕視窗
+        await openGreenScreen();
+
+        // 延遲一下確保綠幕視窗準備好
+        setTimeout(async () => {
+            try {
+                const result = await pywebview.api.test_random_video({
+                    name: enabledItem.name,
+                    folder_path: enabledItem.folder_path,
+                    video_speed: enabledItem.video_speed || 1,
+                    video_volume: enabledItem.video_volume || 100,
+                    video_seconds: enabledItem.video_seconds || 0,
+                    video_repeat: enabledItem.video_repeat || 1,
+                    video_priority: enabledItem.video_priority || 1,
+                    force_interrupt: enabledItem.force_interrupt || false,
+                    avoid_repeat: enabledItem.avoid_repeat !== false,
+                    video_weights: enabledItem.video_weights || {}
+                });
+
+                if (result.success) {
+                    addLogLocal(`🎲 測試隨機影片: ${enabledItem.name} -> ${result.video}`);
+                } else {
+                    addLogLocal(`❌ 測試失敗: ${result.error}`);
+                }
+            } catch (e) {
+                console.error('測試失敗:', e);
+                addLogLocal('❌ 測試失敗: ' + e.message);
+            }
+        }, 500);
+    } catch (e) {
+        console.error('開啟綠幕失敗:', e);
+        addLogLocal('❌ 開啟綠幕失敗');
+    }
+}
+
+// === 抓鴨子模組 ===
+let pendingDuckCatch = null;  // 暫存待確認的抓鴨子資料
+
+// 載入抓鴨子設定
+function loadDuckCatchConfig() {
+    const cfg = config.duck_catch_config || {};
+    document.getElementById('duckTriggerType').value = cfg.trigger_type || 'gift';
+    document.getElementById('duckTriggerGift').value = cfg.trigger_gift || '';
+    document.getElementById('duckTriggerKeyword').value = cfg.trigger_keyword || '';
+    document.getElementById('duckCatchRate').value = cfg.catch_rate || 50;
+    document.getElementById('duckCatchRateValue').textContent = `${cfg.catch_rate || 50}%`;
+    document.getElementById('duckVideoSeconds').value = cfg.video_seconds || 0;
+    document.getElementById('duckVideoSpeed').value = cfg.video_speed || 1;
+    document.getElementById('duckVideoVolume').value = cfg.video_volume || 100;
+    document.getElementById('duckVolumeValue').textContent = `${cfg.video_volume || 100}%`;
+    document.getElementById('duckForceInterrupt').checked = cfg.force_interrupt || false;
+    document.getElementById('duckQuackSound').value = cfg.quack_sound || '';
+    document.getElementById('duckCatchEnabled').checked = config.duck_catch_enabled || false;
+    // 保底設定
+    document.getElementById('duckPityEnabled').checked = cfg.pity_enabled || false;
+    document.getElementById('duckPityThreshold').value = cfg.pity_threshold || 1000;
+    document.getElementById('duckPityMinAmount').value = cfg.pity_min_amount || 5000;
+    document.getElementById('duckPityThresholdJackpot').value = cfg.pity_threshold_jackpot || 2000;
+    document.getElementById('duckPityJackpotAmount').value = cfg.pity_jackpot_amount || 10000;
+    updatePityDisplay();
+    // 里程碑煙火影片
+    document.getElementById('milestoneFireworkVideo').value = config.milestone_firework_video || '';
+    toggleDuckTriggerOptions();
+    renderDuckCaughtVideoList();
+    renderDuckMissedVideoList();
+}
+
+// 切換觸發選項顯示
+function toggleDuckTriggerOptions() {
+    const triggerType = document.getElementById('duckTriggerType').value;
+    // 使用空字串恢復預設 display，避免與 CSS Grid 衝突
+    document.getElementById('duckGiftGroup').style.display = triggerType === 'gift' ? '' : 'none';
+    document.getElementById('duckKeywordGroup').style.display = triggerType === 'chat' ? '' : 'none';
+}
+
+// 顯示新增鴨子影片對話框
+function showAddDuckVideoDialog(type) {
+    document.getElementById('duckVideoType').value = type;
+    document.getElementById('duckVideoEditIndex').value = -1;
+    document.getElementById('duckVideoPath').value = '';
+    document.getElementById('duckVideoWeight').value = 1;
+    document.getElementById('duckVideoAmount').value = 1;
+
+    // 抓到影片才顯示數量欄位
+    document.getElementById('duckVideoAmountGroup').style.display = type === 'caught' ? 'block' : 'none';
+    document.getElementById('duckVideoDialogTitle').textContent = type === 'caught' ? '新增抓到影片' : '新增沒抓到影片';
+
+    openDialog('duckVideoDialog');
+}
+
+// 選擇鴨子影片
+async function selectDuckVideo() {
+    try {
+        const filePath = await pywebview.api.select_file('video');
+        if (filePath) {
+            document.getElementById('duckVideoPath').value = filePath;
+        }
+    } catch (e) {
+        console.error('選擇影片失敗:', e);
+    }
+}
+
+// 儲存鴨子影片
+function saveDuckVideo() {
+    const type = document.getElementById('duckVideoType').value;
+    const editIndex = parseInt(document.getElementById('duckVideoEditIndex').value);
+    const path = document.getElementById('duckVideoPath').value;
+    const weight = parseInt(document.getElementById('duckVideoWeight').value) || 1;
+    const amount = parseInt(document.getElementById('duckVideoAmount').value) || 1;
+
+    if (!path) {
+        alert('請選擇影片檔案');
+        return;
+    }
+
+    const video = { path, weight };
+    if (type === 'caught') {
+        video.amount = amount;
+    }
+
+    const cfg = config.duck_catch_config || {};
+    const listKey = type === 'caught' ? 'caught_videos' : 'missed_videos';
+    if (!cfg[listKey]) cfg[listKey] = [];
+
+    if (editIndex >= 0) {
+        cfg[listKey][editIndex] = video;
+    } else {
+        cfg[listKey].push(video);
+    }
+
+    config.duck_catch_config = cfg;
+    closeDialog('duckVideoDialog');
+
+    if (type === 'caught') {
+        renderDuckCaughtVideoList();
+    } else {
+        renderDuckMissedVideoList();
+    }
+}
+
+// 編輯鴨子影片
+function editDuckVideo(type, index) {
+    const cfg = config.duck_catch_config || {};
+    const listKey = type === 'caught' ? 'caught_videos' : 'missed_videos';
+    const video = cfg[listKey]?.[index];
+    if (!video) return;
+
+    document.getElementById('duckVideoType').value = type;
+    document.getElementById('duckVideoEditIndex').value = index;
+    document.getElementById('duckVideoPath').value = video.path;
+    document.getElementById('duckVideoWeight').value = video.weight || 1;
+    document.getElementById('duckVideoAmount').value = video.amount || 1;
+
+    document.getElementById('duckVideoAmountGroup').style.display = type === 'caught' ? 'block' : 'none';
+    document.getElementById('duckVideoDialogTitle').textContent = type === 'caught' ? '編輯抓到影片' : '編輯沒抓到影片';
+
+    openDialog('duckVideoDialog');
+}
+
+// 刪除鴨子影片
+function deleteDuckVideo(type, index) {
+    if (!confirm('確定要刪除這個影片嗎？')) return;
+
+    const cfg = config.duck_catch_config || {};
+    const listKey = type === 'caught' ? 'caught_videos' : 'missed_videos';
+    if (cfg[listKey]) {
+        cfg[listKey].splice(index, 1);
+    }
+    config.duck_catch_config = cfg;
+
+    if (type === 'caught') {
+        renderDuckCaughtVideoList();
+    } else {
+        renderDuckMissedVideoList();
+    }
+}
+
+// 批量添加鴨子影片
+async function batchAddDuckVideos(type) {
+    try {
+        const filePaths = await pywebview.api.select_files('video');
+        if (!filePaths || filePaths.length === 0) return;
+
+        const cfg = config.duck_catch_config || {};
+        const listKey = type === 'caught' ? 'caught_videos' : 'missed_videos';
+        if (!cfg[listKey]) cfg[listKey] = [];
+
+        // 為每個檔案創建預設設定
+        for (const path of filePaths) {
+            const video = { path, weight: 1 };
+            if (type === 'caught') {
+                video.amount = 1;  // 預設增加 1 隻
+            }
+            cfg[listKey].push(video);
+        }
+
+        config.duck_catch_config = cfg;
+        addLogLocal(`🦆 批量添加了 ${filePaths.length} 個${type === 'caught' ? '抓到' : '沒抓到'}影片`);
+
+        if (type === 'caught') {
+            renderDuckCaughtVideoList();
+        } else {
+            renderDuckMissedVideoList();
+        }
+    } catch (e) {
+        console.error('批量添加影片失敗:', e);
+    }
+}
+
+// 從檔名解析鴨子數量
+function parseDuckAmountFromFilename(filename) {
+    // 匹配數字，例如 "抓1只", "抓100只", "抓到10000只"
+    const match = filename.match(/(\d+)\s*只/);
+    if (match) {
+        return parseInt(match[1]);
+    }
+    // 備用：嘗試匹配任何數字
+    const numMatch = filename.match(/(\d+)/);
+    if (numMatch) {
+        return parseInt(numMatch[1]);
+    }
+    return 1; // 預設1隻
+}
+
+// 根據鴨子數量計算權重
+function calculateDuckWeight(amount) {
+    if (amount >= 10000) return 0.05;      // 0.05% 傳說級
+    if (amount >= 6666) return 0.1;        // 超稀有
+    if (amount >= 3888) return 0.15;       // 超稀有
+    if (amount >= 1888) return 0.2;        // 超稀有
+    if (amount >= 1000) return 0.3;        // 極稀有
+    if (amount >= 666) return 0.5;         // 很稀有
+    if (amount >= 500) return 1;           // 稀有
+    if (amount >= 200) return 2;           // 較稀有
+    if (amount >= 100) return 3;           // 少見
+    if (amount >= 66) return 5;            // 中等偏少
+    if (amount >= 40) return 8;            // 中等
+    if (amount >= 11) return 15;           // 較常見
+    if (amount >= 5) return 25;            // 常見
+    return 40;                              // 1-4隻 最常見
+}
+
+// 智能匯入鴨子影片（從資料夾自動解析）
+async function smartImportDuckVideos(type) {
+    try {
+        const folderPath = await pywebview.api.select_folder();
+        if (!folderPath) return;
+
+        const result = await pywebview.api.get_folder_videos(folderPath);
+        if (!result.success || !result.videos || result.videos.length === 0) {
+            alert('資料夾內沒有影片檔案');
+            return;
+        }
+
+        const cfg = config.duck_catch_config || {};
+        const listKey = type === 'caught' ? 'caught_videos' : 'missed_videos';
+        if (!cfg[listKey]) cfg[listKey] = [];
+
+        let imported = 0;
+        const results = [];
+
+        for (const videoInfo of result.videos) {
+            const filename = videoInfo.name;
+            const videoPath = videoInfo.path;
+            const amount = parseDuckAmountFromFilename(filename);
+            // 抓到影片根據數量計算權重，沒抓到影片統一權重 1
+            const weight = type === 'caught' ? calculateDuckWeight(amount) : 1;
+
+            const video = { path: videoPath, weight };
+            if (type === 'caught') {
+                video.amount = amount;
+            }
+
+            cfg[listKey].push(video);
+            imported++;
+            results.push({ filename, amount, weight });
+        }
+
+        config.duck_catch_config = cfg;
+
+        // 顯示匯入結果
+        console.log('智能匯入結果:', results);
+        addLogLocal(`🦆 智能匯入了 ${imported} 個${type === 'caught' ? '抓到' : '沒抓到'}影片`);
+
+        if (type === 'caught') {
+            renderDuckCaughtVideoList();
+        } else {
+            renderDuckMissedVideoList();
+        }
+
+        // 顯示匯入摘要
+        const summary = results.map(r => `${r.filename}: ${r.amount}隻, 權重${r.weight}`).join('\n');
+        alert(`成功匯入 ${imported} 個影片！\n\n${summary.substring(0, 500)}${summary.length > 500 ? '\n...' : ''}`);
+
+    } catch (e) {
+        console.error('智能匯入失敗:', e);
+        alert('匯入失敗: ' + e.message);
+    }
+}
+
+// 渲染抓到影片列表
+function renderDuckCaughtVideoList() {
+    const container = document.getElementById('duckCaughtVideoList');
+    const cfg = config.duck_catch_config || {};
+    const videos = cfg.caught_videos || [];
+
+    if (videos.length === 0) {
+        container.innerHTML = '<div class="empty-state">尚無設定</div>';
+        return;
+    }
+
+    container.innerHTML = videos.map((video, index) => {
+        const fileName = video.path.split(/[/\\]/).pop();
+        return `
+            <div class="list-item" onclick="editDuckVideo('caught', ${index})">
+                <div class="list-item-content">
+                    <span class="list-item-icon">🎬</span>
+                    <span class="list-item-text" title="${video.path}">${fileName}</span>
+                </div>
+                <div class="list-item-info">
+                    <span class="badge">+${video.amount || 1}隻</span>
+                    <span class="badge">權重 ${video.weight || 1}</span>
+                </div>
+                <button class="btn-icon btn-delete" onclick="event.stopPropagation(); deleteDuckVideo('caught', ${index})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+// 渲染沒抓到影片列表
+function renderDuckMissedVideoList() {
+    const container = document.getElementById('duckMissedVideoList');
+    const cfg = config.duck_catch_config || {};
+    const videos = cfg.missed_videos || [];
+
+    if (videos.length === 0) {
+        container.innerHTML = '<div class="empty-state">尚無設定</div>';
+        return;
+    }
+
+    container.innerHTML = videos.map((video, index) => {
+        const fileName = video.path.split(/[/\\]/).pop();
+        return `
+            <div class="list-item" onclick="editDuckVideo('missed', ${index})">
+                <div class="list-item-content">
+                    <span class="list-item-icon">🎬</span>
+                    <span class="list-item-text" title="${video.path}">${fileName}</span>
+                </div>
+                <div class="list-item-info">
+                    <span class="badge">權重 ${video.weight || 1}</span>
+                </div>
+                <button class="btn-icon btn-delete" onclick="event.stopPropagation(); deleteDuckVideo('missed', ${index})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+// 選擇嘎嘎音效
+async function selectDuckQuackSound() {
+    try {
+        const filePath = await pywebview.api.select_file('audio');
+        if (filePath) {
+            document.getElementById('duckQuackSound').value = filePath;
+        }
+    } catch (e) {
+        console.error('選擇音效失敗:', e);
+    }
+}
+
+// 清除嘎嘎音效
+function clearDuckQuackSound() {
+    document.getElementById('duckQuackSound').value = '';
+}
+
+// 播放嘎嘎音效
+let quackAudio = null;
+async function playQuackSound() {
+    const quackPath = config.duck_catch_config?.quack_sound;
+    if (!quackPath) return;
+
+    try {
+        // 取得媒體 URL
+        const mediaUrl = await pywebview.api.get_media_url(quackPath);
+        if (!mediaUrl) return;
+
+        // 停止之前的音效
+        if (quackAudio) {
+            quackAudio.pause();
+            quackAudio = null;
+        }
+
+        // 播放新音效
+        quackAudio = new Audio(mediaUrl);
+        quackAudio.volume = (config.duck_catch_config?.video_volume || 100) / 100;
+        quackAudio.play().catch(e => console.error('播放嘎嘎音效失敗:', e));
+    } catch (e) {
+        console.error('播放嘎嘎音效失敗:', e);
+    }
+}
+
+// 儲存抓鴨子設定
+async function saveDuckCatchConfig() {
+    const existingCfg = config.duck_catch_config || {};
+    const cfg = {
+        trigger_type: document.getElementById('duckTriggerType').value,
+        trigger_gift: document.getElementById('duckTriggerGift').value.trim(),
+        trigger_keyword: document.getElementById('duckTriggerKeyword').value.trim(),
+        catch_rate: parseInt(document.getElementById('duckCatchRate').value) || 50,
+        video_seconds: parseFloat(document.getElementById('duckVideoSeconds').value) || 0,
+        video_speed: parseFloat(document.getElementById('duckVideoSpeed').value) || 1,
+        video_volume: parseInt(document.getElementById('duckVideoVolume').value) || 100,
+        video_priority: 1,
+        force_interrupt: document.getElementById('duckForceInterrupt').checked,
+        quack_sound: document.getElementById('duckQuackSound').value || '',
+        caught_videos: existingCfg.caught_videos || [],
+        missed_videos: existingCfg.missed_videos || [],
+        // 保底設定
+        pity_enabled: document.getElementById('duckPityEnabled').checked,
+        pity_threshold: parseInt(document.getElementById('duckPityThreshold').value) || 1000,
+        pity_min_amount: parseInt(document.getElementById('duckPityMinAmount').value) || 5000,
+        pity_threshold_jackpot: parseInt(document.getElementById('duckPityThresholdJackpot').value) || 2000,
+        pity_jackpot_amount: parseInt(document.getElementById('duckPityJackpotAmount').value) || 10000
+    };
+
+    // 驗證
+    if (cfg.trigger_type === 'gift' && !cfg.trigger_gift) {
+        alert('請輸入觸發禮物名稱');
+        return;
+    }
+    if (cfg.trigger_type === 'chat' && !cfg.trigger_keyword) {
+        alert('請輸入彈幕關鍵字');
+        return;
+    }
+    if (cfg.caught_videos.length === 0) {
+        alert('請至少新增一個抓到影片');
+        return;
+    }
+    if (cfg.missed_videos.length === 0) {
+        alert('請至少新增一個沒抓到影片');
+        return;
+    }
+
+    config.duck_catch_config = cfg;
+
+    // 里程碑煙火影片
+    const milestoneVideo = document.getElementById('milestoneFireworkVideo').value || '';
+    config.milestone_firework_video = milestoneVideo;
+
+    await pywebview.api.update_config({
+        duck_catch_config: cfg,
+        milestone_firework_video: milestoneVideo
+    });
+    addLogLocal('🦆 已儲存抓鴨子設定');
+}
+
+// 測試抓鴨子（隨機根據機率決定）
+async function testDuckCatchRandom() {
+    try {
+        const cfg = config.duck_catch_config || {};
+        const catchRate = cfg.catch_rate || 50;
+        // 根據機率隨機決定抓到或沒抓到
+        const caught = Math.random() * 100 < catchRate;
+
+        await openGreenScreen();
+        setTimeout(async () => {
+            const result = await pywebview.api.test_duck_catch(caught, 0);
+            if (result.success) {
+                document.getElementById('duckCountDisplay').textContent = result.totalDucks;
+                addLogLocal(`🦆 測試: ${result.caught ? `抓到 ${result.duckAmount} 隻！` : '沒抓到'}`);
+            } else {
+                addLogLocal(`❌ 測試失敗: ${result.error}`);
+            }
+        }, 500);
+    } catch (e) {
+        console.error('測試失敗:', e);
+        addLogLocal('❌ 測試失敗');
+    }
+}
+
+// 選擇里程碑煙火影片
+async function selectMilestoneVideo() {
+    try {
+        const result = await pywebview.api.select_file('video');
+        if (result) {
+            document.getElementById('milestoneFireworkVideo').value = result;
+            addLogLocal('🎆 已選擇里程碑煙火影片');
+        }
+    } catch (e) {
+        console.error('選擇影片失敗:', e);
+    }
+}
+
+// 測試里程碑慶祝效果
+async function testMilestoneCelebration() {
+    const videoPath = document.getElementById('milestoneFireworkVideo').value;
+    if (!videoPath) {
+        alert('請先選擇煙火影片');
+        return;
+    }
+
+    await openGreenScreen();
+    setTimeout(async () => {
+        try {
+            await pywebview.api.trigger_green_screen('triggerMilestone', {
+                type: 'total',
+                nickname: '測試用戶',
+                avatar: '',
+                amount: 10000,
+                videoPath: videoPath
+            });
+            addLogLocal('🎇 測試里程碑慶祝效果');
+        } catch (e) {
+            console.error('測試失敗:', e);
+            addLogLocal('❌ 測試里程碑失敗');
+        }
+    }, 500);
+}
+
+// 調整鴨子數量
+async function adjustDuckCount(amount) {
+    try {
+        let newCount;
+        if (amount > 0) {
+            newCount = await pywebview.api.add_duck(amount);
+        } else {
+            newCount = await pywebview.api.remove_duck(Math.abs(amount));
+            // 減少鴨子時播放嘎嘎音效
+            playQuackSound();
+        }
+        document.getElementById('duckCountDisplay').textContent = newCount;
+    } catch (e) {
+        console.error('調整鴨子數量失敗:', e);
+    }
+}
+
+// 重置鴨子數量
+async function resetDuckCount() {
+    if (confirm('確定要將鴨子數量歸零嗎？')) {
+        try {
+            await pywebview.api.set_duck_count(0);
+            document.getElementById('duckCountDisplay').textContent = 0;
+            addLogLocal('🦆 鴨子數量已歸零');
+        } catch (e) {
+            console.error('重置失敗:', e);
+        }
+    }
+}
+
+// 處理抓到鴨子事件（從後端觸發）
+function handleDuckCaught(data) {
+    pendingDuckCatch = data;
+    document.getElementById('duckCatchUsername').value = data.username;
+    document.getElementById('duckCatchVideoPath').value = data.videoPath;
+    document.getElementById('duckCatchUser').textContent = data.username;
+    // 使用影片設定的預設數量
+    document.getElementById('duckAmountInput').value = data.defaultAmount || 1;
+    openDialog('duckAmountDialog');
+}
+
+// 設定快速數量
+function setDuckAmount(amount) {
+    document.getElementById('duckAmountInput').value = amount;
+}
+
+// 確認抓到鴨子
+async function confirmDuckCatch() {
+    if (!pendingDuckCatch) return;
+
+    const amount = parseInt(document.getElementById('duckAmountInput').value) || 1;
+    try {
+        const result = await pywebview.api.confirm_duck_catch(
+            pendingDuckCatch.username,
+            pendingDuckCatch.videoPath,
+            amount,
+            pendingDuckCatch.config
+        );
+        if (result.success) {
+            document.getElementById('duckCountDisplay').textContent = result.totalDucks;
+        }
+    } catch (e) {
+        console.error('確認抓鴨子失敗:', e);
+    }
+    pendingDuckCatch = null;
+    closeDialog('duckAmountDialog');
+}
+
+// 取消抓鴨子
+function cancelDuckCatch() {
+    pendingDuckCatch = null;
+    closeDialog('duckAmountDialog');
+}
+
+// 初始化抓鴨子事件監聯
+function initDuckCatchEvents() {
+    if (window.electronAPI) {
+        window.electronAPI.onDuckCaught(handleDuckCaught);
+        window.electronAPI.onDuckCountUpdated((count) => {
+            document.getElementById('duckCountDisplay').textContent = count;
+        });
+        // 監聽快捷鍵減少鴨子的嘎嘎音效
+        window.electronAPI.onPlayQuackSound(() => {
+            playQuackSound();
+        });
+        // 監聽保底計數器更新
+        window.electronAPI.onPityCounterUpdated((data) => {
+            updatePityProgress(data.current, data.threshold, data.thresholdJackpot);
+        });
+    }
+
+    // 載入初始鴨子數量
+    pywebview.api.get_duck_count().then(count => {
+        document.getElementById('duckCountDisplay').textContent = count;
+    }).catch(e => console.error('載入鴨子數量失敗:', e));
+
+    // 載入初始保底計數
+    pywebview.api.get_pity_counter().then(data => {
+        if (data) {
+            updatePityProgress(data.current, data.threshold, data.thresholdJackpot);
+        }
+    }).catch(e => console.error('載入保底計數失敗:', e));
+
+    // 載入排行榜
+    pywebview.api.get_leaderboard().then(data => {
+        if (data) {
+            renderLeaderboard(data);
+        }
+    }).catch(e => console.error('載入排行榜失敗:', e));
+
+    // 監聽排行榜更新
+    if (window.electronAPI && window.electronAPI.onLeaderboardUpdated) {
+        window.electronAPI.onLeaderboardUpdated((data) => {
+            renderLeaderboard(data);
+        });
+    }
+}
+
+// 更新保底顯示
+function updatePityDisplay() {
+    const enabled = document.getElementById('duckPityEnabled')?.checked;
+    const display = document.getElementById('pityDisplay');
+    if (display) {
+        display.style.display = enabled ? 'flex' : 'none';
+    }
+}
+
+// 更新保底進度
+function updatePityProgress(current, threshold, thresholdJackpot) {
+    const progress = document.getElementById('pityProgress');
+    const stage = document.getElementById('pityStage');
+    const t1 = threshold || parseInt(document.getElementById('duckPityThreshold').value) || 1000;
+    const t2 = thresholdJackpot || parseInt(document.getElementById('duckPityThresholdJackpot').value) || 2000;
+
+    if (progress) {
+        // 決定顯示哪一層
+        if (current >= t1) {
+            // 已過第一層，顯示終極保底進度
+            progress.textContent = `${current} / ${t2}`;
+            progress.style.color = '#f59e0b';
+            if (stage) stage.textContent = '🔥 衝刺終極保底中！';
+        } else {
+            progress.textContent = `${current} / ${t1}`;
+            // 接近保底時變色
+            if (current >= t1 * 0.9) {
+                progress.style.color = '#ef4444';
+                if (stage) stage.textContent = '即將觸發第一層保底！';
+            } else if (current >= t1 * 0.7) {
+                progress.style.color = '#f59e0b';
+                if (stage) stage.textContent = '';
+            } else {
+                progress.style.color = '#4ade80';
+                if (stage) stage.textContent = '';
+            }
+        }
+    }
+}
+
+// 重置保底計數器
+async function resetPityCounter() {
+    if (confirm('確定要重置保底計數器嗎？')) {
+        await pywebview.api.reset_pity_counter();
+        updatePityProgress(0);
+        addLogLocal('🎯 已重置保底計數器');
+    }
+}
+
+// 保底開關變更時更新顯示
+document.getElementById('duckPityEnabled')?.addEventListener('change', updatePityDisplay);
+
+// ========== 排行榜功能 ==========
+let currentLeaderboardTab = 'total';
+
+// 切換排行榜標籤
+function switchLeaderboardTab(tab) {
+    currentLeaderboardTab = tab;
+
+    // 更新標籤樣式
+    document.querySelectorAll('.leaderboard-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === tab);
+    });
+
+    // 切換內容
+    document.getElementById('leaderboardTotal').classList.toggle('hidden', tab !== 'total');
+    document.getElementById('leaderboardSingle').classList.toggle('hidden', tab !== 'single');
+}
+
+// 刷新排行榜
+async function refreshLeaderboard() {
+    try {
+        const data = await pywebview.api.get_leaderboard();
+        renderLeaderboard(data);
+    } catch (e) {
+        console.error('刷新排行榜失敗:', e);
+    }
+}
+
+// 清除排行榜
+async function clearLeaderboard() {
+    if (confirm('確定要清除排行榜嗎？此操作無法復原！')) {
+        try {
+            await pywebview.api.clear_leaderboard();
+            renderLeaderboard({ totalRanking: [], singleHighest: [] });
+            addLogLocal('🏆 已清除排行榜');
+        } catch (e) {
+            console.error('清除排行榜失敗:', e);
+        }
+    }
+}
+
+// 渲染排行榜
+function renderLeaderboard(data) {
+    // 渲染累計排行
+    const totalList = document.getElementById('totalRankingList');
+    if (totalList) {
+        if (data.totalRanking && data.totalRanking.length > 0) {
+            totalList.innerHTML = data.totalRanking.slice(0, 20).map((item, index) => `
+                <div class="leaderboard-item ${index < 3 ? 'top-' + (index + 1) : ''}">
+                    <div class="leaderboard-rank">${index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
+                    ${item.avatar
+                        ? `<img class="leaderboard-avatar" src="${item.avatar}" onerror="this.outerHTML='<div class=\\'leaderboard-avatar placeholder\\'>🦆</div>'">`
+                        : '<div class="leaderboard-avatar placeholder">🦆</div>'
+                    }
+                    <div class="leaderboard-info">
+                        <div class="leaderboard-name">${escapeHtml(item.nickname || item.uniqueId)}</div>
+                    </div>
+                    <div class="leaderboard-score">${item.totalDucks.toLocaleString()} <span class="duck-icon">🦆</span></div>
+                </div>
+            `).join('');
+        } else {
+            totalList.innerHTML = '<div class="empty-state">暫無資料</div>';
+        }
+    }
+
+    // 渲染單次最高
+    const singleList = document.getElementById('singleHighestList');
+    if (singleList) {
+        if (data.singleHighest && data.singleHighest.length > 0) {
+            singleList.innerHTML = data.singleHighest.slice(0, 20).map((item, index) => `
+                <div class="leaderboard-item ${index < 3 ? 'top-' + (index + 1) : ''}">
+                    <div class="leaderboard-rank">${index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
+                    ${item.avatar
+                        ? `<img class="leaderboard-avatar" src="${item.avatar}" onerror="this.outerHTML='<div class=\\'leaderboard-avatar placeholder\\'>🦆</div>'">`
+                        : '<div class="leaderboard-avatar placeholder">🦆</div>'
+                    }
+                    <div class="leaderboard-info">
+                        <div class="leaderboard-name">${escapeHtml(item.nickname || item.uniqueId)}</div>
+                        <div class="leaderboard-date">${item.date || ''}</div>
+                    </div>
+                    <div class="leaderboard-score">${item.amount.toLocaleString()} <span class="duck-icon">🦆</span></div>
+                </div>
+            `).join('');
+        } else {
+            singleList.innerHTML = '<div class="empty-state">暫無資料</div>';
+        }
+    }
+}
+
+// HTML 轉義
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+// 啟用/禁用抓鴨子模組
+document.getElementById('duckCatchEnabled')?.addEventListener('change', async (e) => {
+    config.duck_catch_enabled = e.target.checked;
+    await pywebview.api.update_config({ duck_catch_enabled: e.target.checked });
+    addLogLocal(`🦆 抓鴨子模組已${e.target.checked ? '啟用' : '禁用'}`);
+});
+
 // === 對話框控制 ===
 function openDialog(dialogId) {
     document.getElementById('dialogOverlay').classList.add('active');
@@ -1227,7 +2435,7 @@ function closeDialog(dialogId) {
             dialog.classList.remove('active');
         }
         // 如果沒有其他對話框打開，關閉遮罩
-        const activeDialogs = document.querySelectorAll('.dialog.active');
+        const activeDialogs = document.querySelectorAll('.modal.active');
         if (activeDialogs.length === 0) {
             document.getElementById('dialogOverlay').classList.remove('active');
         }
@@ -1238,7 +2446,7 @@ function closeDialog(dialogId) {
 
 function closeAllDialogs() {
     document.getElementById('dialogOverlay').classList.remove('active');
-    document.querySelectorAll('.dialog').forEach(d => d.classList.remove('active'));
+    document.querySelectorAll('.modal').forEach(d => d.classList.remove('active'));
 }
 
 // === 音量滑桿 ===
@@ -1373,7 +2581,7 @@ function renderEntryList() {
     const entryList = config.entry_list || [];
 
     if (entryList.length === 0) {
-        container.innerHTML = '<div class="list-empty">尚未設定進場用戶，點擊「+ 新增」添加</div>';
+        container.innerHTML = '<div class="empty-state">尚未設定進場用戶，點擊「+ 新增」添加</div>';
         return;
     }
 

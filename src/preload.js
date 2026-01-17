@@ -26,10 +26,35 @@ contextBridge.exposeInMainWorld('pywebview', {
 
         // 檔案選擇
         select_file: (type) => ipcRenderer.invoke('select-file', type),
+        select_files: (type) => ipcRenderer.invoke('select-files', type),
+        select_folder: () => ipcRenderer.invoke('select-folder'),
+        get_folder_video_count: (folderPath) => ipcRenderer.invoke('get-folder-video-count', folderPath),
+        get_folder_videos: (folderPath) => ipcRenderer.invoke('get-folder-videos', folderPath),
 
         // 模擬送禮
         simulate_gift: (username, giftName, count) =>
             ipcRenderer.invoke('simulate-gift', username, giftName, count),
+
+        // 測試隨機影片
+        test_random_video: (rvConfig) =>
+            ipcRenderer.invoke('test-random-video', rvConfig),
+
+        // 抓鴨子模組
+        get_duck_count: () => ipcRenderer.invoke('get-duck-count'),
+        set_duck_count: (count) => ipcRenderer.invoke('set-duck-count', count),
+        add_duck: (amount) => ipcRenderer.invoke('add-duck', amount),
+        remove_duck: (amount) => ipcRenderer.invoke('remove-duck', amount),
+        test_duck_catch: (caught, duckAmount) =>
+            ipcRenderer.invoke('test-duck-catch', caught, duckAmount),
+        confirm_duck_catch: (username, videoPath, duckAmount, config) =>
+            ipcRenderer.invoke('confirm-duck-catch', username, videoPath, duckAmount, config),
+        reset_pity_counter: () => ipcRenderer.invoke('reset-pity-counter'),
+        get_pity_counter: () => ipcRenderer.invoke('get-pity-counter'),
+        notify_pity_update: () => ipcRenderer.invoke('notify-pity-update'),
+
+        // 排行榜
+        get_leaderboard: () => ipcRenderer.invoke('get-leaderboard'),
+        clear_leaderboard: () => ipcRenderer.invoke('clear-leaderboard'),
 
         // 高等級用戶管理
         get_all_accounts: () => ipcRenderer.invoke('get-all-accounts'),
@@ -102,6 +127,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     onUpdateDownloaded: (callback) => {
         ipcRenderer.on('update-downloaded', (_, info) => callback(info));
+    },
+
+    // 抓鴨子事件
+    onDuckCaught: (callback) => {
+        ipcRenderer.on('duck-caught', (_, data) => callback(data));
+    },
+    onDuckCountUpdated: (callback) => {
+        ipcRenderer.on('duck-count-updated', (_, count) => callback(count));
+    },
+    onPlayQuackSound: (callback) => {
+        ipcRenderer.on('play-quack-sound', () => callback());
+    },
+    onPityCounterUpdated: (callback) => {
+        ipcRenderer.on('pity-counter-updated', (_, data) => callback(data));
+    },
+    onLeaderboardUpdated: (callback) => {
+        ipcRenderer.on('leaderboard-updated', (_, data) => callback(data));
     }
 });
 

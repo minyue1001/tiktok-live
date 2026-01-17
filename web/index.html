@@ -10,384 +10,726 @@
     <div class="app">
         <!-- 側邊欄 -->
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <span class="logo-icon">🎮</span>
-                    <span class="logo-text">TikTok Live</span>
+            <div class="sidebar-brand">
+                <div class="brand-logo">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect width="32" height="32" rx="8" fill="url(#brandGradient)"/>
+                        <path d="M10 16L14 20L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <defs>
+                            <linearGradient id="brandGradient" x1="0" y1="0" x2="32" y2="32">
+                                <stop stop-color="#06b6d4"/>
+                                <stop offset="1" stop-color="#8b5cf6"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
                 </div>
-                <div class="status-badge" id="statusBadge">
-                    <span class="status-dot"></span>
-                    <span class="status-text">離線</span>
+                <div class="brand-info">
+                    <span class="brand-title">TikTok Live</span>
+                    <span class="brand-subtitle">互動系統</span>
                 </div>
             </div>
 
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">模組</div>
-                    <button class="nav-item active" data-panel="wheel">
-                        <span class="nav-icon">🎡</span>
-                        <span class="nav-label">轉盤</span>
-                        <label class="mini-switch" onclick="event.stopPropagation()">
-                            <input type="checkbox" id="wheelEnabled" checked>
-                            <span class="mini-slider"></span>
-                        </label>
-                    </button>
-                    <button class="nav-item" data-panel="video">
-                        <span class="nav-icon">🎬</span>
-                        <span class="nav-label">影片</span>
-                        <label class="mini-switch" onclick="event.stopPropagation()">
-                            <input type="checkbox" id="videoEnabled" checked>
-                            <span class="mini-slider"></span>
-                        </label>
-                    </button>
-                    <button class="nav-item" data-panel="entry">
-                        <span class="nav-icon">👋</span>
-                        <span class="nav-label">進場</span>
-                        <label class="mini-switch" onclick="event.stopPropagation()">
-                            <input type="checkbox" id="entryEnabled">
-                            <span class="mini-slider"></span>
-                        </label>
-                    </button>
-                    <button class="nav-item" data-panel="giftbox">
-                        <span class="nav-icon">🎁</span>
-                        <span class="nav-label">盲盒</span>
-                        <label class="mini-switch" onclick="event.stopPropagation()">
-                            <input type="checkbox" id="giftboxEnabled">
-                            <span class="mini-slider"></span>
-                        </label>
-                    </button>
-                </div>
+            <div class="sidebar-status" id="statusBadge">
+                <span class="status-indicator"></span>
+                <span class="status-label">離線中</span>
+            </div>
 
-                <div class="nav-section">
-                    <div class="nav-section-title">工具</div>
-                    <button class="nav-item" data-panel="logs">
-                        <span class="nav-icon">📋</span>
-                        <span class="nav-label">日誌</span>
-                    </button>
-                    <button class="nav-item" data-panel="settings">
-                        <span class="nav-icon">⚙️</span>
-                        <span class="nav-label">設定</span>
-                    </button>
-                </div>
+            <nav class="sidebar-menu">
+                <div class="menu-label">模組</div>
+                <a class="menu-item active" data-panel="wheel">
+                    <span class="menu-icon">🎡</span>
+                    <span class="menu-text">轉盤/盲盒</span>
+                </a>
+                <a class="menu-item" data-panel="video">
+                    <span class="menu-icon">🎬</span>
+                    <span class="menu-text">影片</span>
+                    <label class="switch" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="videoEnabled" checked>
+                        <span class="switch-slider"></span>
+                    </label>
+                </a>
+                <a class="menu-item" data-panel="duckcatch">
+                    <span class="menu-icon">🦆</span>
+                    <span class="menu-text">抓鴨子</span>
+                    <label class="switch" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="duckCatchEnabled">
+                        <span class="switch-slider"></span>
+                    </label>
+                </a>
+                <a class="menu-item" data-panel="entry">
+                    <span class="menu-icon">👋</span>
+                    <span class="menu-text">進場特效</span>
+                    <label class="switch" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="entryEnabled">
+                        <span class="switch-slider"></span>
+                    </label>
+                </a>
+                <div class="menu-label">系統</div>
+                <a class="menu-item" data-panel="logs">
+                    <span class="menu-icon">📋</span>
+                    <span class="menu-text">日誌</span>
+                </a>
+                <a class="menu-item" data-panel="settings">
+                    <span class="menu-icon">⚙️</span>
+                    <span class="menu-text">設定</span>
+                </a>
             </nav>
 
-            <div class="sidebar-footer">
-                <button class="sidebar-btn btn-connect" id="connectBtn" onclick="toggleConnection()">
-                    <span class="btn-icon">🔌</span>
-                    <span class="btn-text">連接 TikTok</span>
+            <div class="sidebar-actions">
+                <button class="action-btn action-primary" id="connectBtn" onclick="toggleConnection()">
+                    <span class="action-icon">⚡</span>
+                    <span>連接 TikTok</span>
                 </button>
-                <div class="sidebar-btn-group">
-                    <button class="sidebar-btn btn-tool" onclick="openGreenScreen('landscape')" title="橫向綠幕">
-                        🖥️
+                <div class="action-row">
+                    <button class="action-btn action-secondary" onclick="openGreenScreen('landscape')" title="橫向綠幕">
+                        🖥️ 橫向
                     </button>
-                    <button class="sidebar-btn btn-tool" onclick="openGreenScreen('portrait')" title="直向綠幕">
-                        📱
-                    </button>
-                    <button class="sidebar-btn btn-tool" onclick="showSimulateDialog()" title="模擬送禮">
-                        🎁
+                    <button class="action-btn action-secondary" onclick="openGreenScreen('portrait')" title="直向綠幕">
+                        📱 直向
                     </button>
                 </div>
+                <button class="action-btn action-ghost" onclick="showSimulateDialog()">
+                    🎁 模擬送禮
+                </button>
             </div>
         </aside>
 
         <!-- 主內容區 -->
-        <main class="main-content">
-            <!-- 轉盤面板 -->
-            <div class="panel active" id="panel-wheel">
-                <div class="panel-header">
-                    <h2>🎡 轉盤模組</h2>
-                    <p>收到指定禮物時觸發轉盤抽獎</p>
-                </div>
-                <div class="panel-body">
-                    <div class="panel-grid">
-                        <div class="panel-section">
-                            <div class="section-header">
-                                <h3>觸發禮物</h3>
-                                <button class="btn btn-primary btn-sm" onclick="showAddWheelGiftDialog()">+ 新增</button>
-                            </div>
-                            <div class="list-container" id="wheelGiftList">
-                                <div class="list-empty">尚無設定</div>
-                            </div>
-                        </div>
-                        <div class="panel-section">
-                            <div class="section-header">
-                                <h3>轉盤選項</h3>
-                                <button class="btn btn-primary btn-sm" onclick="showAddWheelOptionDialog()">+ 新增</button>
-                            </div>
-                            <div class="list-container" id="wheelOptionList">
-                                <div class="list-empty">尚無設定</div>
-                            </div>
-                            <div class="hint-box">
-                                <span>💡</span> 權重越大，中獎機率越高
-                            </div>
+        <main class="main">
+            <!-- 轉盤/盲盒面板 -->
+            <section class="panel active" id="panel-wheel">
+                <header class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon" style="background: linear-gradient(135deg, #a855f7, #7c3aed);">🎡</span>
+                        <div>
+                            <h1>轉盤/盲盒模組</h1>
+                            <p>收到指定禮物時觸發抽獎</p>
                         </div>
                     </div>
-                    <div class="panel-actions">
-                        <button class="btn btn-secondary" onclick="testWheel()">🎯 測試轉盤</button>
+                </header>
+                <div class="panel-content">
+                    <div class="tabs">
+                        <button class="tab active" data-subtab="wheel" onclick="switchWheelSubTab('wheel')">🎡 轉盤</button>
+                        <button class="tab" data-subtab="giftbox" onclick="switchWheelSubTab('giftbox')">🎁 盲盒</button>
+                    </div>
+
+                    <!-- 轉盤子面板 -->
+                    <div class="tab-content active" id="subtab-wheel">
+                        <div class="subtab-header">
+                            <label class="switch" onclick="event.stopPropagation()">
+                                <input type="checkbox" id="wheelEnabled" checked>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <span class="subtab-status" id="wheelStatus">已啟用</span>
+                        </div>
+                        <div class="grid-2">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>觸發禮物</h3>
+                                    <button class="btn-add" onclick="showAddWheelGiftDialog()">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="card-content">
+                                    <div class="list" id="wheelGiftList">
+                                        <div class="empty-state">尚無設定</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>轉盤選項</h3>
+                                    <button class="btn-add" onclick="showAddWheelOptionDialog()">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="card-content">
+                                    <div class="list" id="wheelOptionList">
+                                        <div class="empty-state">尚無設定</div>
+                                    </div>
+                                    <div class="hint">
+                                        <span class="hint-icon">💡</span>
+                                        權重越大，中獎機率越高
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-footer">
+                            <button class="btn btn-outline" onclick="testWheel()">🎯 測試轉盤</button>
+                        </div>
+                    </div>
+
+                    <!-- 盲盒子面板 -->
+                    <div class="tab-content" id="subtab-giftbox">
+                        <div class="subtab-header">
+                            <label class="switch" onclick="event.stopPropagation()">
+                                <input type="checkbox" id="giftboxEnabled">
+                                <span class="switch-slider"></span>
+                            </label>
+                            <span class="subtab-status" id="giftboxStatus">已停用</span>
+                        </div>
+                        <div class="grid-2">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>觸發禮物</h3>
+                                    <button class="btn-add" onclick="showAddGiftboxGiftDialog()">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="card-content">
+                                    <div class="list" id="giftboxGiftList">
+                                        <div class="empty-state">尚無設定</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>盲盒選項</h3>
+                                    <button class="btn-add" onclick="showAddGiftboxOptionDialog()">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="card-content">
+                                    <div class="list" id="giftboxOptionList">
+                                        <div class="empty-state">尚無設定</div>
+                                    </div>
+                                    <div class="hint">
+                                        <span class="hint-icon">💡</span>
+                                        權重越大，中獎機率越高
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-footer">
+                            <button class="btn btn-outline" onclick="testGiftbox()">🎁 測試盲盒</button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
             <!-- 影片面板 -->
-            <div class="panel" id="panel-video">
-                <div class="panel-header">
-                    <h2>🎬 影片模組</h2>
-                    <p>收到禮物/彈幕/點讚時播放影片</p>
+            <section class="panel" id="panel-video">
+                <header class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">🎬</span>
+                        <div>
+                            <h1>影片模組</h1>
+                            <p>收到禮物/彈幕/點讚時播放影片</p>
+                        </div>
+                    </div>
+                </header>
+                <div class="panel-content">
+                    <div class="tabs">
+                        <button class="tab active" data-subtab="fixed" onclick="switchVideoSubTab('fixed')">🎬 固定影片</button>
+                        <button class="tab" data-subtab="random" onclick="switchVideoSubTab('random')">🎲 隨機影片</button>
+                    </div>
+
+                    <div class="tab-content active" id="subtab-fixed">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>觸發設定</h3>
+                                <button class="btn-add" onclick="showAddVideoGiftDialog()">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                        <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="card-content">
+                                <div class="list list-tall" id="videoGiftList">
+                                    <div class="empty-state">尚無設定</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-footer">
+                            <button class="btn btn-outline" onclick="testVideo()">▶️ 測試影片</button>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="subtab-random">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>觸發設定</h3>
+                                <button class="btn-add" onclick="showAddRandomVideoDialog()">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                        <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="card-content">
+                                <div class="list list-tall" id="randomVideoList">
+                                    <div class="empty-state">尚無設定</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-footer">
+                            <button class="btn btn-outline" onclick="testRandomVideo()">▶️ 測試隨機影片</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="panel-body">
-                    <div class="section-header">
-                        <h3>觸發設定</h3>
-                        <button class="btn btn-primary btn-sm" onclick="showAddVideoGiftDialog()">+ 新增</button>
+            </section>
+
+            <!-- 抓鴨子面板 -->
+            <section class="panel" id="panel-duckcatch">
+                <header class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">🦆</span>
+                        <div>
+                            <h1>抓鴨子模組</h1>
+                            <p>隨機抓到或沒抓到鴨子，並統計數量</p>
+                        </div>
                     </div>
-                    <div class="list-container list-full" id="videoGiftList">
-                        <div class="list-empty">尚無設定</div>
+                </header>
+                <div class="panel-content">
+                    <div class="duck-stats">
+                        <div class="duck-count-box">
+                            <span class="duck-icon">🦆</span>
+                            <span class="duck-number" id="duckCountDisplay">0</span>
+                            <span class="duck-label">隻鴨子</span>
+                        </div>
+                        <div class="duck-buttons">
+                            <button class="btn btn-sm" onclick="adjustDuckCount(-1)">-1</button>
+                            <button class="btn btn-sm" onclick="adjustDuckCount(-5)">-5</button>
+                            <button class="btn btn-sm" onclick="adjustDuckCount(1)">+1</button>
+                            <button class="btn btn-sm" onclick="adjustDuckCount(5)">+5</button>
+                            <button class="btn btn-sm btn-danger" onclick="resetDuckCount()">歸零</button>
+                        </div>
+                        <div class="shortcut-info">快捷鍵: F9 減1 / F10 減5 / F11 歸零</div>
                     </div>
-                    <div class="panel-actions">
-                        <button class="btn btn-secondary" onclick="testVideo()">▶️ 測試影片</button>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>觸發設定</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-grid">
+                                <div class="form-group half">
+                                    <label>觸發方式</label>
+                                    <select id="duckTriggerType" class="input" onchange="toggleDuckTriggerOptions()">
+                                        <option value="gift">禮物</option>
+                                        <option value="chat">彈幕關鍵字</option>
+                                        <option value="like">點讚</option>
+                                    </select>
+                                </div>
+                                <div class="form-group half" id="duckGiftGroup">
+                                    <label>觸發禮物名稱</label>
+                                    <input type="text" id="duckTriggerGift" class="input" placeholder="例如: Rose">
+                                </div>
+                                <div class="form-group half" id="duckKeywordGroup" style="display:none">
+                                    <label>彈幕關鍵字</label>
+                                    <input type="text" id="duckTriggerKeyword" class="input" placeholder="觸發的關鍵字">
+                                </div>
+                                <div class="form-group full">
+                                    <label>抓到機率</label>
+                                    <div class="range-input">
+                                        <input type="range" id="duckCatchRate" value="50" min="0" max="100"
+                                               oninput="document.getElementById('duckCatchRateValue').textContent = this.value + '%'">
+                                        <span id="duckCatchRateValue" class="range-value">50%</span>
+                                    </div>
+                                </div>
+                                <div class="form-group half">
+                                    <label>播放秒數 (0=完整)</label>
+                                    <input type="number" id="duckVideoSeconds" class="input" value="0" min="0" step="0.5">
+                                </div>
+                                <div class="form-group half">
+                                    <label>播放倍率</label>
+                                    <input type="number" id="duckVideoSpeed" class="input" value="1.0" min="0.1" max="4" step="0.1">
+                                </div>
+                                <div class="form-group full">
+                                    <label>音量</label>
+                                    <div class="range-input">
+                                        <input type="range" id="duckVideoVolume" value="100" min="0" max="100"
+                                               oninput="document.getElementById('duckVolumeValue').textContent = this.value + '%'">
+                                        <span id="duckVolumeValue" class="range-value">100%</span>
+                                    </div>
+                                </div>
+                                <div class="form-group full">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="duckForceInterrupt">
+                                        <span class="checkbox-box"></span>
+                                        強制插隊 (中斷當前播放)
+                                    </label>
+                                </div>
+                                <div class="form-group full">
+                                    <label>🔊 嘎嘎音效（減少鴨子時播放）</label>
+                                    <div class="input-with-button">
+                                        <input type="text" id="duckQuackSound" class="input" placeholder="選擇音效檔案（可選）" readonly>
+                                        <button class="btn btn-outline" onclick="selectDuckQuackSound()">選擇</button>
+                                        <button class="btn btn-outline" onclick="clearDuckQuackSound()">清除</button>
+                                    </div>
+                                </div>
+                                <!-- 保底設定 -->
+                                <div class="form-group full" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="duckPityEnabled">
+                                        <span class="checkbox-box"></span>
+                                        🎯 啟用保底機制
+                                    </label>
+                                </div>
+                                <div class="form-group half">
+                                    <label>🎉 第一層保底次數</label>
+                                    <input type="number" id="duckPityThreshold" class="input" value="1000" min="100" max="10000">
+                                </div>
+                                <div class="form-group half">
+                                    <label>第一層最低鴨子數</label>
+                                    <input type="number" id="duckPityMinAmount" class="input" value="5000" min="100">
+                                </div>
+                                <div class="form-group half">
+                                    <label>🏆 終極保底次數</label>
+                                    <input type="number" id="duckPityThresholdJackpot" class="input" value="2000" min="200" max="20000">
+                                </div>
+                                <div class="form-group half">
+                                    <label>終極保底鴨子數</label>
+                                    <input type="number" id="duckPityJackpotAmount" class="input" value="10000" min="1000">
+                                </div>
+                                <div class="form-group full">
+                                    <div class="pity-display" id="pityDisplay" style="display: none;">
+                                        <span>保底進度：</span>
+                                        <span id="pityProgress">0 / 1000</span>
+                                        <span id="pityStage" style="margin-left: 8px; font-size: 12px; color: var(--text-muted);"></span>
+                                        <button class="btn btn-sm btn-outline" onclick="resetPityCounter()">重置</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🎉 抓到影片</h3>
+                                <div class="header-buttons">
+                                    <button class="btn btn-sm btn-primary" onclick="smartImportDuckVideos('caught')">🪄 智能匯入</button>
+                                    <button class="btn-add" onclick="showAddDuckVideoDialog('caught')" title="單個添加">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="list" id="duckCaughtVideoList">
+                                    <div class="empty-state">尚無設定</div>
+                                </div>
+                                <div class="hint">
+                                    <span class="hint-icon">💡</span>
+                                    智能匯入會從檔名解析鴨子數量並自動設定權重
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>😢 沒抓到影片</h3>
+                                <div class="header-buttons">
+                                    <button class="btn btn-sm btn-primary" onclick="smartImportDuckVideos('missed')">🪄 智能匯入</button>
+                                    <button class="btn-add" onclick="showAddDuckVideoDialog('missed')" title="單個添加">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="list" id="duckMissedVideoList">
+                                    <div class="empty-state">尚無設定</div>
+                                </div>
+                                <div class="hint">
+                                    <span class="hint-icon">💡</span>
+                                    沒抓到影片權重統一設為 1（隨機播放）
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 排行榜 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🏆 排行榜</h3>
+                            <div class="header-buttons">
+                                <button class="btn btn-sm btn-outline" onclick="refreshLeaderboard()">🔄 刷新</button>
+                                <button class="btn btn-sm btn-danger" onclick="clearLeaderboard()">🗑️ 清除</button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="leaderboard-tabs">
+                                <button class="leaderboard-tab active" data-tab="total" onclick="switchLeaderboardTab('total')">📊 累計排行</button>
+                                <button class="leaderboard-tab" data-tab="single" onclick="switchLeaderboardTab('single')">🎯 單次最高</button>
+                            </div>
+                            <div class="leaderboard-content" id="leaderboardTotal">
+                                <div class="leaderboard-list" id="totalRankingList">
+                                    <div class="empty-state">暫無資料</div>
+                                </div>
+                            </div>
+                            <div class="leaderboard-content hidden" id="leaderboardSingle">
+                                <div class="leaderboard-list" id="singleHighestList">
+                                    <div class="empty-state">暫無資料</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 里程碑慶祝設定 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🎆 里程碑慶祝</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="milestone-info">
+                                <div class="info-item">
+                                    <span class="info-label">🏆 累計第一</span>
+                                    <span class="info-value">達到 10,000🦆 且成為第一名時播放</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">🎯 單次最高</span>
+                                    <span class="info-value">單次抓到 5,000+🦆 創紀錄時播放（保底不計）</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>煙火影片</label>
+                                <div class="input-with-button">
+                                    <input type="text" id="milestoneFireworkVideo" placeholder="選擇煙火影片..." readonly>
+                                    <button class="btn btn-outline" onclick="selectMilestoneVideo()">選擇</button>
+                                </div>
+                            </div>
+                            <button class="btn btn-outline btn-sm" onclick="testMilestoneCelebration()">🎇 測試慶祝效果</button>
+                        </div>
+                    </div>
+
+                    <div class="panel-footer">
+                        <button class="btn btn-primary" onclick="saveDuckCatchConfig()">💾 儲存設定</button>
+                        <button class="btn btn-outline" onclick="testDuckCatchRandom()">🎲 測試抓鴨子</button>
                     </div>
                 </div>
-            </div>
+            </section>
 
             <!-- 進場面板 -->
-            <div class="panel" id="panel-entry">
-                <div class="panel-header">
-                    <h2>👋 進場模組</h2>
-                    <p>有人進入直播間時播放影片或音效</p>
-                </div>
-                <div class="panel-body">
-                    <div class="section-header">
-                        <h3>進場用戶列表</h3>
-                        <button class="btn btn-primary btn-sm" onclick="showAddEntryDialog()">+ 新增</button>
-                    </div>
-                    <div class="list-container" id="entryList">
-                        <div class="list-empty">尚未設定進場用戶</div>
-                    </div>
-
-                    <div class="section-header" style="margin-top: 24px;">
-                        <h3>🔍 高等級用戶查詢 (Lv20+)</h3>
-                        <span class="user-count-badge" id="highLevelUserCount">0 人</span>
-                    </div>
-                    <div class="search-section">
-                        <div class="search-row">
-                            <select id="accountSelector" class="form-input" style="max-width: 180px;" onchange="onAccountChange()">
-                                <option value="">-- 選擇帳號 --</option>
-                            </select>
-                            <button class="btn btn-secondary btn-sm" onclick="refreshAccountList()" title="重新整理">🔄</button>
-                        </div>
-                        <div class="search-row">
-                            <input type="text" id="userSearchInput" class="form-input" placeholder="輸入名稱搜尋..." onkeyup="if(event.key==='Enter') searchUsers()">
-                            <button class="btn btn-primary btn-sm" onclick="searchUsers()">搜尋</button>
-                            <button class="btn btn-secondary btn-sm" onclick="searchUsers('')">全部</button>
-                            <button class="btn btn-danger btn-sm" onclick="clearHighLevelUsers()">清空</button>
-                        </div>
-                        <div class="search-results" id="userSearchResults">
-                            <div class="search-hint">連接後，高等級用戶會自動記錄</div>
+            <section class="panel" id="panel-entry">
+                <header class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">👋</span>
+                        <div>
+                            <h1>進場特效</h1>
+                            <p>有人進入直播間時播放影片或音效</p>
                         </div>
                     </div>
-
-                    <div class="panel-actions">
-                        <button class="btn btn-secondary" onclick="testEntryEffect()">▶️ 測試效果</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 盲盒面板 -->
-            <div class="panel" id="panel-giftbox">
-                <div class="panel-header">
-                    <h2>🎁 盲盒模組</h2>
-                    <p>收到指定禮物時觸發盲盒抽獎</p>
-                </div>
-                <div class="panel-body">
-                    <div class="panel-grid">
-                        <div class="panel-section">
-                            <div class="section-header">
-                                <h3>觸發禮物</h3>
-                                <button class="btn btn-primary btn-sm" onclick="showAddGiftboxGiftDialog()">+ 新增</button>
+                </header>
+                <div class="panel-content">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>進場用戶列表</h3>
+                                <button class="btn-add" onclick="showAddEntryDialog()">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                        <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
                             </div>
-                            <div class="list-container" id="giftboxGiftList">
-                                <div class="list-empty">尚無設定</div>
+                            <div class="card-content">
+                                <div class="list" id="entryList">
+                                    <div class="empty-state">尚未設定進場用戶</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="panel-section">
-                            <div class="section-header">
-                                <h3>盲盒選項</h3>
-                                <button class="btn btn-primary btn-sm" onclick="showAddGiftboxOptionDialog()">+ 新增</button>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🔍 高等級用戶 (Lv20+)</h3>
+                                <span class="badge" id="highLevelUserCount">0 人</span>
                             </div>
-                            <div class="list-container" id="giftboxOptionList">
-                                <div class="list-empty">尚無設定</div>
-                            </div>
-                            <div class="hint-box">
-                                <span>💡</span> 權重越大，中獎機率越高
+                            <div class="card-content">
+                                <div class="search-controls">
+                                    <div class="search-row">
+                                        <select id="accountSelector" class="input" onchange="onAccountChange()">
+                                            <option value="">-- 選擇帳號 --</option>
+                                        </select>
+                                        <button class="btn btn-sm" onclick="refreshAccountList()">🔄</button>
+                                    </div>
+                                    <div class="search-row">
+                                        <input type="text" id="userSearchInput" class="input" placeholder="搜尋名稱..." onkeyup="if(event.key==='Enter') searchUsers()">
+                                        <button class="btn btn-sm btn-primary" onclick="searchUsers()">搜尋</button>
+                                        <button class="btn btn-sm" onclick="searchUsers('')">全部</button>
+                                        <button class="btn btn-sm btn-danger" onclick="clearHighLevelUsers()">清空</button>
+                                    </div>
+                                </div>
+                                <div class="search-results" id="userSearchResults">
+                                    <div class="empty-state">連接後，高等級用戶會自動記錄</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="panel-actions">
-                        <button class="btn btn-secondary" onclick="testGiftbox()">🎁 測試盲盒</button>
+                    <div class="panel-footer">
+                        <button class="btn btn-outline" onclick="testEntryEffect()">▶️ 測試效果</button>
                     </div>
                 </div>
-            </div>
+            </section>
 
             <!-- 日誌面板 -->
-            <div class="panel" id="panel-logs">
-                <div class="panel-header">
-                    <h2>📋 即時日誌</h2>
-                    <p>查看系統運行狀態和事件</p>
-                </div>
-                <div class="panel-body">
-                    <div class="log-filters">
-                        <label class="log-filter-item">
-                            <input type="checkbox" id="filterChat" checked>
-                            <span>💬 聊天</span>
-                        </label>
-                        <label class="log-filter-item">
-                            <input type="checkbox" id="filterGift" checked>
-                            <span>🎁 禮物</span>
-                        </label>
-                        <label class="log-filter-item">
-                            <input type="checkbox" id="filterLike" checked>
-                            <span>❤️ 點讚</span>
-                        </label>
-                        <label class="log-filter-item">
-                            <input type="checkbox" id="filterEntry" checked>
-                            <span>👋 進場</span>
-                        </label>
-                        <label class="log-filter-item">
-                            <input type="checkbox" id="filterFollow" checked>
-                            <span>➕ 關注</span>
-                        </label>
-                        <label class="log-filter-item">
-                            <input type="checkbox" id="filterOther" checked>
-                            <span>📝 其他</span>
-                        </label>
+            <section class="panel" id="panel-logs">
+                <header class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">📋</span>
+                        <div>
+                            <h1>即時日誌</h1>
+                            <p>查看系統運行狀態和事件記錄</p>
+                        </div>
                     </div>
-                    <div class="log-container-full">
+                </header>
+                <div class="panel-content">
+                    <div class="log-filters">
+                        <label class="filter-chip"><input type="checkbox" id="filterChat" checked><span>💬 聊天</span></label>
+                        <label class="filter-chip"><input type="checkbox" id="filterGift" checked><span>🎁 禮物</span></label>
+                        <label class="filter-chip"><input type="checkbox" id="filterLike" checked><span>❤️ 點讚</span></label>
+                        <label class="filter-chip"><input type="checkbox" id="filterEntry" checked><span>👋 進場</span></label>
+                        <label class="filter-chip"><input type="checkbox" id="filterFollow" checked><span>➕ 關注</span></label>
+                        <label class="filter-chip"><input type="checkbox" id="filterOther" checked><span>📝 其他</span></label>
+                    </div>
+                    <div class="log-container">
                         <div class="log-content" id="logContent">
                             <div class="log-item">系統已就緒，等待連接...</div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
             <!-- 設定面板 -->
-            <div class="panel" id="panel-settings">
-                <div class="panel-header">
-                    <h2>⚙️ 系統設定</h2>
-                    <p>配置連接和顯示選項</p>
-                </div>
-                <div class="panel-body">
-                    <div class="settings-card">
-                        <h3>🔗 連接設定</h3>
-                        <div class="form-group">
-                            <label>TikTok 用戶名</label>
-                            <input type="text" id="tiktokUsernameInput" class="form-input" placeholder="例如: example_user">
-                            <small class="form-hint">輸入要監控的直播間用戶名（@ 後面的 ID）</small>
-                        </div>
-                        <div class="form-group">
-                            <label>Eulerstream API Key</label>
-                            <input type="password" id="apiKeyInput" class="form-input" placeholder="euler_xxxxxxxx...">
-                            <small class="form-hint">從 <a href="https://www.eulerstream.com" target="_blank">eulerstream.com</a> 取得</small>
-                        </div>
-                        <div class="form-group">
-                            <label>WebSocket 埠號</label>
-                            <input type="number" id="portInput" class="form-input small" value="10010">
+            <section class="panel" id="panel-settings">
+                <header class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon" style="background: linear-gradient(135deg, #64748b, #475569);">⚙️</span>
+                        <div>
+                            <h1>系統設定</h1>
+                            <p>配置連接和顯示選項</p>
                         </div>
                     </div>
-
-                    <div class="settings-card">
-                        <h3>🖥️ 顯示設定</h3>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="autoOpenGreenScreen">
-                            <span>連接時自動開啟綠幕視窗</span>
-                        </label>
-                    </div>
-
-                    <div class="settings-card">
-                        <h3>🌐 語言設定</h3>
-                        <div class="form-group">
-                            <label>介面語言</label>
-                            <select id="languageSelect" class="form-input" onchange="changeLanguage(this.value)">
-                                <option value="zh-TW">繁體中文</option>
-                                <option value="zh-CN">简体中文</option>
-                            </select>
+                </header>
+                <div class="panel-content">
+                    <div class="settings-list">
+                        <div class="card">
+                            <div class="card-header"><h3>🔗 連接設定</h3></div>
+                            <div class="card-content">
+                                <div class="form-group">
+                                    <label>TikTok 用戶名</label>
+                                    <input type="text" id="tiktokUsernameInput" class="input" placeholder="例如: example_user">
+                                    <small>輸入要監控的直播間用戶名（@ 後面的 ID）</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Eulerstream API Key</label>
+                                    <input type="password" id="apiKeyInput" class="input" placeholder="euler_xxxxxxxx...">
+                                    <small>從 <a href="https://www.eulerstream.com" target="_blank">eulerstream.com</a> 取得</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>WebSocket 埠號</label>
+                                    <input type="number" id="portInput" class="input input-sm" value="10010">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3>🖥️ 顯示設定</h3></div>
+                            <div class="card-content">
+                                <div class="form-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="autoOpenGreenScreen">
+                                        <span class="checkbox-box"></span>
+                                        連接時自動開啟綠幕視窗
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3>🌐 語言設定</h3></div>
+                            <div class="card-content">
+                                <div class="form-group">
+                                    <label>介面語言</label>
+                                    <select id="languageSelect" class="input" onchange="changeLanguage(this.value)">
+                                        <option value="zh-TW">繁體中文</option>
+                                        <option value="zh-CN">简体中文</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <div class="panel-actions">
+                    <div class="panel-footer">
                         <button class="btn btn-primary" onclick="saveSettings()">💾 儲存設定</button>
                     </div>
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 
     <!-- 對話框遮罩 -->
-    <div class="dialog-overlay" id="dialogOverlay" onclick="closeAllDialogs()"></div>
+    <div class="modal-overlay" id="dialogOverlay" onclick="closeAllDialogs()"></div>
 
-    <!-- 轉盤禮物編輯對話框 -->
-    <div class="dialog" id="wheelGiftDialog">
-        <div class="dialog-header">
+    <!-- 轉盤禮物對話框 -->
+    <div class="modal" id="wheelGiftDialog">
+        <div class="modal-header">
             <h3 id="wheelGiftDialogTitle">新增轉盤觸發</h3>
-            <button class="dialog-close" onclick="closeDialog('wheelGiftDialog')">&times;</button>
+            <button class="modal-close" onclick="closeDialog('wheelGiftDialog')">×</button>
         </div>
-        <div class="dialog-content">
+        <div class="modal-body">
             <input type="hidden" id="wheelGiftEditIndex" value="-1">
             <div class="form-group">
                 <label>禮物名稱</label>
-                <input type="text" id="wheelGiftName" class="form-input" placeholder="例如: Rose">
+                <input type="text" id="wheelGiftName" class="input" placeholder="例如: Rose">
             </div>
             <div class="form-group">
                 <label>轉盤次數 (每個禮物)</label>
-                <input type="number" id="wheelGiftSpins" class="form-input small" value="1" min="1">
+                <input type="number" id="wheelGiftSpins" class="input input-sm" value="1" min="1">
             </div>
         </div>
-        <div class="dialog-footer">
-            <button class="btn btn-secondary" onclick="closeDialog('wheelGiftDialog')">取消</button>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('wheelGiftDialog')">取消</button>
             <button class="btn btn-primary" onclick="saveWheelGift()">儲存</button>
         </div>
     </div>
 
-    <!-- 轉盤選項編輯對話框 -->
-    <div class="dialog" id="wheelOptionDialog">
-        <div class="dialog-header">
+    <!-- 轉盤選項對話框 -->
+    <div class="modal" id="wheelOptionDialog">
+        <div class="modal-header">
             <h3 id="wheelOptionDialogTitle">新增轉盤選項</h3>
-            <button class="dialog-close" onclick="closeDialog('wheelOptionDialog')">&times;</button>
+            <button class="modal-close" onclick="closeDialog('wheelOptionDialog')">×</button>
         </div>
-        <div class="dialog-content">
+        <div class="modal-body">
             <input type="hidden" id="wheelOptionEditIndex" value="-1">
             <div class="form-group">
                 <label>選項名稱</label>
-                <input type="text" id="optionName" class="form-input" placeholder="例如: 選項A">
+                <input type="text" id="optionName" class="input" placeholder="例如: 選項A">
             </div>
             <div class="form-group">
                 <label>顏色</label>
-                <input type="color" id="optionColor" class="form-input color-input" value="#4ecca3">
+                <input type="color" id="optionColor" class="input-color" value="#4ecca3">
             </div>
             <div class="form-group">
                 <label>權重</label>
-                <input type="number" id="optionWeight" class="form-input small" value="1" min="1">
+                <input type="number" id="optionWeight" class="input input-sm" value="1" min="1">
             </div>
         </div>
-        <div class="dialog-footer">
-            <button class="btn btn-secondary" onclick="closeDialog('wheelOptionDialog')">取消</button>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('wheelOptionDialog')">取消</button>
             <button class="btn btn-primary" onclick="saveWheelOption()">儲存</button>
         </div>
     </div>
 
-    <!-- 影片觸發編輯對話框 -->
-    <div class="dialog" id="videoGiftDialog">
-        <div class="dialog-header">
+    <!-- 影片觸發對話框 -->
+    <div class="modal" id="videoGiftDialog">
+        <div class="modal-header">
             <h3 id="videoGiftDialogTitle">新增影片觸發</h3>
-            <button class="dialog-close" onclick="closeDialog('videoGiftDialog')">&times;</button>
+            <button class="modal-close" onclick="closeDialog('videoGiftDialog')">×</button>
         </div>
-        <div class="dialog-content">
+        <div class="modal-body">
             <input type="hidden" id="videoGiftEditIndex" value="-1">
             <div class="form-group">
                 <label>名稱</label>
-                <input type="text" id="videoGiftName" class="form-input" placeholder="例如: Rose">
+                <input type="text" id="videoGiftName" class="input" placeholder="例如: Rose">
             </div>
             <div class="form-group">
                 <label>觸發方式</label>
-                <select id="videoTriggerType" class="form-input" onchange="toggleVideoTriggerOptions()">
+                <select id="videoTriggerType" class="input" onchange="toggleVideoTriggerOptions()">
                     <option value="gift">禮物</option>
                     <option value="chat">彈幕關鍵字</option>
                     <option value="like">點讚</option>
@@ -395,211 +737,369 @@
             </div>
             <div class="form-group" id="videoKeywordGroup" style="display:none">
                 <label>彈幕關鍵字</label>
-                <input type="text" id="videoTriggerKeyword" class="form-input" placeholder="觸發的關鍵字">
+                <input type="text" id="videoTriggerKeyword" class="input" placeholder="觸發的關鍵字">
             </div>
             <div class="form-group">
                 <label>影片路徑</label>
-                <div class="input-with-btn">
-                    <input type="text" id="videoPath" class="form-input" placeholder="選擇影片檔案">
+                <div class="input-with-button">
+                    <input type="text" id="videoPath" class="input" placeholder="選擇影片檔案">
                     <button class="btn btn-sm" onclick="selectVideoFile()">瀏覽</button>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>優先級 (1-10)</label>
-                    <input type="number" id="videoPriority" class="form-input small" value="1" min="1" max="10">
+                    <input type="number" id="videoPriority" class="input input-sm" value="1" min="1" max="10">
                 </div>
                 <div class="form-group">
                     <label>重複次數</label>
-                    <input type="number" id="videoRepeat" class="form-input small" value="1" min="1">
+                    <input type="number" id="videoRepeat" class="input input-sm" value="1" min="1">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>播放秒數 (0=完整)</label>
-                    <input type="number" id="videoSeconds" class="form-input small" value="0" min="0" step="0.5">
+                    <input type="number" id="videoSeconds" class="input input-sm" value="0" min="0" step="0.5">
                 </div>
                 <div class="form-group">
                     <label>播放倍率</label>
-                    <input type="number" id="videoSpeed" class="form-input small" value="1.0" min="0.1" max="4" step="0.1">
+                    <input type="number" id="videoSpeed" class="input input-sm" value="1.0" min="0.1" max="4" step="0.1">
                 </div>
             </div>
             <div class="form-group">
                 <label>音量</label>
-                <div class="range-group">
-                    <input type="range" id="videoVolume" class="form-range" value="100" min="0" max="100">
-                    <span id="volumeValue">100%</span>
+                <div class="range-input">
+                    <input type="range" id="videoVolume" value="100" min="0" max="100">
+                    <span id="volumeValue" class="range-value">100%</span>
                 </div>
             </div>
-            <label class="checkbox-label">
-                <input type="checkbox" id="forceInterrupt">
-                <span>強制插隊 (中斷當前播放)</span>
-            </label>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="forceInterrupt">
+                    <span class="checkbox-box"></span>
+                    強制插隊 (中斷當前播放)
+                </label>
+            </div>
         </div>
-        <div class="dialog-footer">
-            <button class="btn btn-secondary" onclick="closeDialog('videoGiftDialog')">取消</button>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('videoGiftDialog')">取消</button>
             <button class="btn btn-primary" onclick="saveVideoGift()">儲存</button>
         </div>
     </div>
 
-    <!-- 進場用戶編輯對話框 -->
-    <div class="dialog" id="entryEditDialog">
-        <div class="dialog-header">
-            <h3 id="entryEditDialogTitle">新增進場用戶</h3>
-            <button class="dialog-close" onclick="closeDialog('entryEditDialog')">&times;</button>
+    <!-- 隨機影片對話框 -->
+    <div class="modal" id="randomVideoDialog">
+        <div class="modal-header">
+            <h3 id="randomVideoDialogTitle">新增隨機影片</h3>
+            <button class="modal-close" onclick="closeDialog('randomVideoDialog')">×</button>
         </div>
-        <div class="dialog-content">
-            <input type="hidden" id="entryEditIndex" value="-1">
+        <div class="modal-body">
+            <input type="hidden" id="randomVideoEditIndex" value="-1">
             <div class="form-group">
-                <label>用戶名稱或 ID</label>
-                <input type="text" id="entryUsername" class="form-input" placeholder="例如：老公 或 yyue97342bf">
+                <label>名稱</label>
+                <input type="text" id="randomVideoName" class="input" placeholder="例如: 禮物特效">
             </div>
             <div class="form-group">
-                <label>媒體檔案</label>
-                <div class="input-with-btn">
-                    <input type="text" id="entryMediaPath" class="form-input" readonly placeholder="選擇影片或音效...">
-                    <button class="btn btn-sm" onclick="selectEntryMedia()">瀏覽</button>
+                <label>觸發方式</label>
+                <select id="randomVideoTriggerType" class="input" onchange="toggleRandomVideoTriggerOptions()">
+                    <option value="gift">禮物</option>
+                    <option value="chat">彈幕關鍵字</option>
+                    <option value="like">點讚</option>
+                </select>
+            </div>
+            <div class="form-group" id="randomVideoGiftGroup">
+                <label>觸發禮物名稱</label>
+                <input type="text" id="randomVideoTriggerGift" class="input" placeholder="例如: Rose">
+            </div>
+            <div class="form-group" id="randomVideoKeywordGroup" style="display:none">
+                <label>彈幕關鍵字</label>
+                <input type="text" id="randomVideoTriggerKeyword" class="input" placeholder="觸發的關鍵字">
+            </div>
+            <div class="form-group">
+                <label>影片資料夾</label>
+                <div class="input-with-button">
+                    <input type="text" id="randomVideoFolderPath" class="input" placeholder="選擇包含影片的資料夾">
+                    <button class="btn btn-sm" onclick="selectRandomVideoFolder()">瀏覽</button>
                 </div>
-                <small class="form-hint" id="entryMediaTypeHint">支援 MP4/AVI/MOV 或 MP3/WAV/OGG</small>
+                <small id="randomVideoFolderInfo"></small>
+            </div>
+            <div class="form-group" id="randomVideoWeightsGroup" style="display: none;">
+                <label>影片機率設定 <small style="opacity: 0.6;">(權重越高機率越大)</small></label>
+                <div id="randomVideoWeightsList" class="weights-list"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>優先級 (1-10)</label>
+                    <input type="number" id="randomVideoPriority" class="input input-sm" value="1" min="1" max="10">
+                </div>
+                <div class="form-group">
+                    <label>重複次數</label>
+                    <input type="number" id="randomVideoRepeat" class="input input-sm" value="1" min="1">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>播放秒數 (0=完整)</label>
+                    <input type="number" id="randomVideoSeconds" class="input input-sm" value="0" min="0" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label>播放倍率</label>
+                    <input type="number" id="randomVideoSpeed" class="input input-sm" value="1.0" min="0.1" max="4" step="0.1">
+                </div>
             </div>
             <div class="form-group">
                 <label>音量</label>
-                <div class="range-group">
-                    <input type="range" id="entryVolume" class="form-range" min="0" max="100" value="100">
-                    <span id="entryVolumeLabel">100%</span>
+                <div class="range-input">
+                    <input type="range" id="randomVideoVolume" value="100" min="0" max="100" oninput="document.getElementById('randomVideoVolumeValue').textContent = this.value + '%'">
+                    <span id="randomVideoVolumeValue" class="range-value">100%</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="randomVideoAvoidRepeat" checked>
+                    <span class="checkbox-box"></span>
+                    避免連續播放相同影片
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="randomVideoForceInterrupt">
+                    <span class="checkbox-box"></span>
+                    強制插隊 (中斷當前播放)
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('randomVideoDialog')">取消</button>
+            <button class="btn btn-primary" onclick="saveRandomVideo()">儲存</button>
+        </div>
+    </div>
+
+    <!-- 抓鴨子數量對話框 -->
+    <div class="modal" id="duckAmountDialog">
+        <div class="modal-header">
+            <h3>🦆 抓到鴨子了！</h3>
+            <button class="modal-close" onclick="cancelDuckCatch()">×</button>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+            <input type="hidden" id="duckCatchUsername" value="">
+            <input type="hidden" id="duckCatchVideoPath" value="">
+            <p style="margin-bottom: 20px;">
+                <span id="duckCatchUser" style="color: #10b981; font-weight: bold;"></span> 抓到鴨子了！
+            </p>
+            <div class="form-group">
+                <label>抓到幾隻？</label>
+                <input type="number" id="duckAmountInput" class="input" value="1" min="1" max="999" style="text-align: center; font-size: 32px; padding: 16px;">
+            </div>
+            <div class="quick-btns">
+                <button class="btn btn-sm" onclick="setDuckAmount(1)">1</button>
+                <button class="btn btn-sm" onclick="setDuckAmount(2)">2</button>
+                <button class="btn btn-sm" onclick="setDuckAmount(3)">3</button>
+                <button class="btn btn-sm" onclick="setDuckAmount(5)">5</button>
+                <button class="btn btn-sm" onclick="setDuckAmount(10)">10</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="cancelDuckCatch()">取消</button>
+            <button class="btn btn-primary" onclick="confirmDuckCatch()">確認</button>
+        </div>
+    </div>
+
+    <!-- 鴨子影片對話框 -->
+    <div class="modal" id="duckVideoDialog">
+        <div class="modal-header">
+            <h3 id="duckVideoDialogTitle">新增鴨子影片</h3>
+            <button class="modal-close" onclick="closeDialog('duckVideoDialog')">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="duckVideoType" value="caught">
+            <input type="hidden" id="duckVideoEditIndex" value="-1">
+            <div class="form-group">
+                <label>影片檔案</label>
+                <div class="input-with-button">
+                    <input type="text" id="duckVideoPath" class="input" placeholder="選擇影片檔案" readonly>
+                    <button class="btn btn-sm" onclick="selectDuckVideo()">瀏覽</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>權重</label>
+                <input type="number" id="duckVideoWeight" class="input" value="1" min="1" max="100">
+            </div>
+            <div class="form-group" id="duckVideoAmountGroup">
+                <label>增加鴨子數量</label>
+                <input type="number" id="duckVideoAmount" class="input" value="1" min="1" max="999">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('duckVideoDialog')">取消</button>
+            <button class="btn btn-primary" onclick="saveDuckVideo()">確定</button>
+        </div>
+    </div>
+
+    <!-- 進場用戶對話框 -->
+    <div class="modal" id="entryEditDialog">
+        <div class="modal-header">
+            <h3 id="entryEditDialogTitle">新增進場用戶</h3>
+            <button class="modal-close" onclick="closeDialog('entryEditDialog')">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="entryEditIndex" value="-1">
+            <div class="form-group">
+                <label>用戶名稱或 ID</label>
+                <input type="text" id="entryUsername" class="input" placeholder="例如：老公 或 yyue97342bf">
+            </div>
+            <div class="form-group">
+                <label>媒體檔案</label>
+                <div class="input-with-button">
+                    <input type="text" id="entryMediaPath" class="input" readonly placeholder="選擇影片或音效...">
+                    <button class="btn btn-sm" onclick="selectEntryMedia()">瀏覽</button>
+                </div>
+                <small id="entryMediaTypeHint">支援 MP4/AVI/MOV 或 MP3/WAV/OGG</small>
+            </div>
+            <div class="form-group">
+                <label>音量</label>
+                <div class="range-input">
+                    <input type="range" id="entryVolume" min="0" max="100" value="100">
+                    <span id="entryVolumeLabel" class="range-value">100%</span>
                 </div>
             </div>
             <div class="form-group">
                 <label>冷卻時間（秒）</label>
-                <input type="number" id="entryCooldown" class="form-input small" value="300" min="0">
+                <input type="number" id="entryCooldown" class="input input-sm" value="300" min="0">
             </div>
-            <label class="checkbox-label">
-                <input type="checkbox" id="entryForceInterrupt" checked>
-                <span>強制中斷其他播放</span>
-            </label>
-            <label class="checkbox-label" style="margin-top: 10px;">
-                <input type="checkbox" id="entryShowText" onchange="toggleEntryTextSettings()">
-                <span>顯示進場文字</span>
-            </label>
-            <div id="entryTextSettings" style="display: none; margin-top: 15px;">
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="entryForceInterrupt" checked>
+                    <span class="checkbox-box"></span>
+                    強制中斷其他播放
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="entryShowText" onchange="toggleEntryTextSettings()">
+                    <span class="checkbox-box"></span>
+                    顯示進場文字
+                </label>
+            </div>
+            <div id="entryTextSettings" style="display: none;">
                 <div class="form-group">
                     <label>進場文字</label>
-                    <input type="text" id="entryText" class="form-input" placeholder="歡迎 {name} 進入直播間！">
+                    <input type="text" id="entryText" class="input" placeholder="歡迎 {name} 進入直播間！">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>文字大小</label>
-                        <input type="number" id="entryTextSize" class="form-input small" value="48" min="12" max="200">
+                        <input type="number" id="entryTextSize" class="input input-sm" value="48" min="12" max="200">
                     </div>
                     <div class="form-group">
                         <label>文字顏色</label>
-                        <input type="color" id="entryTextColor" class="form-input color-input" value="#ffffff">
+                        <input type="color" id="entryTextColor" class="input-color" value="#ffffff">
                     </div>
                     <div class="form-group">
                         <label>顯示時間</label>
-                        <input type="number" id="entryTextDuration" class="form-input small" value="5" min="1" max="30">
+                        <input type="number" id="entryTextDuration" class="input input-sm" value="5" min="1" max="30">
                     </div>
                 </div>
             </div>
         </div>
-        <div class="dialog-footer">
-            <button class="btn btn-secondary" onclick="closeDialog('entryEditDialog')">取消</button>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('entryEditDialog')">取消</button>
             <button class="btn btn-primary" onclick="saveEntry()">儲存</button>
         </div>
     </div>
 
-    <!-- 盲盒禮物編輯對話框 -->
-    <div class="dialog" id="giftboxGiftDialog">
-        <div class="dialog-header">
+    <!-- 盲盒禮物對話框 -->
+    <div class="modal" id="giftboxGiftDialog">
+        <div class="modal-header">
             <h3 id="giftboxGiftDialogTitle">新增盲盒觸發</h3>
-            <button class="dialog-close" onclick="closeDialog('giftboxGiftDialog')">&times;</button>
+            <button class="modal-close" onclick="closeDialog('giftboxGiftDialog')">×</button>
         </div>
-        <div class="dialog-content">
+        <div class="modal-body">
             <input type="hidden" id="giftboxGiftEditIndex" value="-1">
             <div class="form-group">
                 <label>禮物名稱</label>
-                <input type="text" id="giftboxGiftName" class="form-input" placeholder="例如: Rose">
+                <input type="text" id="giftboxGiftName" class="input" placeholder="例如: Rose">
             </div>
             <div class="form-group">
                 <label>開盒次數 (每個禮物)</label>
-                <input type="number" id="giftboxGiftCount" class="form-input small" value="1" min="1">
+                <input type="number" id="giftboxGiftCount" class="input input-sm" value="1" min="1">
             </div>
         </div>
-        <div class="dialog-footer">
-            <button class="btn btn-secondary" onclick="closeDialog('giftboxGiftDialog')">取消</button>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('giftboxGiftDialog')">取消</button>
             <button class="btn btn-primary" onclick="saveGiftboxGift()">儲存</button>
         </div>
     </div>
 
-    <!-- 盲盒選項編輯對話框 -->
-    <div class="dialog" id="giftboxOptionDialog">
-        <div class="dialog-header">
+    <!-- 盲盒選項對話框 -->
+    <div class="modal" id="giftboxOptionDialog">
+        <div class="modal-header">
             <h3 id="giftboxOptionDialogTitle">新增盲盒選項</h3>
-            <button class="dialog-close" onclick="closeDialog('giftboxOptionDialog')">&times;</button>
+            <button class="modal-close" onclick="closeDialog('giftboxOptionDialog')">×</button>
         </div>
-        <div class="dialog-content">
+        <div class="modal-body">
             <input type="hidden" id="giftboxOptionEditIndex" value="-1">
             <div class="form-group">
                 <label>選項名稱</label>
-                <input type="text" id="giftboxOptionName" class="form-input" placeholder="例如: 大獎">
+                <input type="text" id="giftboxOptionName" class="input" placeholder="例如: 大獎">
             </div>
             <div class="form-group">
                 <label>顏色</label>
-                <input type="color" id="giftboxOptionColor" class="form-input color-input" value="#ffd93d">
+                <input type="color" id="giftboxOptionColor" class="input-color" value="#ffd93d">
             </div>
             <div class="form-group">
                 <label>權重</label>
-                <input type="number" id="giftboxOptionWeight" class="form-input small" value="1" min="1">
+                <input type="number" id="giftboxOptionWeight" class="input input-sm" value="1" min="1">
             </div>
             <div class="form-group">
                 <label>影片路徑 (可選)</label>
-                <div class="input-with-btn">
-                    <input type="text" id="giftboxOptionVideoPath" class="form-input" placeholder="選擇影片檔案">
+                <div class="input-with-button">
+                    <input type="text" id="giftboxOptionVideoPath" class="input" placeholder="選擇影片檔案">
                     <button class="btn btn-sm" onclick="selectGiftboxVideoFile()">瀏覽</button>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>播放秒數 (0=完整)</label>
-                    <input type="number" id="giftboxOptionVideoSeconds" class="form-input small" value="0" min="0" step="0.5">
+                    <input type="number" id="giftboxOptionVideoSeconds" class="input input-sm" value="0" min="0" step="0.5">
                 </div>
                 <div class="form-group">
                     <label>音量</label>
-                    <div class="range-group">
-                        <input type="range" id="giftboxOptionVideoVolume" class="form-range" value="100" min="0" max="100">
-                        <span id="giftboxVolumeValue">100%</span>
+                    <div class="range-input">
+                        <input type="range" id="giftboxOptionVideoVolume" value="100" min="0" max="100">
+                        <span id="giftboxVolumeValue" class="range-value">100%</span>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="dialog-footer">
-            <button class="btn btn-secondary" onclick="closeDialog('giftboxOptionDialog')">取消</button>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('giftboxOptionDialog')">取消</button>
             <button class="btn btn-primary" onclick="saveGiftboxOption()">儲存</button>
         </div>
     </div>
 
     <!-- 模擬送禮對話框 -->
-    <div class="dialog" id="simulateDialog">
-        <div class="dialog-header">
+    <div class="modal" id="simulateDialog">
+        <div class="modal-header">
             <h3>🎁 模擬送禮</h3>
-            <button class="dialog-close" onclick="closeDialog('simulateDialog')">&times;</button>
+            <button class="modal-close" onclick="closeDialog('simulateDialog')">×</button>
         </div>
-        <div class="dialog-content">
+        <div class="modal-body">
             <div class="form-group">
                 <label>用戶名稱</label>
-                <input type="text" id="simUsername" class="form-input" value="測試用戶">
+                <input type="text" id="simUsername" class="input" value="測試用戶">
             </div>
             <div class="form-group">
                 <label>禮物</label>
-                <select id="simGift" class="form-input"></select>
+                <select id="simGift" class="input"></select>
             </div>
             <div class="form-group">
                 <label>數量</label>
-                <input type="number" id="simCount" class="form-input small" value="1" min="1">
+                <input type="number" id="simCount" class="input input-sm" value="1" min="1">
             </div>
         </div>
-        <div class="dialog-footer">
-            <button class="btn btn-secondary" onclick="closeDialog('simulateDialog')">取消</button>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('simulateDialog')">取消</button>
             <button class="btn btn-primary" onclick="doSimulate()">送出</button>
         </div>
     </div>

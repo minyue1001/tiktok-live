@@ -2,7 +2,7 @@
  * TikTok 直播互動系統 - Electron 主進程
  */
 
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const WebSocket = require('ws');
@@ -41,7 +41,14 @@ const state = {
     currentTikTokAccount: '',
     chatDisplayEnabled: false,
     userNicknameCache: new Map(),  // 用戶暱稱快取 (userId -> {nickname, uniqueId, time})
-    mainWindowFocusListenerAdded: false  // 追蹤 focus 監聽器是否已添加
+    mainWindowFocusListenerAdded: false,  // 追蹤 focus 監聯器是否已添加
+    duckCount: 0,             // 抓鴨子計數
+    lastDuckVideo: null,      // 上次播放的鴨子影片
+    duckPityCounter: 0,       // 保底計數器
+    duckLeaderboard: {        // 抓鴨子排行榜
+        totalRanking: [],     // 累計排行 [{uniqueId, nickname, avatar, totalDucks}]
+        singleHighest: []     // 單次最高 [{uniqueId, nickname, avatar, amount, date}]
+    }
 };
 
 // ============ 路徑設定 ============
@@ -52,6 +59,7 @@ const DATA_DIR = isDev
 const CONFIG_PATH = path.join(DATA_DIR, 'tiktok_config.json');
 const HIGH_LEVEL_USERS_PATH = path.join(DATA_DIR, 'high_level_users.json');
 const USER_CACHE_PATH = path.join(DATA_DIR, 'user_cache.json');
+const LEADERBOARD_PATH = path.join(DATA_DIR, 'duck_leaderboard.json');
 
 // ============ 配置管理 ============
 function loadConfig() {
@@ -75,10 +83,33 @@ function getDefaultConfig() {
         port: 10010,
         wheel_enabled: true,
         video_enabled: true,
+        random_video_enabled: false,
+        duck_catch_enabled: false,
         entry_enabled: false,
         giftbox_enabled: false,
         wheel_gifts: [],
         video_gifts: [],
+        random_video_list: [],
+        duck_catch_config: {
+            trigger_type: 'gift',
+            trigger_gift: '',
+            trigger_keyword: '',
+            catch_rate: 50,
+            video_speed: 1,
+            video_volume: 100,
+            video_seconds: 0,
+            video_priority: 1,
+            force_interrupt: false,
+            quack_sound: '',
+            caught_videos: [],  // [{path, weight, amount}]
+            missed_videos: [],  // [{path, weight}]
+            pity_enabled: false,      // 保底功能
+            pity_threshold: 1000,     // 第一層保底次數
+            pity_min_amount: 5000,    // 第一層保底最低鴨子數
+            pity_threshold_jackpot: 2000,  // 第二層保底次數（終極保底）
+            pity_jackpot_amount: 10000     // 第二層保底鴨子數（大獎）
+        },
+        milestone_firework_video: '',  // 里程碑慶祝煙火影片路徑
         wheel_options: [],
         giftbox_gifts: [],
         giftbox_options: [],
@@ -91,7 +122,8 @@ function getDefaultConfig() {
             wheel: { width: 350, height: 350, left: 0, top: 150, visible: false },
             giftbox: { width: 200, height: 200, left: 465, top: 245, visible: false, autoHide: true },
             videoContainers: {},
-            videoModuleVisible: true
+            videoModuleVisible: true,
+            duckCounter: { left: 50, top: 50, visible: true, fontSize: 48 }
         }
     };
 }
@@ -453,6 +485,159 @@ function saveUserCache() {
     }
 }
 
+// ============ 排行榜管理 ============
+function loadLeaderboard() {
+    try {
+        if (fs.existsSync(LEADERBOARD_PATH)) {
+            const data = JSON.parse(fs.readFileSync(LEADERBOARD_PATH, 'utf8'));
+            state.duckLeaderboard = {
+                totalRanking: data.totalRanking || [],
+                singleHighest: data.singleHighest || []
+            };
+            console.log(`[Leaderboard] 已載入排行榜: 累計${state.duckLeaderboard.totalRanking.length}人, 單次${state.duckLeaderboard.singleHighest.length}人`);
+        }
+    } catch (e) {
+        console.error('[Leaderboard] 載入失敗:', e.message);
+    }
+}
+
+function saveLeaderboard() {
+    try {
+        fs.writeFileSync(LEADERBOARD_PATH, JSON.stringify(state.duckLeaderboard, null, 2), 'utf8');
+        console.log('[Leaderboard] 已儲存排行榜');
+    } catch (e) {
+        console.error('[Leaderboard] 儲存失敗:', e.message);
+    }
+}
+
+// 更新排行榜（當抓到鴨子時呼叫）
+// isPity: 是否為保底觸發（保底不計入單次最高里程碑）
+function updateLeaderboard(userInfo, duckAmount, isPity = false) {
+    if (!userInfo || !duckAmount || duckAmount <= 0) return;
+
+    const uniqueId = userInfo.uniqueId || userInfo.userId || '';
+    const nickname = userInfo.nickname || uniqueId || '未知用戶';
+    const avatar = userInfo.avatar || userInfo.profilePictureUrl || '';
+
+    if (!uniqueId) return;
+
+    // 記錄更新前的第一名（用於里程碑檢測）
+    const prevTotalFirst = state.duckLeaderboard.totalRanking[0] || null;
+    const prevSingleFirst = state.duckLeaderboard.singleHighest[0] || null;
+
+    // 1. 更新累計排行
+    let totalEntry = state.duckLeaderboard.totalRanking.find(e => e.uniqueId === uniqueId);
+    if (totalEntry) {
+        totalEntry.totalDucks += duckAmount;
+        totalEntry.nickname = nickname || totalEntry.nickname;
+        totalEntry.avatar = avatar || totalEntry.avatar;
+    } else {
+        state.duckLeaderboard.totalRanking.push({
+            uniqueId,
+            nickname,
+            avatar,
+            totalDucks: duckAmount
+        });
+    }
+    // 排序並保留前 50 名
+    state.duckLeaderboard.totalRanking.sort((a, b) => b.totalDucks - a.totalDucks);
+    state.duckLeaderboard.totalRanking = state.duckLeaderboard.totalRanking.slice(0, 50);
+
+    // 2. 更新單次最高排行
+    let singleEntry = state.duckLeaderboard.singleHighest.find(e => e.uniqueId === uniqueId);
+    let newSingleRecord = false;
+    if (singleEntry) {
+        if (duckAmount > singleEntry.amount) {
+            singleEntry.amount = duckAmount;
+            singleEntry.date = new Date().toISOString().split('T')[0];
+            singleEntry.nickname = nickname || singleEntry.nickname;
+            singleEntry.avatar = avatar || singleEntry.avatar;
+            newSingleRecord = true;
+        }
+    } else {
+        state.duckLeaderboard.singleHighest.push({
+            uniqueId,
+            nickname,
+            avatar,
+            amount: duckAmount,
+            date: new Date().toISOString().split('T')[0]
+        });
+        newSingleRecord = true;
+    }
+    // 排序並保留前 50 名
+    state.duckLeaderboard.singleHighest.sort((a, b) => b.amount - a.amount);
+    state.duckLeaderboard.singleHighest = state.duckLeaderboard.singleHighest.slice(0, 50);
+
+    // 儲存
+    saveLeaderboard();
+
+    // 通知前端更新
+    if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+        state.mainWindow.webContents.send('leaderboard-updated', state.duckLeaderboard);
+    }
+
+    // 通知綠幕更新
+    sendToGreenScreen('updateLeaderboard', state.duckLeaderboard);
+
+    // === 里程碑檢測 ===
+    const newTotalFirst = state.duckLeaderboard.totalRanking[0] || null;
+    const newSingleFirst = state.duckLeaderboard.singleHighest[0] || null;
+
+    // 里程碑 1: 累計第一名達到 10000+
+    // 觸發條件：新的第一名達到 10000 且（之前沒有第一名 或 新第一名不同 或 新第一名超越了之前的紀錄）
+    const TOTAL_MILESTONE = 10000;
+    if (newTotalFirst && newTotalFirst.totalDucks >= TOTAL_MILESTONE) {
+        const isNewChampion = !prevTotalFirst ||
+            prevTotalFirst.uniqueId !== newTotalFirst.uniqueId ||
+            (prevTotalFirst.totalDucks < TOTAL_MILESTONE && newTotalFirst.totalDucks >= TOTAL_MILESTONE);
+
+        if (isNewChampion) {
+            addLog(`🎆 里程碑！${newTotalFirst.nickname} 成為累計第一名 (${newTotalFirst.totalDucks}🦆)！`);
+            triggerMilestoneCelebration('total', {
+                nickname: newTotalFirst.nickname,
+                avatar: newTotalFirst.avatar,
+                amount: newTotalFirst.totalDucks
+            });
+        }
+    }
+
+    // 里程碑 2: 單次最高達到 5000+（保底不計）
+    // 觸發條件：新紀錄、達到 5000+、非保底
+    const SINGLE_MILESTONE = 5000;
+    if (!isPity && newSingleRecord && duckAmount >= SINGLE_MILESTONE) {
+        // 檢查是否打破紀錄（成為新的第一名 或 刷新自己的第一名紀錄）
+        if (newSingleFirst && newSingleFirst.uniqueId === uniqueId && newSingleFirst.amount === duckAmount) {
+            addLog(`🎆 里程碑！${nickname} 創下單次最高紀錄 (${duckAmount}🦆)！`);
+            triggerMilestoneCelebration('single', {
+                nickname: nickname,
+                avatar: avatar,
+                amount: duckAmount
+            });
+        }
+    }
+}
+
+// 觸發里程碑慶祝
+function triggerMilestoneCelebration(type, data) {
+    const config = state.config;
+    const fireworkVideo = config.milestone_firework_video || '';
+
+    if (!fireworkVideo || !fs.existsSync(fireworkVideo)) {
+        addLog(`⚠️ 里程碑煙火影片未設定或不存在`);
+        return;
+    }
+
+    addLog(`🎇 播放里程碑慶祝: ${type === 'total' ? '累計第一' : '單次最高'} - ${data.nickname}`);
+
+    sendToGreenScreen('triggerMilestone', {
+        type: type,  // 'total' 或 'single'
+        nickname: data.nickname,
+        avatar: data.avatar,
+        amount: data.amount,
+        videoPath: fireworkVideo
+    });
+}
+
 function cacheUserNickname(userId, nickname, uniqueId) {
     if (!userId || (!nickname && !uniqueId)) return;
 
@@ -501,6 +686,7 @@ function handleTikTokMessage(msg) {
         const giftName = data.giftName || data.gift_name || data.gift?.name || '';
         const count = parseInt(data.repeatCount || data.giftCount || data.count || 1);
         const level = parseInt(data.level || data.user?.level || 0);
+        const profilePictureUrl = data.profilePictureUrl || data.user?.profilePictureUrl || '';
 
         // 快取用戶暱稱
         if (userId) cacheUserNickname(userId, data.nickname, uniqueId);
@@ -519,7 +705,10 @@ function handleTikTokMessage(msg) {
         state.giftDedup[giftKey] = now;
 
         addLog(`🎁 ${username} 送出 ${giftName} x${count}`);
-        triggerEffects('gift', username, giftName, count);
+
+        // 傳遞用戶資訊用於排行榜
+        const userInfo = { nickname: username, uniqueId, userId, avatar: profilePictureUrl };
+        triggerEffects('gift', username, giftName, count, userInfo);
 
         // 透過送禮回推進場
         if (userId) {
@@ -949,7 +1138,7 @@ function loadEntryHistory() {
 }
 
 // ============ 效果觸發 ============
-function triggerEffects(type, username, value, count) {
+function triggerEffects(type, username, value, count, userInfo = null) {
     // 轉盤觸發
     if (type === 'gift' && state.config.wheel_enabled) {
         const wheelGifts = state.config.wheel_gifts || [];
@@ -992,7 +1181,7 @@ function triggerEffects(type, username, value, count) {
             }
 
             if (matched) {
-                addLog(`🎬 觸發影片: ${gift.name}`);
+                addLog(`🎬 觸發影片: ${gift.name} x${count} (每次重複: ${gift.video_repeat || 1}次)`);
                 sendToGreenScreen('triggerVideo', {
                     username,
                     path: gift.video_path,
@@ -1000,12 +1189,335 @@ function triggerEffects(type, username, value, count) {
                     volume: gift.video_volume || 100,
                     seconds: gift.video_seconds || 0,
                     repeat: gift.video_repeat || 1,
+                    count: count,  // 禮物數量，送幾個就播幾次
                     priority: gift.video_priority || 1,
                     force_interrupt: gift.force_interrupt || false
                 });
                 break;
             }
         }
+    }
+
+    // 隨機影片觸發
+    if (state.config.random_video_enabled) {
+        const randomVideoList = state.config.random_video_list || [];
+        for (const rv of randomVideoList) {
+            if (rv.enabled === false) continue;
+
+            let matched = false;
+            if (rv.trigger_type === 'gift' && type === 'gift') {
+                matched = rv.trigger_gift && rv.trigger_gift.toLowerCase() === value.toLowerCase();
+            } else if (rv.trigger_type === 'chat' && type === 'chat') {
+                matched = rv.trigger_keyword && value.includes(rv.trigger_keyword);
+            } else if (rv.trigger_type === 'like' && type === 'like') {
+                matched = true;
+            }
+
+            if (matched && rv.folder_path) {
+                // 從資料夾隨機選擇影片
+                const selectedVideo = selectRandomVideo(rv);
+                if (selectedVideo) {
+                    addLog(`🎲 觸發隨機影片: ${rv.name} x${count} -> ${path.basename(selectedVideo)}`);
+                    sendToGreenScreen('triggerVideo', {
+                        username,
+                        path: selectedVideo,
+                        speed: rv.video_speed || 1,
+                        volume: rv.video_volume || 100,
+                        seconds: rv.video_seconds || 0,
+                        repeat: rv.video_repeat || 1,
+                        count: count,  // 禮物數量
+                        priority: rv.video_priority || 1,
+                        force_interrupt: rv.force_interrupt || false
+                    });
+                    break;
+                }
+            }
+        }
+    }
+
+    // 抓鴨子觸發
+    if (state.config.duck_catch_enabled) {
+        const cfg = state.config.duck_catch_config || {};
+        let matched = false;
+
+        if (cfg.trigger_type === 'gift' && type === 'gift') {
+            matched = cfg.trigger_gift && cfg.trigger_gift.toLowerCase() === value.toLowerCase();
+        } else if (cfg.trigger_type === 'chat' && type === 'chat') {
+            matched = cfg.trigger_keyword && value.includes(cfg.trigger_keyword);
+        } else if (cfg.trigger_type === 'like' && type === 'like') {
+            matched = true;
+        }
+
+        if (matched) {
+            // 根據禮物數量觸發多次
+            const triggerCount = count || 1;
+            const catchRate = cfg.catch_rate || 50;
+            const pityEnabled = cfg.pity_enabled || false;
+            const pityThreshold = cfg.pity_threshold || 1000;           // 第一層保底
+            const pityMinAmount = cfg.pity_min_amount || 5000;          // 第一層保底金額
+            const pityThresholdJackpot = cfg.pity_threshold_jackpot || 2000;  // 第二層保底（終極）
+            const pityJackpotAmount = cfg.pity_jackpot_amount || 10000;       // 第二層保底金額
+
+            for (let i = 0; i < triggerCount; i++) {
+                // 每次獨立計算是否抓到
+                const caught = Math.random() * 100 < catchRate;
+                let videos = caught ? (cfg.caught_videos || []) : (cfg.missed_videos || []);
+                let selectedVideo = null;
+                let isPityTrigger = false;
+                let pityLevel = 0;  // 0=無, 1=第一層, 2=第二層(終極)
+
+                if (caught && videos.length > 0) {
+                    // 檢查是否觸發保底
+                    if (pityEnabled) {
+                        if (state.duckPityCounter >= pityThresholdJackpot) {
+                            // 第二層保底（終極）：強制 10000 只
+                            const jackpotVideos = videos.filter(v => (v.amount || 0) >= pityJackpotAmount);
+                            if (jackpotVideos.length > 0) {
+                                selectedVideo = selectWeightedVideo(jackpotVideos);
+                                isPityTrigger = true;
+                                pityLevel = 2;
+                                addLog(`🏆 終極保底觸發！(${state.duckPityCounter}/${pityThresholdJackpot}) - 保證 ${pityJackpotAmount}+ 只！`);
+                            }
+                        } else if (state.duckPityCounter >= pityThreshold) {
+                            // 第一層保底：5000+ 只
+                            const bigPrizeVideos = videos.filter(v => (v.amount || 0) >= pityMinAmount);
+                            if (bigPrizeVideos.length > 0) {
+                                selectedVideo = selectWeightedVideo(bigPrizeVideos);
+                                isPityTrigger = true;
+                                pityLevel = 1;
+                                addLog(`🎉 保底觸發！(${state.duckPityCounter}/${pityThreshold}) - 保證 ${pityMinAmount}+ 只！`);
+                            }
+                        }
+                    }
+
+                    // 如果沒有保底，正常選擇
+                    if (!selectedVideo) {
+                        selectedVideo = selectWeightedVideo(videos);
+                    }
+
+                    // 更新保底計數器
+                    if (selectedVideo) {
+                        const duckAmount = selectedVideo.amount || 1;
+                        if (duckAmount >= pityJackpotAmount) {
+                            // 中終極大獎（10000+），完全重置
+                            if (pityEnabled && state.duckPityCounter > 0) {
+                                addLog(`🏆 終極大獎！重置保底計數器 (${state.duckPityCounter} -> 0)`);
+                            }
+                            state.duckPityCounter = 0;
+                        } else if (duckAmount >= pityMinAmount) {
+                            // 中大獎（5000+），重置但還沒到終極
+                            if (pityEnabled && state.duckPityCounter > 0) {
+                                addLog(`🎊 大獎重置保底計數器 (${state.duckPityCounter} -> 0)`);
+                            }
+                            state.duckPityCounter = 0;
+                        } else if (pityEnabled) {
+                            // 沒中大獎，增加保底計數器
+                            state.duckPityCounter++;
+                        }
+                    }
+                } else if (!caught && videos.length > 0) {
+                    // 沒抓到，正常選擇沒抓到影片
+                    selectedVideo = selectWeightedVideo(videos);
+                    // 沒抓到也計入保底（內部計數，UI 會在影片播完後更新）
+                    if (pityEnabled) {
+                        state.duckPityCounter++;
+                    }
+                }
+
+                // 日誌 - 顯示兩層保底進度
+                let pityInfo = '';
+                if (pityEnabled) {
+                    if (state.duckPityCounter >= pityThreshold) {
+                        pityInfo = ` [保底: ${state.duckPityCounter}/${pityThresholdJackpot} 🔥]`;
+                    } else {
+                        pityInfo = ` [保底: ${state.duckPityCounter}/${pityThreshold}]`;
+                    }
+                }
+                if (triggerCount > 1) {
+                    addLog(`🦆 ${username} 觸發抓鴨子 (${i + 1}/${triggerCount}) - 機率${catchRate}% - ${caught ? '抓到了！' : '沒抓到'}${pityInfo}`);
+                } else {
+                    addLog(`🦆 ${username} 觸發抓鴨子 - 機率${catchRate}% - ${caught ? '抓到了！' : '沒抓到'}${pityInfo}`);
+                }
+
+                // 保底 UI 更新會在影片播完後一起發送
+
+                if (selectedVideo && fs.existsSync(selectedVideo.path)) {
+                    const duckAmount = caught ? (selectedVideo.amount || 1) : 0;
+
+                    // 更新排行榜（抓到鴨子時）
+                    if (caught && duckAmount > 0 && userInfo) {
+                        updateLeaderboard(userInfo, duckAmount, isPityTrigger);
+                    }
+
+                    addLog(`🎬 播放鴨子影片: ${path.basename(selectedVideo.path)} (數量: ${duckAmount})${isPityTrigger ? ' ⭐保底' : ''}`);
+
+                    // 播放影片（鴨子計數和保底計數都在影片播完後更新）
+                    sendToGreenScreen('triggerDuckVideo', {
+                        username,
+                        path: selectedVideo.path,
+                        caught: caught,
+                        duckAmount: duckAmount,
+                        speed: cfg.video_speed || 1,
+                        volume: cfg.video_volume || 100,
+                        seconds: cfg.video_seconds || 0,
+                        priority: cfg.video_priority || 1,
+                        force_interrupt: cfg.force_interrupt || false,
+                        // 傳遞保底資訊，影片播完後一起更新
+                        pityEnabled: pityEnabled,
+                        pityCounter: state.duckPityCounter,
+                        pityThreshold: pityThreshold,
+                        pityThresholdJackpot: pityThresholdJackpot
+                    });
+                } else if (selectedVideo) {
+                    addLog(`❌ 影片檔案不存在: ${selectedVideo?.path}`);
+                } else if (videos.length === 0) {
+                    addLog(`❌ 沒有設定${caught ? '抓到' : '沒抓到'}影片`);
+                }
+            }
+        }
+    }
+}
+
+// 從資料夾隨機選擇影片（簡單版本，用於抓鴨子等模組）
+function selectRandomVideoFromFolder(folderPath, avoidLast = true) {
+    try {
+        if (!folderPath || !fs.existsSync(folderPath)) {
+            return null;
+        }
+
+        const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+        const files = fs.readdirSync(folderPath).filter(file => {
+            const ext = path.extname(file).toLowerCase();
+            return videoExtensions.includes(ext);
+        });
+
+        if (files.length === 0) {
+            return null;
+        }
+
+        // 避免連續重複
+        let availableFiles = files;
+        if (avoidLast && files.length > 1 && state.lastDuckVideo) {
+            availableFiles = files.filter(f => path.join(folderPath, f) !== state.lastDuckVideo);
+        }
+
+        const randomIndex = Math.floor(Math.random() * availableFiles.length);
+        const selectedFile = availableFiles[randomIndex];
+        const fullPath = path.join(folderPath, selectedFile);
+        state.lastDuckVideo = fullPath;
+
+        return fullPath;
+    } catch (e) {
+        console.error('[selectRandomVideoFromFolder] 錯誤:', e);
+        return null;
+    }
+}
+
+// 根據權重從影片列表中隨機選擇
+let lastWeightedVideo = null;
+function selectWeightedVideo(videos, avoidLast = true) {
+    if (!videos || videos.length === 0) return null;
+
+    // 過濾掉不存在的檔案
+    const validVideos = videos.filter(v => v.path && fs.existsSync(v.path));
+    if (validVideos.length === 0) return null;
+
+    // 避免連續重複
+    let availableVideos = validVideos;
+    if (avoidLast && validVideos.length > 1 && lastWeightedVideo) {
+        availableVideos = validVideos.filter(v => v.path !== lastWeightedVideo);
+        if (availableVideos.length === 0) availableVideos = validVideos;
+    }
+
+    // 計算總權重
+    const totalWeight = availableVideos.reduce((sum, v) => sum + (v.weight || 1), 0);
+
+    // 隨機選擇
+    let random = Math.random() * totalWeight;
+    for (const video of availableVideos) {
+        random -= (video.weight || 1);
+        if (random <= 0) {
+            lastWeightedVideo = video.path;
+            return video;
+        }
+    }
+
+    // 備用：返回最後一個
+    const selected = availableVideos[availableVideos.length - 1];
+    lastWeightedVideo = selected.path;
+    return selected;
+}
+
+// 從資料夾隨機選擇影片（支援權重和避免連續重複）
+const lastPlayedVideos = new Map();  // 記錄每個隨機影片設定上次播放的檔案
+
+function selectRandomVideo(rv) {
+    try {
+        const folderPath = rv.folder_path;
+        if (!fs.existsSync(folderPath)) {
+            console.log(`[RandomVideo] 資料夾不存在: ${folderPath}`);
+            return null;
+        }
+
+        // 取得資料夾內所有影片檔案
+        const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+        const files = fs.readdirSync(folderPath).filter(file => {
+            const ext = path.extname(file).toLowerCase();
+            return videoExtensions.includes(ext);
+        });
+
+        if (files.length === 0) {
+            console.log(`[RandomVideo] 資料夾內無影片: ${folderPath}`);
+            return null;
+        }
+
+        // 取得權重設定（預設每個檔案權重為1）
+        const weights = rv.video_weights || {};
+
+        // 避免連續重複（如果啟用且檔案數量 > 1）
+        let availableFiles = files;
+        if (rv.avoid_repeat && files.length > 1) {
+            const lastPlayed = lastPlayedVideos.get(rv.name);
+            if (lastPlayed) {
+                availableFiles = files.filter(f => f !== lastPlayed);
+            }
+        }
+
+        // 計算加權隨機
+        let selectedFile;
+        const totalWeight = availableFiles.reduce((sum, file) => {
+            return sum + (weights[file] || 1);
+        }, 0);
+
+        if (totalWeight <= 0) {
+            // 如果總權重為0，使用等機率隨機
+            const randomIndex = Math.floor(Math.random() * availableFiles.length);
+            selectedFile = availableFiles[randomIndex];
+        } else {
+            // 加權隨機選擇
+            let random = Math.random() * totalWeight;
+            for (const file of availableFiles) {
+                const weight = weights[file] || 1;
+                random -= weight;
+                if (random <= 0) {
+                    selectedFile = file;
+                    break;
+                }
+            }
+            // 防止浮點數誤差
+            if (!selectedFile) {
+                selectedFile = availableFiles[availableFiles.length - 1];
+            }
+        }
+
+        // 記錄這次播放的檔案
+        lastPlayedVideos.set(rv.name, selectedFile);
+
+        console.log(`[RandomVideo] 選中: ${selectedFile} (權重: ${weights[selectedFile] || 1})`);
+        return path.join(folderPath, selectedFile);
+    } catch (e) {
+        console.error('[RandomVideo] 選擇影片失敗:', e);
+        return null;
     }
 }
 
@@ -1120,7 +1632,7 @@ function sendToGreenScreen(event, data) {
         console.log(`[sendToGreenScreen] 發送事件: ${event}`);
         state.greenWindow.webContents.send('green-screen-event', { event, data });
     } else {
-        console.log(`[sendToGreenScreen] 綠幕視窗未開啟，無法發送: ${event}`);
+        addLog(`⚠️ 綠幕視窗未開啟，無法發送事件: ${event}`);
     }
 }
 
@@ -1254,9 +1766,14 @@ function setupIPC() {
 
     // 檔案選擇
     ipcMain.handle('select-file', async (_, type) => {
-        const filters = type === 'media'
-            ? [{ name: '媒體檔案', extensions: ['mp4', 'avi', 'mov', 'mkv', 'webm', 'mp3', 'wav', 'ogg', 'm4a'] }]
-            : [{ name: '影片檔案', extensions: ['mp4', 'avi', 'mov', 'mkv', 'webm'] }];
+        let filters;
+        if (type === 'media') {
+            filters = [{ name: '媒體檔案', extensions: ['mp4', 'avi', 'mov', 'mkv', 'webm', 'mp3', 'wav', 'ogg', 'm4a'] }];
+        } else if (type === 'audio') {
+            filters = [{ name: '音效檔案', extensions: ['mp3', 'wav', 'ogg', 'm4a'] }];
+        } else {
+            filters = [{ name: '影片檔案', extensions: ['mp4', 'avi', 'mov', 'mkv', 'webm'] }];
+        }
 
         const result = await dialog.showOpenDialog(state.mainWindow, {
             properties: ['openFile'],
@@ -1266,10 +1783,255 @@ function setupIPC() {
         return result.filePaths[0] || null;
     });
 
+    // 多檔案選擇（批量）
+    ipcMain.handle('select-files', async (_, type) => {
+        let filters;
+        if (type === 'media') {
+            filters = [{ name: '媒體檔案', extensions: ['mp4', 'avi', 'mov', 'mkv', 'webm', 'mp3', 'wav', 'ogg', 'm4a'] }];
+        } else if (type === 'audio') {
+            filters = [{ name: '音效檔案', extensions: ['mp3', 'wav', 'ogg', 'm4a'] }];
+        } else {
+            filters = [{ name: '影片檔案', extensions: ['mp4', 'avi', 'mov', 'mkv', 'webm'] }];
+        }
+
+        const result = await dialog.showOpenDialog(state.mainWindow, {
+            properties: ['openFile', 'multiSelections'],
+            filters
+        });
+
+        return result.filePaths || [];
+    });
+
+    // 資料夾選擇
+    ipcMain.handle('select-folder', async () => {
+        const result = await dialog.showOpenDialog(state.mainWindow, {
+            properties: ['openDirectory']
+        });
+        return result.filePaths[0] || null;
+    });
+
+    // 取得資料夾內的影片數量
+    ipcMain.handle('get-folder-video-count', (_, folderPath) => {
+        try {
+            if (!folderPath || !fs.existsSync(folderPath)) return 0;
+            const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+            const files = fs.readdirSync(folderPath).filter(file => {
+                const ext = path.extname(file).toLowerCase();
+                return videoExtensions.includes(ext);
+            });
+            return files.length;
+        } catch (e) {
+            return 0;
+        }
+    });
+
     // 模擬送禮
     ipcMain.handle('simulate-gift', (_, username, giftName, count) => {
         addLog(`🎮 模擬: ${username} 送出 ${giftName} x${count}`);
         triggerEffects('gift', username, giftName, count);
+    });
+
+    // 測試隨機影片
+    ipcMain.handle('test-random-video', (_, rvConfig) => {
+        const selectedVideo = selectRandomVideo(rvConfig);
+        if (selectedVideo) {
+            addLog(`🎲 測試隨機影片: ${rvConfig.name} -> ${path.basename(selectedVideo)}`);
+            sendToGreenScreen('triggerVideo', {
+                username: '測試用戶',
+                path: selectedVideo,
+                speed: rvConfig.video_speed || 1,
+                volume: rvConfig.video_volume || 100,
+                seconds: rvConfig.video_seconds || 0,
+                repeat: rvConfig.video_repeat || 1,
+                priority: rvConfig.video_priority || 1,
+                force_interrupt: rvConfig.force_interrupt || false
+            });
+            return { success: true, video: path.basename(selectedVideo) };
+        } else {
+            addLog(`❌ 測試隨機影片失敗: ${rvConfig.name} - 資料夾內無影片`);
+            return { success: false, error: '資料夾內無影片' };
+        }
+    });
+
+    // ============ 抓鴨子模組 ============
+    // 取得鴨子數量
+    ipcMain.handle('get-duck-count', () => {
+        return state.duckCount;
+    });
+
+    // 設定鴨子數量
+    ipcMain.handle('set-duck-count', (_, count) => {
+        state.duckCount = Math.max(0, count);
+        sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        if (state.mainWindow) {
+            state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+        }
+        return state.duckCount;
+    });
+
+    // 增加鴨子數量
+    ipcMain.handle('add-duck', (_, amount) => {
+        state.duckCount += amount;
+        addLog(`🦆 抓到 ${amount} 隻鴨子！目前總數: ${state.duckCount}`);
+        sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+        }
+        return state.duckCount;
+    });
+
+    // 減少鴨子數量
+    ipcMain.handle('remove-duck', (_, amount = 1) => {
+        state.duckCount = Math.max(0, state.duckCount - amount);
+        addLog(`🦆 減少 ${amount} 隻鴨子，目前總數: ${state.duckCount}`);
+        sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        if (state.mainWindow) {
+            state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+        }
+        return state.duckCount;
+    });
+
+    // 重置保底計數器
+    ipcMain.handle('reset-pity-counter', () => {
+        state.duckPityCounter = 0;
+        addLog('🎯 已重置保底計數器');
+        return { success: true };
+    });
+
+    // 取得保底計數器
+    ipcMain.handle('get-pity-counter', () => {
+        const cfg = state.config.duck_catch_config || {};
+        return {
+            current: state.duckPityCounter,
+            threshold: cfg.pity_threshold || 1000,
+            thresholdJackpot: cfg.pity_threshold_jackpot || 2000
+        };
+    });
+
+    // 通知主視窗更新保底計數（由綠幕呼叫）
+    ipcMain.handle('notify-pity-update', () => {
+        const cfg = state.config.duck_catch_config || {};
+        if (cfg.pity_enabled && state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('pity-counter-updated', {
+                current: state.duckPityCounter,
+                threshold: cfg.pity_threshold || 1000,
+                thresholdJackpot: cfg.pity_threshold_jackpot || 2000
+            });
+        }
+        return { success: true };
+    });
+
+    // 取得排行榜
+    ipcMain.handle('get-leaderboard', () => {
+        return state.duckLeaderboard;
+    });
+
+    // 清除排行榜
+    ipcMain.handle('clear-leaderboard', () => {
+        state.duckLeaderboard = {
+            totalRanking: [],
+            singleHighest: []
+        };
+        saveLeaderboard();
+        addLog('🏆 已清除排行榜');
+        return { success: true };
+    });
+
+    // 測試抓鴨子
+    ipcMain.handle('test-duck-catch', (_, caught, duckAmount) => {
+        const cfg = state.config.duck_catch_config || {};
+        const videos = caught ? (cfg.caught_videos || []) : (cfg.missed_videos || []);
+
+        if (videos.length === 0) {
+            return { success: false, error: `尚未設定${caught ? '抓到' : '沒抓到'}影片` };
+        }
+
+        // 根據權重隨機選擇影片
+        const selectedVideo = selectWeightedVideo(videos);
+        if (!selectedVideo || !fs.existsSync(selectedVideo.path)) {
+            return { success: false, error: '影片檔案不存在' };
+        }
+
+        // 如果抓到，使用影片設定的數量（如果有指定duckAmount則優先使用）
+        const actualAmount = caught ? (duckAmount || selectedVideo.amount || 1) : 0;
+        if (caught && actualAmount > 0) {
+            state.duckCount += actualAmount;
+            sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+            if (state.mainWindow) {
+                state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+            }
+        }
+
+        addLog(`🦆 測試抓鴨子: ${caught ? `抓到 ${actualAmount} 隻！` : '沒抓到'} -> ${path.basename(selectedVideo.path)}`);
+
+        sendToGreenScreen('triggerDuckVideo', {
+            username: '測試用戶',
+            path: selectedVideo.path,
+            caught: caught,
+            duckAmount: actualAmount,
+            speed: cfg.video_speed || 1,
+            volume: cfg.video_volume || 100,
+            seconds: cfg.video_seconds || 0,
+            priority: cfg.video_priority || 1,
+            force_interrupt: cfg.force_interrupt || false
+        });
+
+        return { success: true, caught, duckAmount: actualAmount, video: path.basename(selectedVideo.path), totalDucks: state.duckCount };
+    });
+
+    // 確認抓到鴨子並播放影片
+    ipcMain.handle('confirm-duck-catch', (_, username, videoPath, duckAmount, config) => {
+        // 增加鴨子數量
+        state.duckCount += duckAmount;
+        addLog(`🦆 ${username} 抓到 ${duckAmount} 隻鴨子！目前總數: ${state.duckCount}`);
+
+        // 通知綠幕更新數量
+        sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+
+        // 播放影片
+        sendToGreenScreen('triggerDuckVideo', {
+            username,
+            path: videoPath,
+            caught: true,
+            duckAmount: duckAmount,
+            speed: config.video_speed || 1,
+            volume: config.video_volume || 100,
+            seconds: config.video_seconds || 0,
+            priority: config.video_priority || 1,
+            force_interrupt: config.force_interrupt || false
+        });
+
+        // 通知主視窗更新
+        if (state.mainWindow) {
+            state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+        }
+
+        return { success: true, totalDucks: state.duckCount };
+    });
+
+    // 取得資料夾內的影片列表（含權重資訊）
+    ipcMain.handle('get-folder-videos', (_, folderPath) => {
+        try {
+            if (!folderPath || !fs.existsSync(folderPath)) {
+                return { success: false, videos: [], error: '資料夾不存在' };
+            }
+
+            const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+            const files = fs.readdirSync(folderPath).filter(file => {
+                const ext = path.extname(file).toLowerCase();
+                return videoExtensions.includes(ext);
+            });
+
+            const videos = files.map(file => ({
+                name: file,
+                path: path.join(folderPath, file)
+            }));
+
+            return { success: true, videos };
+        } catch (e) {
+            console.error('[get-folder-videos] 錯誤:', e);
+            return { success: false, videos: [], error: e.message };
+        }
     });
 
     // 高等級用戶
@@ -1382,10 +2144,14 @@ app.whenReady().then(() => {
     loadHighLevelUsers();
     loadEntryHistory();
     loadUserCache();  // 載入用戶快取
+    loadLeaderboard();  // 載入排行榜
     startMediaServer();
     setupIPC();
     setupAutoUpdater();
     createMainWindow();
+
+    // 註冊全域快捷鍵
+    registerGlobalShortcuts();
 
     // 每 30 秒儲存用戶快取
     state.userCacheSaveInterval = setInterval(saveUserCache, 30000);
@@ -1401,6 +2167,48 @@ app.whenReady().then(() => {
         }, 3000);
     }
 });
+
+// ============ 全域快捷鍵 ============
+function registerGlobalShortcuts() {
+    // F9: 減少一隻鴨子
+    globalShortcut.register('F9', () => {
+        if (state.duckCount > 0) {
+            state.duckCount--;
+            addLog(`🦆 快捷鍵減少鴨子，目前總數: ${state.duckCount}`);
+            sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+            if (state.mainWindow) {
+                state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+                state.mainWindow.webContents.send('play-quack-sound');
+            }
+        }
+    });
+
+    // F10: 減少五隻鴨子
+    globalShortcut.register('F10', () => {
+        const oldCount = state.duckCount;
+        state.duckCount = Math.max(0, state.duckCount - 5);
+        addLog(`🦆 快捷鍵減少5隻鴨子，目前總數: ${state.duckCount}`);
+        sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        if (state.mainWindow) {
+            state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+            if (oldCount > 0) {
+                state.mainWindow.webContents.send('play-quack-sound');
+            }
+        }
+    });
+
+    // F11: 重置鴨子數量為0
+    globalShortcut.register('F11', () => {
+        state.duckCount = 0;
+        addLog(`🦆 快捷鍵重置鴨子數量為 0`);
+        sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        if (state.mainWindow) {
+            state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+        }
+    });
+
+    console.log('[Shortcuts] 已註冊全域快捷鍵: F9(減1), F10(減5), F11(重置)');
+}
 
 // ============ 自動更新 ============
 function setupAutoUpdater() {
@@ -1501,6 +2309,8 @@ app.on('window-all-closed', () => {
     if (state.mediaServer) {
         state.mediaServer.close();
     }
+    // 取消註冊全域快捷鍵
+    globalShortcut.unregisterAll();
     app.quit();
 });
 

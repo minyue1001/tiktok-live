@@ -129,12 +129,12 @@
         .debug-panel {
             position: fixed;
             top: 0;
-            right: -380px;
-            width: 380px;
+            right: -280px;
+            width: 280px;
             height: 100vh;
             background: rgba(22, 27, 34, 0.98);
             border-left: 2px solid rgba(78, 204, 163, 0.5);
-            padding: 20px;
+            padding: 15px;
             transition: right 0.3s ease;
             z-index: 1000;
             overflow-y: auto;
@@ -147,56 +147,111 @@
 
         .debug-panel h3 {
             color: #4ecca3;
-            margin-bottom: 20px;
-            font-size: 18px;
+            margin-bottom: 15px;
+            font-size: 16px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 10px;
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .debug-section {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .debug-section h4 {
             color: #00d9ff;
-            margin-bottom: 12px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .debug-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
             margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: default;
         }
 
-        .debug-label {
-            font-size: 13px;
+        .debug-section.collapsible h4 {
+            cursor: pointer;
+            padding: 5px 0;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .debug-section.collapsible h4:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .debug-section.collapsible .collapse-icon {
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        .debug-section.collapsible.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .debug-section.collapsible.collapsed .section-content {
+            display: none;
+        }
+
+        /* 顯示控制網格 */
+        .debug-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
+        .debug-chip {
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
             color: #8b949e;
         }
 
+        .debug-chip:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .debug-chip.active {
+            background: rgba(78, 204, 163, 0.2);
+            border-color: rgba(78, 204, 163, 0.5);
+            color: #4ecca3;
+        }
+
+        /* 按鈕網格 */
+        .debug-btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
         .debug-btn {
-            padding: 8px 16px;
+            padding: 8px 12px;
             background: linear-gradient(135deg, #4ecca3, #3db892);
             border: none;
             border-radius: 6px;
             color: white;
-            font-size: 13px;
+            font-size: 12px;
             cursor: pointer;
             transition: all 0.2s;
+        }
+
+        .debug-btn.compact {
+            padding: 8px 6px;
+            font-size: 11px;
         }
 
         .debug-btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(78, 204, 163, 0.4);
-        }
-
-        .debug-btn.small {
-            padding: 5px 10px;
-            font-size: 12px;
         }
 
         .debug-btn.danger {
@@ -216,6 +271,16 @@
         .debug-btn:disabled:hover {
             transform: none;
             box-shadow: none;
+        }
+
+        .video-list.compact {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .video-list.compact .video-list-item {
+            padding: 6px 8px;
+            font-size: 11px;
         }
 
         .debug-toggle {
@@ -510,6 +575,538 @@
             object-fit: cover;
         }
 
+        /* 隨機影片專用容器（可拖曳縮圖版） */
+        .random-video-box {
+            position: absolute;
+            width: 300px;
+            height: 200px;
+            left: 50px;
+            top: 400px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        .random-video-box.hidden {
+            display: none !important;
+        }
+
+        .random-video-box.playing .random-video-placeholder {
+            display: none;
+        }
+
+        .random-video-box.playing .random-video-player {
+            display: block;
+        }
+
+        .random-video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+        }
+
+        .random-video-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .random-video-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: bold;
+        }
+
+        .random-video-player {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 抓鴨子影片容器 */
+        .duck-video-box {
+            position: absolute;
+            width: 300px;
+            height: 200px;
+            left: 400px;
+            top: 400px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 193, 7, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        .duck-video-box.hidden {
+            display: none !important;
+        }
+
+        .duck-video-box.playing .duck-video-placeholder {
+            display: none;
+        }
+
+        .duck-video-box.playing .duck-video-player {
+            display: block;
+        }
+
+        .duck-video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
+        }
+
+        .duck-video-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .duck-video-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: bold;
+        }
+
+        .duck-video-player {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 鴨子計數顯示 */
+        .duck-counter-box {
+            position: absolute;
+            width: 200px;
+            height: 100px;
+            left: 50px;
+            top: 50px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 5px solid rgba(255, 193, 7, 0.9);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            z-index: 200;
+            box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
+        }
+
+        .duck-counter-box.hidden {
+            display: none !important;
+        }
+
+        .duck-counter-icon {
+            font-size: 48px;
+            animation: duckBounce 2s ease-in-out infinite;
+        }
+
+        @keyframes duckBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .duck-counter-value {
+            font-size: 64px;
+            font-weight: bold;
+            color: #ffc107;
+            text-shadow: 0 0 20px rgba(255, 193, 7, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            font-family: 'Arial Black', sans-serif;
+        }
+
+        .duck-counter-add {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 32px;
+            font-weight: bold;
+            color: #4ade80;
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            font-family: 'Arial Black', sans-serif;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .duck-counter-add.show {
+            animation: duckAddPop 1.5s ease-out forwards;
+        }
+
+        @keyframes duckAddPop {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.5);
+            }
+            20% {
+                opacity: 1;
+                transform: translateY(-5px) scale(1.2);
+            }
+            40% {
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.8);
+            }
+        }
+
+        /* 保底計數顯示 */
+        .pity-counter-box {
+            position: absolute;
+            width: 180px;
+            height: 80px;
+            left: 50px;
+            top: 170px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 4px solid rgba(147, 51, 234, 0.9);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            z-index: 200;
+            box-shadow: 0 4px 20px rgba(147, 51, 234, 0.3);
+        }
+
+        .pity-counter-box.hidden {
+            display: none !important;
+        }
+
+        .pity-counter-label {
+            font-size: 14px;
+            color: #c084fc;
+            text-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+        }
+
+        .pity-counter-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #a855f7;
+            text-shadow: 0 0 15px rgba(168, 85, 247, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            font-family: 'Arial Black', sans-serif;
+        }
+
+        .pity-counter-value.stage2 {
+            color: #f59e0b;
+            text-shadow: 0 0 15px rgba(245, 158, 11, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .pity-counter-stage {
+            font-size: 12px;
+            color: #fbbf24;
+            text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+        }
+
+        /* 排行榜顯示 */
+        .leaderboard-box {
+            position: absolute;
+            width: 280px;
+            height: 350px;
+            right: 50px;
+            top: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px solid rgba(255, 193, 7, 0.8);
+            border-radius: 16px;
+            z-index: 200;
+            box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .leaderboard-box.hidden {
+            display: none !important;
+        }
+
+        .leaderboard-header {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.3), rgba(245, 158, 11, 0.2));
+            border-bottom: 2px solid rgba(255, 193, 7, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .leaderboard-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffc107;
+            text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        }
+
+        .leaderboard-tabs-gs {
+            display: flex;
+            gap: 4px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .leaderboard-tab-gs {
+            flex: 1;
+            padding: 6px 10px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .leaderboard-tab-gs:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .leaderboard-tab-gs.active {
+            background: linear-gradient(135deg, #ffc107, #f59e0b);
+            color: #1a1a24;
+            font-weight: bold;
+        }
+
+        .leaderboard-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+        }
+
+        .leaderboard-scroll.hidden {
+            display: none;
+        }
+
+        .lb-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            transition: all 0.2s;
+        }
+
+        .lb-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .lb-item.top-1 {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.15));
+            border: 1px solid rgba(255, 215, 0, 0.5);
+        }
+
+        .lb-item.top-2 {
+            background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(169, 169, 169, 0.1));
+            border: 1px solid rgba(192, 192, 192, 0.4);
+        }
+
+        .lb-item.top-3 {
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.2), rgba(184, 115, 51, 0.1));
+            border: 1px solid rgba(205, 127, 50, 0.4);
+        }
+
+        .lb-rank {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            flex-shrink: 0;
+        }
+
+        .lb-item.top-1 .lb-rank {
+            background: linear-gradient(135deg, #ffd700, #ffb300);
+            color: #1a1a24;
+            font-size: 16px;
+        }
+
+        .lb-item.top-2 .lb-rank {
+            background: linear-gradient(135deg, #c0c0c0, #a9a9a9);
+            color: #1a1a24;
+        }
+
+        .lb-item.top-3 .lb-rank {
+            background: linear-gradient(135deg, #cd7f32, #b8732d);
+            color: #1a1a24;
+        }
+
+        .lb-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .lb-avatar.placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .lb-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .lb-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .lb-score {
+            font-weight: bold;
+            font-size: 16px;
+            color: #ffc107;
+            white-space: nowrap;
+            text-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+        }
+
+        .lb-empty {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        /* 里程碑慶祝容器 */
+        .milestone-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            display: none;
+            pointer-events: none;
+        }
+
+        .milestone-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .milestone-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        .milestone-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            animation: milestonePopIn 0.5s ease-out;
+        }
+
+        @keyframes milestonePopIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .milestone-avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid gold;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.5);
+            object-fit: cover;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+        }
+
+        .milestone-avatar.placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+        }
+
+        .milestone-badge {
+            padding: 10px 30px;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border-radius: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #1a1a2e;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .milestone-title {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 4px 8px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .milestone-name {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .milestone-amount {
+            font-size: 64px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .milestone-amount span {
+            font-size: 48px;
+        }
+
         /* 可拖曳進場影片容器 */
         .entry-video-container {
             position: absolute;
@@ -617,10 +1214,12 @@
 
         /* 盲盒容器 */
         .giftbox-container {
+            position: absolute;
             top: 150px;
             right: 50px;
             width: 200px;
             height: 200px;
+            z-index: 50;
         }
 
         .giftbox-container.hidden {
@@ -870,6 +1469,108 @@
         <audio class="entry-audio" id="entryAudio"></audio>
     </div>
 
+    <!-- 隨機影片專用容器（可拖曳縮圖版） -->
+    <div class="draggable random-video-box" id="randomVideoContainer">
+        <div class="random-video-placeholder">
+            <span class="random-video-icon">🎲</span>
+            <span class="random-video-label">隨機影片</span>
+        </div>
+        <video class="random-video-player" id="randomVideoPlayer"></video>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 抓鴨子影片容器 -->
+    <div class="draggable duck-video-box" id="duckVideoContainer">
+        <div class="duck-video-placeholder">
+            <span class="duck-video-icon">🦆</span>
+            <span class="duck-video-label">抓鴨子</span>
+        </div>
+        <video class="duck-video-player" id="duckVideoPlayer"></video>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 鴨子計數顯示 -->
+    <div class="draggable duck-counter-box" id="duckCounterBox">
+        <span class="duck-counter-icon">🦆</span>
+        <span class="duck-counter-value" id="duckCounterValue">0</span>
+        <span class="duck-counter-add" id="duckCounterAdd"></span>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 保底計數顯示 -->
+    <div class="draggable pity-counter-box hidden" id="pityCounterBox">
+        <span class="pity-counter-label">🎰 保底進度</span>
+        <span class="pity-counter-value" id="pityCounterValue">0 / 1000</span>
+        <span class="pity-counter-stage" id="pityCounterStage"></span>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 排行榜 -->
+    <div class="draggable leaderboard-box hidden" id="leaderboardBox">
+        <div class="leaderboard-header">
+            <span>🏆</span>
+            <span class="leaderboard-title">排行榜</span>
+        </div>
+        <div class="leaderboard-tabs-gs">
+            <button class="leaderboard-tab-gs active" data-tab="total" onclick="switchGsLeaderboardTab('total')">📊 累計</button>
+            <button class="leaderboard-tab-gs" data-tab="single" onclick="switchGsLeaderboardTab('single')">🎯 單次</button>
+        </div>
+        <div class="leaderboard-scroll" id="gsLeaderboardTotal">
+            <div class="lb-empty">暫無資料</div>
+        </div>
+        <div class="leaderboard-scroll hidden" id="gsLeaderboardSingle">
+            <div class="lb-empty">暫無資料</div>
+        </div>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 里程碑慶祝 -->
+    <div class="milestone-overlay" id="milestoneOverlay">
+        <video class="milestone-video" id="milestoneVideo" muted></video>
+        <div class="milestone-content">
+            <div class="milestone-badge" id="milestoneBadge">🏆 累計第一</div>
+            <img class="milestone-avatar" id="milestoneAvatar" src="" alt="">
+            <div class="milestone-title">🎉 恭喜 🎉</div>
+            <div class="milestone-name" id="milestoneName">用戶名稱</div>
+            <div class="milestone-amount"><span id="milestoneAmount">10,000</span>🦆</div>
+        </div>
+    </div>
+
     <!-- 進場文字 -->
     <div class="draggable entry-text-container hidden" id="entryTextContainer">
         <span class="entry-text" id="entryText"></span>
@@ -938,67 +1639,59 @@
 
     <!-- 調試面板 -->
     <div class="debug-panel" id="debugPanel">
-        <h3>🛠️ 調試面板</h3>
+        <h3>🛠️ 控制面板 <span style="font-size: 11px; opacity: 0.5;">Tab 鍵關閉</span></h3>
 
         <div class="debug-section">
-            <h4>模組控制</h4>
-            <div class="debug-row">
-                <span class="debug-label">顯示轉盤</span>
-                <div class="debug-toggle active" id="toggleWheel" onclick="toggleWheelVisibility()"></div>
-            </div>
-            <div class="debug-row">
-                <span class="debug-label">顯示盲盒</span>
-                <div class="debug-toggle active" id="toggleGiftbox" onclick="toggleGiftboxVisibility()"></div>
-            </div>
-            <div class="debug-row">
-                <span class="debug-label">盲盒自動隱藏</span>
-                <div class="debug-toggle" id="toggleGiftboxAutoHide" onclick="toggleGiftboxAutoHide()"></div>
-            </div>
-            <div class="debug-row">
-                <span class="debug-label">顯示影片區</span>
-                <div class="debug-toggle active" id="toggleVideo" onclick="toggleVideoVisibility()"></div>
-            </div>
-            <div class="debug-row">
-                <span class="debug-label">顯示進場影片</span>
-                <div class="debug-toggle" id="toggleEntryVideo" onclick="toggleEntryVideoVisibility()"></div>
-            </div>
-            <div style="margin-top: 15px;">
-                <button class="debug-btn" id="testWheelBtn" onclick="testWheelSpin()" style="width: 100%;">🎡 測試轉盤</button>
-            </div>
-            <div style="margin-top: 10px;">
-                <button class="debug-btn" id="testGiftboxBtn" onclick="testGiftboxOpen()" style="width: 100%;">🎁 測試盲盒</button>
-            </div>
-            <div style="margin-top: 10px;">
-                <button class="debug-btn" onclick="testEntryText()" style="width: 100%;">📝 測試進場文字</button>
-            </div>
-            <div style="margin-top: 10px;">
-                <button class="debug-btn" onclick="testEntryVideo()" style="width: 100%;">🎬 測試進場影片</button>
-            </div>
-            <div style="margin-top: 10px;">
-                <button class="debug-btn secondary" onclick="reloadAllThumbnails()" style="width: 100%;">🖼️ 重新載入縮圖</button>
-            </div>
-            <div style="margin-top: 10px;">
-                <button class="debug-btn danger" onclick="resetAllCropStates()" style="width: 100%;">🔄 重置所有裁切</button>
+            <h4>顯示控制</h4>
+            <div class="debug-grid">
+                <div class="debug-chip" id="toggleWheel" onclick="toggleWheelVisibility()">🎡 轉盤</div>
+                <div class="debug-chip" id="toggleGiftbox" onclick="toggleGiftboxVisibility()">🎁 盲盒</div>
+                <div class="debug-chip" id="toggleVideo" onclick="toggleVideoVisibility()">🎬 影片</div>
+                <div class="debug-chip" id="toggleEntryVideo" onclick="toggleEntryVideoVisibility()">👋 進場</div>
+                <div class="debug-chip" id="toggleRandomVideo" onclick="toggleRandomVideoVisible(); document.getElementById('toggleRandomVideo').classList.toggle('active', randomVideoVisible);">🎲 隨機</div>
+                <div class="debug-chip" id="toggleDuckVideo" onclick="toggleDuckVideoVisible(); document.getElementById('toggleDuckVideo').classList.toggle('active', duckVideoVisible);">🦆 抓鴨</div>
+                <div class="debug-chip" id="toggleDuckCounter" onclick="toggleDuckCounterVisible(); document.getElementById('toggleDuckCounter').classList.toggle('active', duckCounterVisible);">🔢 計數</div>
+                <div class="debug-chip" id="togglePityCounter" onclick="togglePityCounterVisible(); document.getElementById('togglePityCounter').classList.toggle('active', pityCounterVisible);">🎰 保底</div>
+                <div class="debug-chip" id="toggleLeaderboard" onclick="toggleLeaderboardVisible(); document.getElementById('toggleLeaderboard').classList.toggle('active', leaderboardVisible);">🏆 排行</div>
+                <div class="debug-chip" id="toggleGiftboxAutoHide" onclick="toggleGiftboxAutoHide()">⏱️ 自動隱藏</div>
             </div>
         </div>
 
         <div class="debug-section">
-            <h4>
-                進場效果列表
-                <button class="refresh-btn" onclick="loadEntryList()">🔄 重新整理</button>
-            </h4>
-            <div class="video-list" id="entryList">
-                <div class="empty-list">載入中...</div>
+            <h4>測試功能</h4>
+            <div class="debug-btn-grid">
+                <button class="debug-btn compact" id="testWheelBtn" onclick="testWheelSpin()">🎡 轉盤</button>
+                <button class="debug-btn compact" id="testGiftboxBtn" onclick="testGiftboxOpen()">🎁 盲盒</button>
+                <button class="debug-btn compact" onclick="testEntryText()">📝 文字</button>
+                <button class="debug-btn compact" onclick="testEntryVideo()">🎬 進場</button>
+            </div>
+            <div class="debug-btn-grid" style="margin-top: 8px;">
+                <button class="debug-btn compact secondary" onclick="reloadAllThumbnails()">🖼️ 重載縮圖</button>
+                <button class="debug-btn compact danger" onclick="resetAllCropStates()">🔄 重置裁切</button>
             </div>
         </div>
 
-        <div class="debug-section">
-            <h4>
-                影片列表
-                <button class="refresh-btn" onclick="loadVideoGifts()">🔄 重新整理</button>
+        <div class="debug-section collapsible">
+            <h4 onclick="toggleSection(this)">
+                <span>📋 影片列表</span>
+                <span class="collapse-icon">▼</span>
             </h4>
-            <div class="video-list" id="videoList">
-                <div class="empty-list">載入中...</div>
+            <div class="section-content">
+                <div class="video-list compact" id="videoList">
+                    <div class="empty-list">載入中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-section collapsible">
+            <h4 onclick="toggleSection(this)">
+                <span>👋 進場列表</span>
+                <span class="collapse-icon">▼</span>
+            </h4>
+            <div class="section-content">
+                <div class="video-list compact" id="entryList">
+                    <div class="empty-list">載入中...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1071,11 +1764,35 @@
             await loadVideoGifts();  // 這裡會生成容器並套用位置
             await loadEntryList();   // 載入進場效果列表
 
-            // 3. 套用轉盤、盲盒、進場文字、進場影片位置
+            // 3. 套用轉盤、盲盒、進場文字、進場影片、隨機影片位置
             applyWheelPosition();
             applyGiftboxPosition();
             applyEntryTextPosition();
             applyEntryVideoPosition();
+            applyRandomVideoPosition();
+            applyDuckPositions();
+
+            // 載入初始保底計數
+            if (window.pywebview && window.pywebview.api) {
+                try {
+                    const pityData = await pywebview.api.get_pity_counter();
+                    if (pityData) {
+                        updatePityCounter(pityData);
+                    }
+                } catch (e) {
+                    console.error('載入保底計數失敗:', e);
+                }
+
+                // 載入初始排行榜
+                try {
+                    const lbData = await pywebview.api.get_leaderboard();
+                    if (lbData) {
+                        updateLeaderboard(lbData);
+                    }
+                } catch (e) {
+                    console.error('載入排行榜失敗:', e);
+                }
+            }
 
             // 4. 檢查模組狀態
             await loadModuleStatus();
@@ -1270,6 +1987,135 @@
             }
         }
 
+        // 套用隨機影片位置
+        function applyRandomVideoPosition() {
+            const randomVideo = document.getElementById('randomVideoContainer');
+            if (!randomVideo) return;
+
+            if (savedPositions && savedPositions.randomVideo) {
+                const data = savedPositions.randomVideo;
+                randomVideo.style.width = (data.width || 300) + 'px';
+                randomVideo.style.height = (data.height || 200) + 'px';
+                randomVideo.style.left = (data.left || 50) + 'px';
+                randomVideo.style.top = (data.top || 400) + 'px';
+
+                // 設定顯示狀態
+                randomVideoVisible = data.visible !== false;
+                if (!randomVideoVisible) {
+                    randomVideo.classList.add('hidden');
+                } else {
+                    randomVideo.classList.remove('hidden');
+                }
+
+                // 更新調試面板的開關狀態
+                document.getElementById('toggleRandomVideo')?.classList.toggle('active', randomVideoVisible);
+
+                console.log('[隨機影片] 已套用位置:', data);
+            } else {
+                console.log('[隨機影片] 使用預設位置');
+                randomVideo.style.width = '300px';
+                randomVideo.style.height = '200px';
+                randomVideo.style.left = '50px';
+                randomVideo.style.top = '400px';
+            }
+        }
+
+        // 套用抓鴨子位置
+        function applyDuckPositions() {
+            const duckVideo = document.getElementById('duckVideoContainer');
+            const duckCounter = document.getElementById('duckCounterBox');
+
+            // 抓鴨子影片容器
+            if (duckVideo) {
+                if (savedPositions && savedPositions.duckVideo) {
+                    const data = savedPositions.duckVideo;
+                    duckVideo.style.width = (data.width || 300) + 'px';
+                    duckVideo.style.height = (data.height || 200) + 'px';
+                    duckVideo.style.left = (data.left || 400) + 'px';
+                    duckVideo.style.top = (data.top || 400) + 'px';
+
+                    duckVideoVisible = data.visible !== false;
+                    if (!duckVideoVisible) {
+                        duckVideo.classList.add('hidden');
+                    } else {
+                        duckVideo.classList.remove('hidden');
+                    }
+                    document.getElementById('toggleDuckVideo')?.classList.toggle('active', duckVideoVisible);
+                    console.log('[抓鴨子影片] 已套用位置:', data);
+                } else {
+                    console.log('[抓鴨子影片] 使用預設位置');
+                }
+            }
+
+            // 鴨子計數顯示
+            if (duckCounter) {
+                if (savedPositions && savedPositions.duckCounter) {
+                    const data = savedPositions.duckCounter;
+                    duckCounter.style.width = (data.width || 200) + 'px';
+                    duckCounter.style.height = (data.height || 100) + 'px';
+                    duckCounter.style.left = (data.left || 50) + 'px';
+                    duckCounter.style.top = (data.top || 50) + 'px';
+
+                    duckCounterVisible = data.visible !== false;
+                    if (!duckCounterVisible) {
+                        duckCounter.classList.add('hidden');
+                    } else {
+                        duckCounter.classList.remove('hidden');
+                    }
+                    document.getElementById('toggleDuckCounter')?.classList.toggle('active', duckCounterVisible);
+                    console.log('[鴨子計數] 已套用位置:', data);
+                } else {
+                    console.log('[鴨子計數] 使用預設位置');
+                }
+            }
+
+            // 保底計數顯示
+            const pityCounter = document.getElementById('pityCounterBox');
+            if (pityCounter) {
+                if (savedPositions && savedPositions.pityCounter) {
+                    const data = savedPositions.pityCounter;
+                    pityCounter.style.width = (data.width || 180) + 'px';
+                    pityCounter.style.height = (data.height || 80) + 'px';
+                    pityCounter.style.left = (data.left || 50) + 'px';
+                    pityCounter.style.top = (data.top || 170) + 'px';
+
+                    pityCounterVisible = data.visible !== false;
+                    if (!pityCounterVisible) {
+                        pityCounter.classList.add('hidden');
+                    } else {
+                        pityCounter.classList.remove('hidden');
+                    }
+                    document.getElementById('togglePityCounter')?.classList.toggle('active', pityCounterVisible);
+                    console.log('[保底計數] 已套用位置:', data);
+                } else {
+                    console.log('[保底計數] 使用預設位置');
+                }
+            }
+
+            // 排行榜顯示
+            const leaderboard = document.getElementById('leaderboardBox');
+            if (leaderboard) {
+                if (savedPositions && savedPositions.leaderboard) {
+                    const data = savedPositions.leaderboard;
+                    leaderboard.style.width = (data.width || 280) + 'px';
+                    leaderboard.style.height = (data.height || 350) + 'px';
+                    leaderboard.style.left = (data.left || 50) + 'px';
+                    leaderboard.style.top = (data.top || 300) + 'px';
+
+                    leaderboardVisible = data.visible !== false;
+                    if (!leaderboardVisible) {
+                        leaderboard.classList.add('hidden');
+                    } else {
+                        leaderboard.classList.remove('hidden');
+                    }
+                    document.getElementById('toggleLeaderboard')?.classList.toggle('active', leaderboardVisible);
+                    console.log('[排行榜] 已套用位置:', data);
+                } else {
+                    console.log('[排行榜] 使用預設位置');
+                }
+            }
+        }
+
         // 載入盲盒選項
         async function loadGiftboxOptions() {
             try {
@@ -1312,8 +2158,13 @@
                         document.getElementById('toggleWheel').classList.remove('active');
                     }
 
-                    // 如果主控台關閉了盲盒模組，強制隱藏
-                    if (!status.giftbox_enabled) {
+                    // 根據盲盒模組狀態設定可見性
+                    if (status.giftbox_enabled) {
+                        giftboxVisible = true;
+                        setElementVisible(document.getElementById('giftboxContainer'), true);
+                        document.getElementById('giftboxCheck').textContent = '✓';
+                        document.getElementById('toggleGiftbox').classList.add('active');
+                    } else {
                         giftboxVisible = false;
                         setElementVisible(document.getElementById('giftboxContainer'), false);
                         document.getElementById('giftboxCheck').textContent = '';
@@ -1994,6 +2845,12 @@
             }
         }
 
+        // 切換可折疊區塊
+        function toggleSection(header) {
+            const section = header.parentElement;
+            section.classList.toggle('collapsed');
+        }
+
         // 只更新影片列表 UI，不重新生成容器
         async function refreshVideoListOnly() {
             try {
@@ -2072,6 +2929,31 @@
                 triggerGiftbox(data.opens);
             });
 
+            // 抓鴨子影片事件
+            window.addEventListener('triggerDuckVideo', (event) => {
+                playDuckVideo(event.detail);
+            });
+
+            // 鴨子計數更新事件
+            window.addEventListener('updateDuckCount', (event) => {
+                updateDuckCounter(event.detail.count);
+            });
+
+            // 保底計數更新事件
+            window.addEventListener('updatePityCounter', (event) => {
+                updatePityCounter(event.detail);
+            });
+
+            // 排行榜更新事件
+            window.addEventListener('updateLeaderboard', (event) => {
+                updateLeaderboard(event.detail);
+            });
+
+            // 里程碑慶祝事件
+            window.addEventListener('triggerMilestone', (event) => {
+                triggerMilestoneCelebration(event.detail);
+            });
+
             // 全域測試函數 - 可從控制台呼叫
             window.testTriggerVideo = function(index) {
                 console.log('測試觸發影片:', index);
@@ -2110,6 +2992,26 @@
                         wc.style.display = 'none';
                         document.getElementById('wheelCheck').textContent = '';
                         document.getElementById('toggleWheel').classList.remove('active');
+                    }
+                }
+
+                if (data.module === 'giftbox') {
+                    giftboxModuleEnabled = data.enabled;
+                    updateGiftboxTestButton();
+
+                    const gc = document.getElementById('giftboxContainer');
+                    if (data.enabled) {
+                        giftboxVisible = true;
+                        gc.classList.remove('hidden');
+                        gc.style.display = 'block';
+                        document.getElementById('giftboxCheck').textContent = '✓';
+                        document.getElementById('toggleGiftbox').classList.add('active');
+                    } else {
+                        giftboxVisible = false;
+                        gc.classList.add('hidden');
+                        gc.style.display = 'none';
+                        document.getElementById('giftboxCheck').textContent = '';
+                        document.getElementById('toggleGiftbox').classList.remove('active');
                     }
                 }
 
@@ -2449,6 +3351,11 @@
             const giftbox = document.getElementById('giftboxContainer');
             const entryText = document.getElementById('entryTextContainer');
             const entryVideo = document.getElementById('entryVideoContainer');
+            const randomVideo = document.getElementById('randomVideoContainer');
+            const duckVideo = document.getElementById('duckVideoContainer');
+            const duckCounter = document.getElementById('duckCounterBox');
+            const pityCounter = document.getElementById('pityCounterBox');
+            const leaderboard = document.getElementById('leaderboardBox');
 
             // 收集影片容器資料
             const videoData = {};
@@ -2501,6 +3408,41 @@
                     left: entryVideo ? (entryVideo.offsetLeft || parseInt(entryVideo.style.left) || 100) : 100,
                     top: entryVideo ? (entryVideo.offsetTop || parseInt(entryVideo.style.top) || 100) : 100,
                     visible: entryVideoVisible
+                },
+                randomVideo: {
+                    width: randomVideo ? Math.max(50, randomVideo.offsetWidth || parseInt(randomVideo.style.width) || 300) : 300,
+                    height: randomVideo ? Math.max(50, randomVideo.offsetHeight || parseInt(randomVideo.style.height) || 200) : 200,
+                    left: randomVideo ? (randomVideo.offsetLeft || parseInt(randomVideo.style.left) || 50) : 50,
+                    top: randomVideo ? (randomVideo.offsetTop || parseInt(randomVideo.style.top) || 400) : 400,
+                    visible: randomVideoVisible
+                },
+                duckVideo: {
+                    width: duckVideo ? Math.max(50, duckVideo.offsetWidth || parseInt(duckVideo.style.width) || 300) : 300,
+                    height: duckVideo ? Math.max(50, duckVideo.offsetHeight || parseInt(duckVideo.style.height) || 200) : 200,
+                    left: duckVideo ? (duckVideo.offsetLeft || parseInt(duckVideo.style.left) || 400) : 400,
+                    top: duckVideo ? (duckVideo.offsetTop || parseInt(duckVideo.style.top) || 400) : 400,
+                    visible: duckVideoVisible
+                },
+                duckCounter: {
+                    width: duckCounter ? Math.max(50, duckCounter.offsetWidth || parseInt(duckCounter.style.width) || 200) : 200,
+                    height: duckCounter ? Math.max(50, duckCounter.offsetHeight || parseInt(duckCounter.style.height) || 100) : 100,
+                    left: duckCounter ? (duckCounter.offsetLeft || parseInt(duckCounter.style.left) || 50) : 50,
+                    top: duckCounter ? (duckCounter.offsetTop || parseInt(duckCounter.style.top) || 50) : 50,
+                    visible: duckCounterVisible
+                },
+                pityCounter: {
+                    width: pityCounter ? Math.max(50, pityCounter.offsetWidth || parseInt(pityCounter.style.width) || 180) : 180,
+                    height: pityCounter ? Math.max(50, pityCounter.offsetHeight || parseInt(pityCounter.style.height) || 80) : 80,
+                    left: pityCounter ? (pityCounter.offsetLeft || parseInt(pityCounter.style.left) || 50) : 50,
+                    top: pityCounter ? (pityCounter.offsetTop || parseInt(pityCounter.style.top) || 170) : 170,
+                    visible: pityCounterVisible
+                },
+                leaderboard: {
+                    width: leaderboard ? Math.max(50, leaderboard.offsetWidth || parseInt(leaderboard.style.width) || 280) : 280,
+                    height: leaderboard ? Math.max(50, leaderboard.offsetHeight || parseInt(leaderboard.style.height) || 350) : 350,
+                    left: leaderboard ? (leaderboard.offsetLeft || parseInt(leaderboard.style.left) || 50) : 50,
+                    top: leaderboard ? (leaderboard.offsetTop || parseInt(leaderboard.style.top) || 300) : 300,
+                    visible: leaderboardVisible
                 },
                 videoContainers: videoData,
                 videoModuleVisible: videoVisible
@@ -2625,10 +3567,12 @@
             const videoContainer = document.getElementById('giftboxVideoContainer');
             const videoEl = document.getElementById('giftboxVideo');
 
-            // 顯示盲盒容器（如果是隱藏的）
-            if (!giftboxVisible) {
-                setElementVisible(container, true);
-            }
+            // 強制顯示盲盒容器
+            container.classList.remove('hidden');
+            container.style.display = 'block';
+            container.style.visibility = 'visible';
+            container.style.opacity = '1';
+            console.log('[盲盒] 強制顯示容器');
 
             // 如果是自動隱藏模式，先顯示盲盒
             if (giftboxAutoHide) {
@@ -3145,13 +4089,625 @@
                 }
             }
 
+            // 如果找不到對應容器（例如隨機影片），使用專用隨機影片容器
             if (foundIndex === -1) {
-                console.warn('找不到對應的影片容器:', videoData.path);
+                console.log('[隨機影片] 使用專用容器播放:', videoData.path);
+                playRandomVideo(videoData);
                 return;
             }
 
             // 使用對應容器播放
             triggerVideoInContainer(foundIndex, videoData);
+        }
+
+        // 隨機影片播放狀態
+        let randomVideoQueue = [];
+        let randomVideoPlaying = false;
+        let randomVideoVisible = true;
+
+        // 初始化隨機影片容器位置
+        function initRandomVideoContainer() {
+            const container = document.getElementById('randomVideoContainer');
+            if (!container) return;
+
+            // 從保存的位置載入
+            const saved = savedPositions.randomVideo || {};
+            container.style.width = (saved.width || 300) + 'px';
+            container.style.height = (saved.height || 200) + 'px';
+            container.style.left = (saved.left || 50) + 'px';
+            container.style.top = (saved.top || 400) + 'px';
+            randomVideoVisible = saved.visible !== false;
+
+            if (!randomVideoVisible) {
+                container.classList.add('hidden');
+            }
+
+            console.log('[隨機影片] 容器初始化完成');
+        }
+
+        // 播放隨機影片（使用專用容器）
+        function playRandomVideo(videoData) {
+            // 加入佇列
+            const playCount = Math.min(videoData.count || 1, 100);
+            for (let i = 0; i < playCount; i++) {
+                randomVideoQueue.push({...videoData, count: 1});
+            }
+            console.log(`[隨機影片] 加入佇列，目前長度: ${randomVideoQueue.length}`);
+
+            // 如果強制插隊且正在播放，停止當前播放
+            if (videoData.force_interrupt && randomVideoPlaying) {
+                stopRandomVideo();
+            }
+
+            playNextRandomVideo();
+        }
+
+        // 播放下一個隨機影片
+        async function playNextRandomVideo() {
+            if (randomVideoPlaying || randomVideoQueue.length === 0) return;
+
+            const container = document.getElementById('randomVideoContainer');
+            const video = document.getElementById('randomVideoPlayer');
+            if (!container || !video) {
+                console.error('[隨機影片] 找不到專用容器');
+                return;
+            }
+
+            const data = randomVideoQueue.shift();
+            if (!data.path) {
+                playNextRandomVideo();
+                return;
+            }
+
+            randomVideoPlaying = true;
+            console.log('[隨機影片] 開始播放:', data.path);
+
+            // 取得媒體 URL
+            let videoUrl = data.path;
+            if (window.pywebview && window.pywebview.api) {
+                try {
+                    videoUrl = await pywebview.api.get_media_url(data.path);
+                } catch (e) {
+                    console.error('[隨機影片] 取得 URL 失敗:', e);
+                }
+            }
+
+            // 設定影片
+            video.src = videoUrl;
+            video.playbackRate = data.speed || 1;
+            video.volume = (data.volume || 100) / 100;
+            video.currentTime = 0;
+
+            // 顯示容器並標記播放中
+            container.classList.remove('hidden');
+            container.classList.add('playing');
+
+            // 處理重複播放
+            let currentRepeat = 0;
+            const maxRepeat = data.repeat || 1;
+            const maxSeconds = data.seconds || 0;
+
+            const onEnded = () => {
+                currentRepeat++;
+                if (currentRepeat < maxRepeat) {
+                    video.currentTime = 0;
+                    video.play();
+                } else {
+                    finishRandomVideo();
+                }
+            };
+
+            const finishRandomVideo = () => {
+                video.onended = null;
+                video.ontimeupdate = null;
+                container.classList.remove('playing');
+                // 如果原本是隱藏的，恢復隱藏
+                if (!randomVideoVisible) {
+                    container.classList.add('hidden');
+                }
+                randomVideoPlaying = false;
+                console.log('[隨機影片] 播放完成');
+                playNextRandomVideo();
+            };
+
+            video.onended = onEnded;
+
+            // 如果設定了秒數限制
+            if (maxSeconds > 0) {
+                video.ontimeupdate = () => {
+                    if (video.currentTime >= maxSeconds) {
+                        currentRepeat++;
+                        if (currentRepeat < maxRepeat) {
+                            video.currentTime = 0;
+                        } else {
+                            finishRandomVideo();
+                        }
+                    }
+                };
+            }
+
+            video.onerror = (e) => {
+                console.error('[隨機影片] 播放錯誤:', e);
+                finishRandomVideo();
+            };
+
+            try {
+                await video.play();
+            } catch (e) {
+                console.error('[隨機影片] 播放失敗:', e);
+                finishRandomVideo();
+            }
+        }
+
+        // 停止隨機影片
+        function stopRandomVideo() {
+            const container = document.getElementById('randomVideoContainer');
+            const video = document.getElementById('randomVideoPlayer');
+            if (video) {
+                video.pause();
+                video.onended = null;
+                video.ontimeupdate = null;
+            }
+            if (container) {
+                container.classList.remove('playing');
+                if (!randomVideoVisible) {
+                    container.classList.add('hidden');
+                }
+            }
+            randomVideoPlaying = false;
+        }
+
+        // 切換隨機影片容器顯示
+        function toggleRandomVideoVisible() {
+            const container = document.getElementById('randomVideoContainer');
+            if (!container) return;
+
+            randomVideoVisible = !randomVideoVisible;
+            if (randomVideoVisible) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+            savePositions();
+            return randomVideoVisible;
+        }
+
+        // === 抓鴨子模組 ===
+        let duckVideoPlaying = false;
+        let duckVideoVisible = true;
+        let duckCounterVisible = true;
+        let pendingDuckAmount = 0;  // 等待影片播完後要加的鴨子數量
+        let pendingDuckUsername = '';  // 抓到鴨子的用戶名
+        let pendingPityData = null;  // 等待影片播完後要更新的保底資料
+        let duckVideoQueue = [];  // 抓鴨子影片佇列
+
+        // 播放抓鴨子影片
+        async function playDuckVideo(videoData) {
+            // 如果正在播放，加入佇列
+            if (duckVideoPlaying) {
+                duckVideoQueue.push(videoData);
+                return;
+            }
+            await playDuckVideoNow(videoData);
+        }
+
+        // 立即播放抓鴨子影片
+        async function playDuckVideoNow(videoData) {
+            // 立即設定播放中狀態，防止競態條件（必須在任何 await 之前）
+            duckVideoPlaying = true;
+
+            const container = document.getElementById('duckVideoContainer');
+            const video = document.getElementById('duckVideoPlayer');
+
+            if (!container || !video) {
+                duckVideoPlaying = false;
+                playNextDuckVideo();
+                return;
+            }
+
+            // 儲存待加的鴨子數量（影片播完後才加）
+            pendingDuckAmount = videoData.caught ? (videoData.duckAmount || 0) : 0;
+            pendingDuckUsername = videoData.username || '';
+            // 儲存保底資料（影片播完後才更新 UI）
+            if (videoData.pityEnabled) {
+                pendingPityData = {
+                    current: videoData.pityCounter,
+                    threshold: videoData.pityThreshold,
+                    thresholdJackpot: videoData.pityThresholdJackpot
+                };
+            } else {
+                pendingPityData = null;
+            }
+
+            try {
+                // 取得媒體 URL
+                let videoUrl = videoData.path;
+                if (window.pywebview && window.pywebview.api) {
+                    videoUrl = await window.pywebview.api.get_media_url(videoData.path);
+                }
+
+                // 設定影片
+                video.src = videoUrl;
+                video.playbackRate = videoData.speed || 1;
+                video.volume = (videoData.volume || 100) / 100;
+
+                // 顯示容器並播放
+                container.classList.remove('hidden');
+                container.classList.add('playing');
+
+                // 處理播放結束
+                const onEnded = () => {
+                    finishDuckVideo();
+                };
+
+                // 如果有時間限制
+                if (videoData.seconds > 0) {
+                    setTimeout(() => {
+                        if (duckVideoPlaying) {
+                            finishDuckVideo();
+                        }
+                    }, videoData.seconds * 1000);
+                }
+
+                video.onended = onEnded;
+                video.onerror = () => {
+                    finishDuckVideo();
+                };
+
+                await video.play();
+            } catch (e) {
+                finishDuckVideo();
+            }
+        }
+
+        // 結束抓鴨子影片
+        async function finishDuckVideo() {
+            const container = document.getElementById('duckVideoContainer');
+            const video = document.getElementById('duckVideoPlayer');
+
+            if (video) {
+                video.pause();
+                video.onended = null;
+            }
+            if (container) {
+                container.classList.remove('playing');
+                if (!duckVideoVisible) {
+                    container.classList.add('hidden');
+                }
+            }
+
+            // 先捕獲當前的數據，然後重置（避免競態條件）
+            const amountToAdd = pendingDuckAmount;
+            const pityData = pendingPityData;
+            pendingDuckAmount = 0;
+            pendingDuckUsername = '';
+            pendingPityData = null;
+
+            // 影片播完後才增加鴨子數量
+            if (amountToAdd > 0) {
+                try {
+                    await window.pywebview.api.add_duck(amountToAdd);
+                } catch (e) {
+                    // 忽略錯誤
+                }
+            }
+
+            // 影片播完後才更新保底進度（綠幕本地 UI + 通知主視窗）
+            if (pityData) {
+                updatePityCounter(pityData);
+                // 通知主視窗更新保底進度
+                try {
+                    await window.pywebview.api.notify_pity_update();
+                } catch (e) {
+                    // 忽略錯誤
+                }
+            }
+
+            // 全部處理完成後才設為 false，確保新事件會被正確排隊
+            duckVideoPlaying = false;
+
+            // 播放佇列中的下一個影片
+            playNextDuckVideo();
+        }
+
+        // 播放佇列中的下一個抓鴨子影片
+        function playNextDuckVideo() {
+            if (duckVideoQueue.length > 0) {
+                const nextVideo = duckVideoQueue.shift();
+                playDuckVideoNow(nextVideo);
+            }
+        }
+
+        // 更新鴨子計數
+        let lastDuckCount = 0;
+        function updateDuckCounter(count) {
+            const counterValue = document.getElementById('duckCounterValue');
+            const counterAdd = document.getElementById('duckCounterAdd');
+
+            if (counterValue) {
+                // 計算增加的數量
+                const diff = count - lastDuckCount;
+
+                // 如果增加了鴨子，顯示 +X 動畫
+                if (diff > 0 && counterAdd) {
+                    counterAdd.textContent = `+${diff}`;
+                    counterAdd.classList.remove('show');
+                    // 強制重繪以重新觸發動畫
+                    void counterAdd.offsetWidth;
+                    counterAdd.classList.add('show');
+                }
+
+                counterValue.textContent = count;
+                // 添加動畫效果
+                counterValue.style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                    counterValue.style.transform = 'scale(1)';
+                }, 200);
+
+                lastDuckCount = count;
+            }
+        }
+
+        // 切換鴨子影片容器顯示
+        function toggleDuckVideoVisible() {
+            const container = document.getElementById('duckVideoContainer');
+            if (!container) return;
+
+            duckVideoVisible = !duckVideoVisible;
+            if (duckVideoVisible) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+            savePositions();
+            return duckVideoVisible;
+        }
+
+        // 切換鴨子計數顯示
+        function toggleDuckCounterVisible() {
+            const container = document.getElementById('duckCounterBox');
+            if (!container) return;
+
+            duckCounterVisible = !duckCounterVisible;
+            if (duckCounterVisible) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+            savePositions();
+            return duckCounterVisible;
+        }
+
+        // 保底計數顯示
+        let pityCounterVisible = false;
+
+        function updatePityCounter(data) {
+            const counterValue = document.getElementById('pityCounterValue');
+            const counterStage = document.getElementById('pityCounterStage');
+            const counterBox = document.getElementById('pityCounterBox');
+
+            if (!counterValue) return;
+
+            const current = data.current || 0;
+            const t1 = data.threshold || 1000;
+            const t2 = data.thresholdJackpot || 2000;
+
+            // 決定顯示哪一層
+            if (current >= t1) {
+                // 已過第一層，顯示終極保底進度
+                counterValue.textContent = `${current} / ${t2}`;
+                counterValue.classList.add('stage2');
+                if (counterStage) counterStage.textContent = '🔥 衝刺終極保底！';
+            } else {
+                counterValue.textContent = `${current} / ${t1}`;
+                counterValue.classList.remove('stage2');
+                if (current >= t1 * 0.9) {
+                    if (counterStage) counterStage.textContent = '即將觸發保底！';
+                } else if (current >= t1 * 0.7) {
+                    if (counterStage) counterStage.textContent = '接近保底中...';
+                } else {
+                    if (counterStage) counterStage.textContent = '';
+                }
+            }
+
+            // 添加動畫效果
+            counterValue.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                counterValue.style.transform = 'scale(1)';
+            }, 200);
+        }
+
+        // 切換保底計數顯示
+        function togglePityCounterVisible() {
+            const container = document.getElementById('pityCounterBox');
+            if (!container) return;
+
+            pityCounterVisible = !pityCounterVisible;
+            if (pityCounterVisible) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+            savePositions();
+            return pityCounterVisible;
+        }
+
+        // === 排行榜 ===
+        let leaderboardVisible = false;
+        let gsLeaderboardTab = 'total';
+        let leaderboardData = { totalRanking: [], singleHighest: [] };
+
+        // 切換排行榜顯示
+        function toggleLeaderboardVisible() {
+            const container = document.getElementById('leaderboardBox');
+            if (!container) return;
+
+            leaderboardVisible = !leaderboardVisible;
+            if (leaderboardVisible) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+            savePositions();
+            return leaderboardVisible;
+        }
+
+        // 切換排行榜標籤
+        function switchGsLeaderboardTab(tab) {
+            gsLeaderboardTab = tab;
+
+            // 更新標籤樣式
+            document.querySelectorAll('.leaderboard-tab-gs').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+
+            // 切換內容
+            document.getElementById('gsLeaderboardTotal').classList.toggle('hidden', tab !== 'total');
+            document.getElementById('gsLeaderboardSingle').classList.toggle('hidden', tab !== 'single');
+        }
+
+        // 更新排行榜
+        function updateLeaderboard(data) {
+            if (!data) return;
+            leaderboardData = data;
+
+            // 渲染累計排行
+            const totalList = document.getElementById('gsLeaderboardTotal');
+            if (totalList) {
+                if (data.totalRanking && data.totalRanking.length > 0) {
+                    totalList.innerHTML = data.totalRanking.slice(0, 10).map((item, index) => `
+                        <div class="lb-item ${index < 3 ? 'top-' + (index + 1) : ''}">
+                            <div class="lb-rank">${index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
+                            ${item.avatar
+                                ? `<img class="lb-avatar" src="${item.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar placeholder\\'>🦆</div>'">`
+                                : '<div class="lb-avatar placeholder">🦆</div>'
+                            }
+                            <div class="lb-info">
+                                <div class="lb-name">${escapeHtmlGs(item.nickname || item.uniqueId)}</div>
+                            </div>
+                            <div class="lb-score">${item.totalDucks.toLocaleString()}🦆</div>
+                        </div>
+                    `).join('');
+                } else {
+                    totalList.innerHTML = '<div class="lb-empty">暫無資料</div>';
+                }
+            }
+
+            // 渲染單次最高
+            const singleList = document.getElementById('gsLeaderboardSingle');
+            if (singleList) {
+                if (data.singleHighest && data.singleHighest.length > 0) {
+                    singleList.innerHTML = data.singleHighest.slice(0, 10).map((item, index) => `
+                        <div class="lb-item ${index < 3 ? 'top-' + (index + 1) : ''}">
+                            <div class="lb-rank">${index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
+                            ${item.avatar
+                                ? `<img class="lb-avatar" src="${item.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar placeholder\\'>🦆</div>'">`
+                                : '<div class="lb-avatar placeholder">🦆</div>'
+                            }
+                            <div class="lb-info">
+                                <div class="lb-name">${escapeHtmlGs(item.nickname || item.uniqueId)}</div>
+                            </div>
+                            <div class="lb-score">${item.amount.toLocaleString()}🦆</div>
+                        </div>
+                    `).join('');
+                } else {
+                    singleList.innerHTML = '<div class="lb-empty">暫無資料</div>';
+                }
+            }
+        }
+
+        // HTML 轉義
+        function escapeHtmlGs(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        // === 里程碑慶祝 ===
+        let milestoneTimeout = null;
+
+        async function triggerMilestoneCelebration(data) {
+            console.log('[里程碑] 觸發慶祝:', data);
+
+            const overlay = document.getElementById('milestoneOverlay');
+            const video = document.getElementById('milestoneVideo');
+            const badge = document.getElementById('milestoneBadge');
+            const avatar = document.getElementById('milestoneAvatar');
+            const name = document.getElementById('milestoneName');
+            const amount = document.getElementById('milestoneAmount');
+
+            if (!overlay || !video) return;
+
+            // 清除之前的計時器
+            if (milestoneTimeout) {
+                clearTimeout(milestoneTimeout);
+                milestoneTimeout = null;
+            }
+
+            // 設定內容
+            if (data.type === 'total') {
+                badge.textContent = '🏆 累計第一';
+            } else {
+                badge.textContent = '🎯 單次最高';
+            }
+
+            name.textContent = data.nickname || '未知用戶';
+            amount.textContent = (data.amount || 0).toLocaleString();
+
+            // 設定頭像
+            if (data.avatar) {
+                avatar.src = data.avatar;
+                avatar.classList.remove('placeholder');
+                avatar.style.display = 'block';
+                avatar.onerror = () => {
+                    avatar.style.display = 'none';
+                    // 創建一個佔位符
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'milestone-avatar placeholder';
+                    placeholder.textContent = '🦆';
+                    avatar.parentNode.insertBefore(placeholder, avatar);
+                };
+            } else {
+                avatar.style.display = 'none';
+                // 檢查是否已有佔位符
+                const existingPlaceholder = overlay.querySelector('.milestone-avatar.placeholder');
+                if (!existingPlaceholder) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'milestone-avatar placeholder';
+                    placeholder.textContent = '🦆';
+                    avatar.parentNode.insertBefore(placeholder, avatar);
+                }
+            }
+
+            // 設定影片
+            if (data.videoPath) {
+                try {
+                    const mediaUrl = await pywebview.api.get_media_url(data.videoPath);
+                    video.src = mediaUrl;
+                    video.currentTime = 0;
+                    video.play().catch(e => console.error('[里程碑] 影片播放失敗:', e));
+                } catch (e) {
+                    console.error('[里程碑] 獲取影片URL失敗:', e);
+                }
+            }
+
+            // 顯示覆蓋層
+            overlay.classList.add('active');
+
+            // 影片結束或超時後隱藏（最多顯示 15 秒）
+            const hideOverlay = () => {
+                overlay.classList.remove('active');
+                video.pause();
+                video.src = '';
+                // 移除可能的佔位符
+                const placeholder = overlay.querySelector('.milestone-avatar.placeholder');
+                if (placeholder) {
+                    placeholder.remove();
+                }
+            };
+
+            video.onended = hideOverlay;
+            milestoneTimeout = setTimeout(hideOverlay, 15000);
         }
 
         // === 進場效果 ===
@@ -3682,6 +5238,17 @@
         window.triggerWheel = triggerWheel;
         window.triggerVideo = triggerVideo;
         window.triggerVideoInContainer = triggerVideoInContainer;
+        window.playRandomVideo = playRandomVideo;
+        window.stopRandomVideo = stopRandomVideo;
+        window.toggleRandomVideoVisible = toggleRandomVideoVisible;
+        window.playDuckVideo = playDuckVideo;
+        window.finishDuckVideo = finishDuckVideo;
+        window.updateDuckCounter = updateDuckCounter;
+        window.toggleDuckVideoVisible = toggleDuckVideoVisible;
+        window.toggleDuckCounterVisible = toggleDuckCounterVisible;
+        window.updatePityCounter = updatePityCounter;
+        window.triggerMilestoneCelebration = triggerMilestoneCelebration;
+        window.togglePityCounterVisible = togglePityCounterVisible;
     </script>
 </body>
 </html>
