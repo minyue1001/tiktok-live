@@ -752,12 +752,21 @@ function showSimulateDialog() {
     const select = document.getElementById('simGift');
     select.innerHTML = '';
 
-    // 合併轉盤禮物和影片禮物
+    // 合併所有禮物設定
     const allGifts = new Set();
+    // 轉盤禮物
     (config.wheel_gifts || []).forEach(g => allGifts.add(g.name));
+    // 影片禮物
     (config.video_gifts || []).forEach(g => {
         if (g.trigger_type === 'gift') allGifts.add(g.name);
     });
+    // 抓鴨子觸發禮物
+    const duckCfg = config.duck_catch_config || {};
+    if (duckCfg.trigger_type === 'gift' && duckCfg.trigger_gift) {
+        allGifts.add(duckCfg.trigger_gift);
+    }
+    // 盲盒禮物
+    (config.giftbox_gifts || []).forEach(g => allGifts.add(g.name));
 
     if (allGifts.size === 0) {
         const option = document.createElement('option');

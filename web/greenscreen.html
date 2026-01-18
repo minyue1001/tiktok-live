@@ -4200,6 +4200,10 @@
             const finishRandomVideo = () => {
                 video.onended = null;
                 video.ontimeupdate = null;
+                video.onerror = null;
+                // 釋放影片記憶體
+                video.src = '';
+                video.load();
                 container.classList.remove('playing');
                 // 如果原本是隱藏的，恢復隱藏
                 if (!randomVideoVisible) {
@@ -4247,6 +4251,10 @@
                 video.pause();
                 video.onended = null;
                 video.ontimeupdate = null;
+                video.onerror = null;
+                // 釋放影片記憶體
+                video.src = '';
+                video.load();
             }
             if (container) {
                 container.classList.remove('playing');
@@ -4368,6 +4376,10 @@
             if (video) {
                 video.pause();
                 video.onended = null;
+                video.onerror = null;
+                // 釋放影片記憶體
+                video.src = '';
+                video.load();
             }
             if (container) {
                 container.classList.remove('playing');

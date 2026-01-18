@@ -10,12 +10,24 @@ const { spawn } = require('child_process');
 const express = require('express');
 const http = require('http');
 
+// ============ GPU 硬體加速設定 ============
+// 啟用硬體加速以改善影片播放效能
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+app.commandLine.appendSwitch('enable-accelerated-mjpeg-decode');
+
 // ============ 自動更新設定 (可選) ============
 let autoUpdater = null;
 try {
     autoUpdater = require('electron-updater').autoUpdater;
     autoUpdater.autoDownload = true;  // 自動下載更新
     autoUpdater.autoInstallOnAppQuit = true;
+    // 繞過代理設定，直接連線
+    autoUpdater.netSession = {
+        resolveProxy: () => Promise.resolve('DIRECT')
+    };
 } catch (e) {
     console.log('electron-updater not installed, auto-update disabled');
 }
