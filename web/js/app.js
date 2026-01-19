@@ -199,10 +199,12 @@ let chatDisplayEnabled = false;  // 彈幕顯示狀態
 document.addEventListener('DOMContentLoaded', async () => {
     await waitForPywebview();
     await loadConfig();
+    await loadScenes();  // 載入場景列表
     initVolumeSlider();
     initNavigation();  // 初始化側邊欄導航
     initLogFilters();  // 初始化日誌過濾器
     initConfigUpdateListener();  // 監聽配置更新（即時同步）
+    initSceneChangeListener();  // 監聽場景切換
     initDialogs();  // 初始化對話框事件
     await refreshAccountList();  // 載入帳號列表
     await updateChatDisplayStatus();  // 初始化彈幕顯示狀態
@@ -233,6 +235,19 @@ function initConfigUpdateListener() {
             renderGiftboxOptionList();
             renderEntryList();
             console.log('[配置更新] 同步完成');
+        });
+    }
+}
+
+// === 場景切換監聯 ===
+function initSceneChangeListener() {
+    if (pywebview && pywebview.api && pywebview.api.onSceneChanged) {
+        pywebview.api.onSceneChanged((data) => {
+            console.log('[場景切換] 收到場景變更:', data);
+            currentSceneId = data.sceneId;
+            renderSceneList();
+            renderVideoGiftList();
+            updateCurrentSceneBadge();
         });
     }
 }
@@ -725,7 +740,8 @@ async function testGiftbox() {
 }
 
 async function testVideo() {
-    const gift = config.video_gifts?.find(g => g.video_path);
+    const gifts = getCurrentSceneVideoGifts();
+    const gift = gifts.find(g => g.video_path);
     if (gift) {
         await openGreenScreen();
         setTimeout(async () => {
@@ -752,31 +768,72 @@ function showSimulateDialog() {
     const select = document.getElementById('simGift');
     select.innerHTML = '';
 
-    // 合併所有禮物設定
-    const allGifts = new Set();
-    // 轉盤禮物
-    (config.wheel_gifts || []).forEach(g => allGifts.add(g.name));
-    // 影片禮物
-    (config.video_gifts || []).forEach(g => {
-        if (g.trigger_type === 'gift') allGifts.add(g.name);
-    });
-    // 抓鴨子觸發禮物
-    const duckCfg = config.duck_catch_config || {};
-    if (duckCfg.trigger_type === 'gift' && duckCfg.trigger_gift) {
-        allGifts.add(duckCfg.trigger_gift);
-    }
-    // 盲盒禮物
-    (config.giftbox_gifts || []).forEach(g => allGifts.add(g.name));
+    // 收集所有禮物設定（只顯示已啟用模組的禮物）
+    const giftOptions = [];  // [{value: 禮物名稱, text: 顯示文字}]
+    const addedGifts = new Set();  // 避免重複
 
-    if (allGifts.size === 0) {
+    // 影片禮物（使用當前場景）- 檢查是否啟用
+    if (config.video_enabled) {
+        const videoGifts = getCurrentSceneVideoGifts();
+        videoGifts.forEach(g => {
+            if (g.trigger_type === 'gift' && g.name && !addedGifts.has(g.name)) {
+                addedGifts.add(g.name);
+                const displayName = g.display_name || g.name;
+                giftOptions.push({
+                    value: g.name,
+                    text: `${displayName} (${g.name})`
+                });
+            }
+        });
+    }
+
+    // 轉盤禮物 - 檢查是否啟用
+    if (config.wheel_enabled) {
+        (config.wheel_gifts || []).forEach(g => {
+            if (g.name && !addedGifts.has(g.name)) {
+                addedGifts.add(g.name);
+                giftOptions.push({
+                    value: g.name,
+                    text: `${g.name} [轉盤]`
+                });
+            }
+        });
+    }
+
+    // 抓鴨子觸發禮物 - 檢查是否啟用
+    if (config.duck_catch_enabled) {
+        const duckCfg = config.duck_catch_config || {};
+        if (duckCfg.trigger_type === 'gift' && duckCfg.trigger_gift && !addedGifts.has(duckCfg.trigger_gift)) {
+            addedGifts.add(duckCfg.trigger_gift);
+            giftOptions.push({
+                value: duckCfg.trigger_gift,
+                text: `${duckCfg.trigger_gift} [抓鴨子]`
+            });
+        }
+    }
+
+    // 盲盒禮物 - 檢查是否啟用
+    if (config.giftbox_enabled) {
+        (config.giftbox_gifts || []).forEach(g => {
+            if (g.name && !addedGifts.has(g.name)) {
+                addedGifts.add(g.name);
+                giftOptions.push({
+                    value: g.name,
+                    text: `${g.name} [盲盒]`
+                });
+            }
+        });
+    }
+
+    if (giftOptions.length === 0) {
         const option = document.createElement('option');
         option.textContent = '(無禮物設定)';
         select.appendChild(option);
     } else {
-        allGifts.forEach(name => {
+        giftOptions.forEach(g => {
             const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
+            option.value = g.value;
+            option.textContent = g.text;
             select.appendChild(option);
         });
     }
@@ -1159,20 +1216,209 @@ async function deleteGiftboxOption(index) {
     }
 }
 
+// === 場景管理 ===
+let currentSceneId = 'default';
+let scenes = [];
+
+// 載入場景列表
+async function loadScenes() {
+    try {
+        const data = await pywebview.api.get_scenes();
+        scenes = data.scenes || [];
+        currentSceneId = data.activeSceneId || 'default';
+        renderSceneList();
+        updateCurrentSceneBadge();
+    } catch (e) {
+        console.error('載入場景失敗:', e);
+    }
+}
+
+// 取得當前場景
+function getCurrentScene() {
+    return scenes.find(s => s.id === currentSceneId) || scenes[0] || { id: 'default', name: '預設場景', video_gifts: [] };
+}
+
+// 取得當前場景的影片設定
+function getCurrentSceneVideoGifts() {
+    const scene = getCurrentScene();
+    return scene.video_gifts || [];
+}
+
+// 渲染場景列表
+function renderSceneList() {
+    const container = document.getElementById('sceneList');
+    if (!container) return;
+
+    if (scenes.length === 0) {
+        container.innerHTML = '<div class="empty-state">尚無場景</div>';
+        return;
+    }
+
+    container.innerHTML = scenes.map(scene => {
+        const isActive = scene.id === currentSceneId;
+        const isDefault = scene.id === 'default';
+        const giftCount = (scene.video_gifts || []).length;
+
+        return `
+            <div class="scene-item ${isActive ? 'active' : ''}" onclick="switchToScene('${scene.id}')">
+                <span class="scene-name">${scene.name}</span>
+                <span class="scene-count">${giftCount} 個觸發</span>
+                <div class="scene-actions-inline">
+                    <button class="scene-btn" onclick="event.stopPropagation(); renameScenePrompt('${scene.id}', '${scene.name}')" title="重新命名">✏️</button>
+                    ${!isDefault ? `<button class="scene-btn delete" onclick="event.stopPropagation(); deleteSceneConfirm('${scene.id}')" title="刪除">🗑️</button>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 更新當前場景標籤
+function updateCurrentSceneBadge() {
+    const badge = document.getElementById('currentSceneBadge');
+    if (badge) {
+        const scene = getCurrentScene();
+        badge.textContent = `(${scene.name})`;
+    }
+}
+
+// 切換場景
+async function switchToScene(sceneId) {
+    try {
+        const result = await pywebview.api.switch_scene(sceneId);
+        if (result.success) {
+            currentSceneId = sceneId;
+            renderSceneList();
+            renderVideoGiftList();
+            updateCurrentSceneBadge();
+        }
+    } catch (e) {
+        console.error('切換場景失敗:', e);
+    }
+}
+
+// 新增場景 - 開啟對話框
+function createNewScene() {
+    document.getElementById('sceneNameDialogTitle').textContent = '新增場景';
+    document.getElementById('sceneNameEditId').value = '';
+    document.getElementById('sceneNameInput').value = '';
+    openDialog('sceneNameDialog');
+    setTimeout(() => document.getElementById('sceneNameInput').focus(), 100);
+}
+
+// 重新命名場景 - 開啟對話框
+function renameScenePrompt(sceneId, currentName) {
+    document.getElementById('sceneNameDialogTitle').textContent = '重新命名場景';
+    document.getElementById('sceneNameEditId').value = sceneId;
+    document.getElementById('sceneNameInput').value = currentName;
+    openDialog('sceneNameDialog');
+    setTimeout(() => {
+        const input = document.getElementById('sceneNameInput');
+        input.focus();
+        input.select();
+    }, 100);
+}
+
+// 確認場景名稱（新增或重新命名）
+async function confirmSceneName() {
+    const sceneId = document.getElementById('sceneNameEditId').value;
+    const name = document.getElementById('sceneNameInput').value.trim();
+
+    if (!name) {
+        alert('請輸入場景名稱');
+        return;
+    }
+
+    try {
+        if (sceneId) {
+            // 重新命名
+            const result = await pywebview.api.rename_scene(sceneId, name);
+            if (result.success) {
+                const scene = scenes.find(s => s.id === sceneId);
+                if (scene) scene.name = name;
+                renderSceneList();
+                updateCurrentSceneBadge();
+                addLogLocal(`🎬 已重新命名場景: ${name}`);
+            } else {
+                alert('重新命名失敗: ' + (result.error || '未知錯誤'));
+            }
+        } else {
+            // 新增
+            const result = await pywebview.api.create_scene(name);
+            if (result.success) {
+                scenes.push(result.scene);
+                renderSceneList();
+                addLogLocal(`🎬 已新增場景: ${name}`);
+            } else {
+                alert('新增場景失敗: ' + (result.error || '未知錯誤'));
+            }
+        }
+        closeDialog('sceneNameDialog');
+    } catch (e) {
+        console.error('場景操作失敗:', e);
+        alert('操作失敗: ' + e.message);
+    }
+}
+
+// 刪除場景
+async function deleteSceneConfirm(sceneId) {
+    const scene = scenes.find(s => s.id === sceneId);
+    if (!scene) return;
+
+    if (!confirm(`確定要刪除場景「${scene.name}」嗎？\n此操作無法復原，場景內的所有觸發設定都會被刪除。`)) {
+        return;
+    }
+
+    try {
+        const result = await pywebview.api.delete_scene(sceneId);
+        if (result.success) {
+            scenes = scenes.filter(s => s.id !== sceneId);
+            if (currentSceneId === sceneId) {
+                currentSceneId = 'default';
+            }
+            renderSceneList();
+            renderVideoGiftList();
+            updateCurrentSceneBadge();
+            addLogLocal(`🎬 已刪除場景: ${scene.name}`);
+        }
+    } catch (e) {
+        console.error('刪除場景失敗:', e);
+        alert('刪除場景失敗: ' + e.message);
+    }
+}
+
+// 儲存當前場景的影片設定
+async function saveCurrentSceneVideoGifts() {
+    try {
+        const scene = getCurrentScene();
+        await pywebview.api.update_scene_video_gifts(currentSceneId, scene.video_gifts || []);
+    } catch (e) {
+        console.error('儲存場景設定失敗:', e);
+    }
+}
+
 // === 影片觸發管理 ===
 function renderVideoGiftList() {
     const container = document.getElementById('videoGiftList');
-    const gifts = config.video_gifts || [];
+    const gifts = getCurrentSceneVideoGifts();
 
     if (gifts.length === 0) {
         container.innerHTML = '<div class="empty-state">尚無設定</div>';
         return;
     }
 
-    const typeLabels = { gift: '禮物', chat: '彈幕', like: '點讚' };
-
     container.innerHTML = gifts.map((gift, index) => {
         const isEnabled = gift.enabled !== false;
+        const displayName = gift.display_name || gift.name || '未命名';
+
+        // 根據觸發類型顯示不同的觸發資訊
+        let triggerInfo = '';
+        if (gift.trigger_type === 'gift') {
+            triggerInfo = `禮物: ${gift.name || '未設定'}`;
+        } else if (gift.trigger_type === 'chat') {
+            triggerInfo = `彈幕: ${gift.trigger_keyword || '未設定'}`;
+        } else if (gift.trigger_type === 'like') {
+            triggerInfo = '點讚';
+        }
 
         return `
             <div class="list-item">
@@ -1182,8 +1428,8 @@ function renderVideoGiftList() {
                         <span class="trigger-slider-sm"></span>
                     </label>
                     <span class="list-item-text" style="${isEnabled ? '' : 'opacity: 0.5;'}">
-                        ${gift.name}
-                        <span style="color: var(--text-muted)"> (${typeLabels[gift.trigger_type] || '禮物'})</span>
+                        ${displayName}
+                        <span style="color: var(--text-muted); font-size: 12px;"> (${triggerInfo})</span>
                     </span>
                 </div>
                 <div class="list-item-actions">
@@ -1198,6 +1444,7 @@ function renderVideoGiftList() {
 function showAddVideoGiftDialog() {
     document.getElementById('videoGiftDialogTitle').textContent = '新增影片觸發';
     document.getElementById('videoGiftEditIndex').value = -1;
+    document.getElementById('videoGiftDisplayName').value = '';
     document.getElementById('videoGiftName').value = '';
     document.getElementById('videoTriggerType').value = 'gift';
     document.getElementById('videoTriggerKeyword').value = '';
@@ -1214,11 +1461,13 @@ function showAddVideoGiftDialog() {
 }
 
 function showEditVideoGiftDialog(index) {
-    const gift = config.video_gifts[index];
+    const gifts = getCurrentSceneVideoGifts();
+    const gift = gifts[index];
     if (!gift) return;
 
     document.getElementById('videoGiftDialogTitle').textContent = '編輯影片觸發';
     document.getElementById('videoGiftEditIndex').value = index;
+    document.getElementById('videoGiftDisplayName').value = gift.display_name || gift.name || '';
     document.getElementById('videoGiftName').value = gift.name || '';
     document.getElementById('videoTriggerType').value = gift.trigger_type || 'gift';
     document.getElementById('videoTriggerKeyword').value = gift.trigger_keyword || '';
@@ -1236,6 +1485,7 @@ function showEditVideoGiftDialog(index) {
 
 function toggleVideoTriggerOptions() {
     const triggerType = document.getElementById('videoTriggerType').value;
+    document.getElementById('videoGiftNameGroup').style.display = triggerType === 'gift' ? 'block' : 'none';
     document.getElementById('videoKeywordGroup').style.display = triggerType === 'chat' ? 'block' : 'none';
 }
 
@@ -1252,15 +1502,22 @@ async function selectVideoFile() {
 
 async function saveVideoGift() {
     const editIndex = parseInt(document.getElementById('videoGiftEditIndex').value);
+    const scene = getCurrentScene();
+    if (!scene.video_gifts) scene.video_gifts = [];
 
     // 保留原有的 enabled 狀態（編輯時），新增時預設為 true
-    const existingEnabled = (editIndex >= 0 && config.video_gifts[editIndex])
-        ? config.video_gifts[editIndex].enabled
+    const existingEnabled = (editIndex >= 0 && scene.video_gifts[editIndex])
+        ? scene.video_gifts[editIndex].enabled
         : true;
 
+    const triggerType = document.getElementById('videoTriggerType').value;
+    const displayName = document.getElementById('videoGiftDisplayName').value.trim();
+    const giftName = document.getElementById('videoGiftName').value.trim();
+
     const gift = {
-        name: document.getElementById('videoGiftName').value.trim(),
-        trigger_type: document.getElementById('videoTriggerType').value,
+        display_name: displayName,
+        name: giftName,  // 禮物名稱（用於觸發匹配）
+        trigger_type: triggerType,
         trigger_keyword: document.getElementById('videoTriggerKeyword').value.trim(),
         video_path: document.getElementById('videoPath').value.trim(),
         video_priority: parseInt(document.getElementById('videoPriority').value) || 1,
@@ -1272,8 +1529,18 @@ async function saveVideoGift() {
         enabled: existingEnabled !== false
     };
 
-    if (!gift.name) {
-        alert('請輸入名稱');
+    if (!gift.display_name) {
+        alert('請輸入顯示名稱');
+        return;
+    }
+
+    if (triggerType === 'gift' && !gift.name) {
+        alert('請輸入禮物名稱');
+        return;
+    }
+
+    if (triggerType === 'chat' && !gift.trigger_keyword) {
+        alert('請輸入彈幕關鍵字');
         return;
     }
 
@@ -1282,36 +1549,39 @@ async function saveVideoGift() {
         return;
     }
 
-    if (!config.video_gifts) config.video_gifts = [];
-
     if (editIndex >= 0) {
-        config.video_gifts[editIndex] = gift;
+        scene.video_gifts[editIndex] = gift;
     } else {
-        config.video_gifts.push(gift);
+        scene.video_gifts.push(gift);
     }
 
-    await pywebview.api.update_config({ video_gifts: config.video_gifts });
+    await saveCurrentSceneVideoGifts();
     renderVideoGiftList();
+    renderSceneList();  // 更新場景列表顯示的觸發數量
     closeDialog('videoGiftDialog');
-    addLogLocal(`已儲存影片觸發: ${gift.name}`);
+    addLogLocal(`已儲存影片觸發: ${gift.display_name} (場景: ${scene.name})`);
 }
 
 async function deleteVideoGift(index) {
     if (confirm('確定要刪除此設定嗎？')) {
-        config.video_gifts.splice(index, 1);
-        await pywebview.api.update_config({ video_gifts: config.video_gifts });
+        const scene = getCurrentScene();
+        if (!scene.video_gifts) return;
+        scene.video_gifts.splice(index, 1);
+        await saveCurrentSceneVideoGifts();
         renderVideoGiftList();
+        renderSceneList();  // 更新場景列表顯示的觸發數量
         addLogLocal('已刪除影片觸發');
     }
 }
 
 async function toggleVideoGiftEnabled(index) {
-    if (!config.video_gifts[index]) return;
+    const scene = getCurrentScene();
+    if (!scene.video_gifts || !scene.video_gifts[index]) return;
 
-    const gift = config.video_gifts[index];
+    const gift = scene.video_gifts[index];
     gift.enabled = gift.enabled === false ? true : false;
 
-    await pywebview.api.update_config({ video_gifts: config.video_gifts });
+    await saveCurrentSceneVideoGifts();
     renderVideoGiftList();
     addLogLocal(`${gift.name} 觸發已${gift.enabled ? '啟用' : '禁用'}`);
 }
@@ -2189,6 +2459,125 @@ async function resetDuckCount() {
     }
 }
 
+// 開啟補鴨子對話框
+function openAddDuckDialog() {
+    document.getElementById('addDuckUniqueId').value = '';
+    document.getElementById('addDuckAmount').value = 1;
+    openDialog('addDuckDialog');
+}
+
+// 設定補鴨子數量快捷按鈕
+function setAddDuckAmount(amount) {
+    document.getElementById('addDuckAmount').value = amount;
+}
+
+// 確認補鴨子（單純加數量）
+async function confirmAddDuck() {
+    const uniqueId = document.getElementById('addDuckUniqueId').value.trim();
+    const amount = parseInt(document.getElementById('addDuckAmount').value) || 1;
+
+    if (amount <= 0) {
+        alert('請輸入有效的數量');
+        return;
+    }
+
+    try {
+        const result = await pywebview.api.add_duck_for_user(uniqueId, amount);
+        if (result.success) {
+            document.getElementById('duckCountDisplay').textContent = result.totalDucks;
+            closeDialog('addDuckDialog');
+        } else {
+            alert('補鴨子失敗: ' + (result.error || '未知錯誤'));
+        }
+    } catch (e) {
+        console.error('補鴨子失敗:', e);
+        alert('補鴨子失敗: ' + e.message);
+    }
+}
+
+// 開啟模擬抓鴨子對話框
+function openSimulateDuckDialog() {
+    document.getElementById('simulateDuckUniqueId').value = '';
+    document.getElementById('simulateDuckTimes').value = 1;
+    openDialog('simulateDuckDialog');
+}
+
+// 設定模擬次數快捷按鈕
+function setSimulateDuckTimes(times) {
+    document.getElementById('simulateDuckTimes').value = times;
+}
+
+// 確認模擬抓鴨子
+async function confirmSimulateDuck() {
+    const uniqueId = document.getElementById('simulateDuckUniqueId').value.trim();
+    const times = parseInt(document.getElementById('simulateDuckTimes').value) || 1;
+
+    if (!uniqueId) {
+        alert('請輸入用戶 ID');
+        return;
+    }
+
+    if (times <= 0) {
+        alert('請輸入有效的次數');
+        return;
+    }
+
+    closeDialog('simulateDuckDialog');
+
+    try {
+        // 先開啟綠幕
+        await openGreenScreen();
+
+        // 延遲一下再觸發，確保綠幕已開啟
+        setTimeout(async () => {
+            const result = await pywebview.api.simulate_duck_catch(uniqueId, times);
+            if (result.success) {
+                addLogLocal(`🎲 模擬抓鴨子: ${uniqueId} 已排入 ${result.queued} 次（隊列總數: ${result.totalInQueue}）`);
+            } else {
+                addLogLocal(`❌ 模擬失敗: ${result.error}`);
+            }
+        }, 500);
+    } catch (e) {
+        console.error('模擬抓鴨子失敗:', e);
+        alert('模擬抓鴨子失敗: ' + e.message);
+    }
+}
+
+// 顯示保底進度輸入框
+function showPityInput() {
+    const display = document.getElementById('pityProgress');
+    const input = document.getElementById('pityInput');
+    if (display && input) {
+        // 從顯示文字解析當前值 "123 / 1000"
+        const match = display.textContent.match(/(\d+)/);
+        input.value = match ? parseInt(match[1]) : 0;
+        display.classList.add('hidden');
+        input.classList.remove('hidden');
+        input.focus();
+        input.select();
+    }
+}
+
+// 保存保底進度輸入
+async function savePityInput() {
+    const display = document.getElementById('pityProgress');
+    const input = document.getElementById('pityInput');
+    if (display && input) {
+        const newValue = Math.max(0, parseInt(input.value) || 0);
+        try {
+            await pywebview.api.set_pity_counter(newValue);
+            // 取得閾值來更新顯示
+            const pityData = await pywebview.api.get_pity_counter();
+            display.textContent = `${newValue} / ${pityData.threshold}`;
+            addLogLocal(`🎯 保底進度已設為 ${newValue}`);
+        } catch (e) {
+            console.error('設定保底進度失敗:', e);
+        }
+        input.classList.add('hidden');
+        display.classList.remove('hidden');
+    }
+}
+
 // 處理抓到鴨子事件（從後端觸發）
 function handleDuckCaught(data) {
     pendingDuckCatch = data;
@@ -2273,6 +2662,13 @@ function initDuckCatchEvents() {
     if (window.electronAPI && window.electronAPI.onLeaderboardUpdated) {
         window.electronAPI.onLeaderboardUpdated((data) => {
             renderLeaderboard(data);
+        });
+    }
+
+    // 監聽 F8 快捷鍵開啟模擬送禮
+    if (window.electronAPI && window.electronAPI.onOpenQuickSimulate) {
+        window.electronAPI.onOpenQuickSimulate(() => {
+            showSimulateDialog();
         });
     }
 }
@@ -2482,18 +2878,49 @@ function initVolumeSlider() {
 
 // === 日誌 ===
 let lastLogCount = 0;
+const MAX_DISPLAY_LOGS = 500;  // 最多顯示的日誌數量
 
 async function updateLogs() {
     try {
         const logs = await pywebview.api.get_logs();
         if (logs.length !== lastLogCount) {
             const container = document.getElementById('logContent');
-            container.innerHTML = logs.map(log => {
-                const logType = getLogType(log);
-                const display = logFilters[logType] ? 'block' : 'none';
-                return `<div class="log-item" data-log-type="${logType}" style="display:${display}">${log}</div>`;
-            }).join('');
-            container.scrollTop = container.scrollHeight;
+            const newLogsCount = logs.length - lastLogCount;
+
+            // 如果是首次載入或日誌被清空，重建全部
+            if (lastLogCount === 0 || newLogsCount < 0 || newLogsCount > 50) {
+                const displayLogs = logs.slice(-MAX_DISPLAY_LOGS);
+                container.innerHTML = displayLogs.map(log => {
+                    const logType = getLogType(log);
+                    const display = logFilters[logType] ? 'block' : 'none';
+                    return `<div class="log-item" data-log-type="${logType}" style="display:${display}">${log}</div>`;
+                }).join('');
+            } else {
+                // 只追加新日誌
+                const fragment = document.createDocumentFragment();
+                for (let i = lastLogCount; i < logs.length; i++) {
+                    const log = logs[i];
+                    const logType = getLogType(log);
+                    const item = document.createElement('div');
+                    item.className = 'log-item';
+                    item.dataset.logType = logType;
+                    item.style.display = logFilters[logType] ? 'block' : 'none';
+                    item.textContent = log;
+                    fragment.appendChild(item);
+                }
+                container.appendChild(fragment);
+
+                // 移除超出數量的舊日誌
+                while (container.children.length > MAX_DISPLAY_LOGS) {
+                    container.removeChild(container.firstChild);
+                }
+            }
+
+            // 使用 requestAnimationFrame 確保滾動流暢
+            requestAnimationFrame(() => {
+                container.scrollTop = container.scrollHeight;
+            });
+
             lastLogCount = logs.length;
         }
     } catch (e) {}

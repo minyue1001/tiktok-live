@@ -11,12 +11,16 @@ const express = require('express');
 const http = require('http');
 
 // ============ GPU 硬體加速設定 ============
-// 啟用硬體加速以改善影片播放效能
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
-app.commandLine.appendSwitch('enable-accelerated-video-decode');
-app.commandLine.appendSwitch('enable-accelerated-mjpeg-decode');
+// 檢查是否要停用硬體加速（在 exe 同目錄放 disable-gpu.txt 檔案即可停用）
+const disableGpuPath = path.join(path.dirname(process.execPath), 'disable-gpu.txt');
+const disableGpu = fs.existsSync(disableGpuPath);
+
+if (disableGpu) {
+    // 停用硬體加速（用於有問題的電腦）
+    app.disableHardwareAcceleration();
+    console.log('硬體加速已停用（偵測到 disable-gpu.txt）');
+}
+// 不加任何 GPU 參數，讓 Electron 使用預設值，避免相容性問題
 
 // ============ 自動更新設定 (可選) ============
 let autoUpdater = null;
@@ -60,18 +64,48 @@ const state = {
     duckLeaderboard: {        // 抓鴨子排行榜
         totalRanking: [],     // 累計排行 [{uniqueId, nickname, avatar, totalDucks}]
         singleHighest: []     // 單次最高 [{uniqueId, nickname, avatar, amount, date}]
-    }
+    },
+    duckCatchQueue: [],       // 抓鴨子隊列
+    duckCatchProcessing: false // 是否正在處理隊列
 };
 
 // ============ 路徑設定 ============
 const isDev = process.argv.includes('--dev');
 const DATA_DIR = isDev
     ? path.join(__dirname, '..')
-    : path.dirname(app.getPath('exe'));
+    : app.getPath('userData');  // 使用 userData 目錄，更新時不會遺失設定
+const OLD_DATA_DIR = isDev ? null : path.dirname(app.getPath('exe'));
 const CONFIG_PATH = path.join(DATA_DIR, 'tiktok_config.json');
 const HIGH_LEVEL_USERS_PATH = path.join(DATA_DIR, 'high_level_users.json');
 const USER_CACHE_PATH = path.join(DATA_DIR, 'user_cache.json');
 const LEADERBOARD_PATH = path.join(DATA_DIR, 'duck_leaderboard.json');
+
+// 遷移舊設定檔到新位置
+function migrateOldConfig() {
+    if (!OLD_DATA_DIR || isDev) return;
+
+    const filesToMigrate = [
+        'tiktok_config.json',
+        'high_level_users.json',
+        'user_cache.json',
+        'duck_leaderboard.json'
+    ];
+
+    for (const file of filesToMigrate) {
+        const oldPath = path.join(OLD_DATA_DIR, file);
+        const newPath = path.join(DATA_DIR, file);
+
+        // 如果舊檔案存在且新檔案不存在，則遷移
+        if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
+            try {
+                fs.copyFileSync(oldPath, newPath);
+                console.log(`已遷移設定檔: ${file}`);
+            } catch (e) {
+                console.error(`遷移 ${file} 失敗:`, e);
+            }
+        }
+    }
+}
 
 // ============ 配置管理 ============
 function loadConfig() {
@@ -79,6 +113,8 @@ function loadConfig() {
         if (fs.existsSync(CONFIG_PATH)) {
             const data = fs.readFileSync(CONFIG_PATH, 'utf8');
             state.config = JSON.parse(data);
+            // 遷移舊版 video_gifts 到場景系統
+            migrateToSceneSystem();
         } else {
             state.config = getDefaultConfig();
             saveConfig();
@@ -88,6 +124,37 @@ function loadConfig() {
         state.config = getDefaultConfig();
     }
     return state.config;
+}
+
+// 遷移舊版 video_gifts 到場景系統
+function migrateToSceneSystem() {
+    let needSave = false;
+
+    // 如果沒有 scenes，初始化
+    if (!state.config.scenes) {
+        state.config.scenes = [{
+            id: 'default',
+            name: '預設場景',
+            video_gifts: []
+        }];
+        state.config.activeSceneId = 'default';
+        needSave = true;
+    }
+
+    // 如果有舊版 video_gifts，遷移到預設場景
+    if (state.config.video_gifts && state.config.video_gifts.length > 0) {
+        const defaultScene = state.config.scenes.find(s => s.id === 'default');
+        if (defaultScene) {
+            defaultScene.video_gifts = state.config.video_gifts;
+        }
+        delete state.config.video_gifts;
+        needSave = true;
+        console.log('已遷移 video_gifts 到場景系統');
+    }
+
+    if (needSave) {
+        saveConfig();
+    }
 }
 
 function getDefaultConfig() {
@@ -100,7 +167,15 @@ function getDefaultConfig() {
         entry_enabled: false,
         giftbox_enabled: false,
         wheel_gifts: [],
-        video_gifts: [],
+        // 場景系統 - 每個場景有獨立的禮物觸發影片設定
+        scenes: [
+            {
+                id: 'default',
+                name: '預設場景',
+                video_gifts: []
+            }
+        ],
+        activeSceneId: 'default',
         random_video_list: [],
         duck_catch_config: {
             trigger_type: 'gift',
@@ -146,6 +221,96 @@ function saveConfig() {
     } catch (e) {
         console.error('儲存配置失敗:', e);
     }
+}
+
+// ============ 場景管理 ============
+// 取得當前場景
+function getActiveScene() {
+    const scenes = state.config.scenes || [];
+    const activeId = state.config.activeSceneId || 'default';
+    return scenes.find(s => s.id === activeId) || scenes[0] || { id: 'default', name: '預設場景', video_gifts: [] };
+}
+
+// 取得當前場景的禮物影片設定
+function getActiveSceneVideoGifts() {
+    const scene = getActiveScene();
+    return scene.video_gifts || [];
+}
+
+// 切換場景
+function switchScene(sceneId) {
+    const scenes = state.config.scenes || [];
+    const scene = scenes.find(s => s.id === sceneId);
+    if (scene) {
+        state.config.activeSceneId = sceneId;
+        saveConfig();
+        // 通知所有視窗場景已切換
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('scene-changed', { sceneId, scene });
+        }
+        addLog(`🎬 已切換到場景: ${scene.name}`);
+        return { success: true, scene };
+    }
+    return { success: false, error: '場景不存在' };
+}
+
+// 新增場景
+function createScene(name) {
+    const scenes = state.config.scenes || [];
+    const id = 'scene_' + Date.now();
+    const newScene = {
+        id,
+        name: name || `場景 ${scenes.length + 1}`,
+        video_gifts: []
+    };
+    scenes.push(newScene);
+    state.config.scenes = scenes;
+    saveConfig();
+    return { success: true, scene: newScene };
+}
+
+// 刪除場景
+function deleteScene(sceneId) {
+    if (sceneId === 'default') {
+        return { success: false, error: '無法刪除預設場景' };
+    }
+    const scenes = state.config.scenes || [];
+    const index = scenes.findIndex(s => s.id === sceneId);
+    if (index === -1) {
+        return { success: false, error: '場景不存在' };
+    }
+    scenes.splice(index, 1);
+    state.config.scenes = scenes;
+    // 如果刪除的是當前場景，切換到預設場景
+    if (state.config.activeSceneId === sceneId) {
+        state.config.activeSceneId = 'default';
+    }
+    saveConfig();
+    return { success: true };
+}
+
+// 重新命名場景
+function renameScene(sceneId, newName) {
+    const scenes = state.config.scenes || [];
+    const scene = scenes.find(s => s.id === sceneId);
+    if (scene) {
+        scene.name = newName;
+        saveConfig();
+        return { success: true, scene };
+    }
+    return { success: false, error: '場景不存在' };
+}
+
+// 更新場景的禮物影片設定
+function updateSceneVideoGifts(sceneId, videoGifts) {
+    const scenes = state.config.scenes || [];
+    const scene = scenes.find(s => s.id === sceneId);
+    if (scene) {
+        scene.video_gifts = videoGifts;
+        saveConfig();
+        return { success: true, scene };
+    }
+    return { success: false, error: '場景不存在' };
 }
 
 function updateConfig(updates) {
@@ -1177,9 +1342,9 @@ function triggerEffects(type, username, value, count, userInfo = null) {
         }
     }
 
-    // 影片觸發
+    // 影片觸發（使用當前場景的設定）
     if (state.config.video_enabled) {
-        const videoGifts = state.config.video_gifts || [];
+        const videoGifts = getActiveSceneVideoGifts();
         for (const gift of videoGifts) {
             if (gift.enabled === false) continue;
 
@@ -1193,7 +1358,8 @@ function triggerEffects(type, username, value, count, userInfo = null) {
             }
 
             if (matched) {
-                addLog(`🎬 觸發影片: ${gift.name} x${count} (每次重複: ${gift.video_repeat || 1}次)`);
+                const displayName = gift.display_name || gift.name;
+                addLog(`🎬 觸發影片: ${displayName} x${count} (${gift.name}) (每次重複: ${gift.video_repeat || 1}次)`);
                 sendToGreenScreen('triggerVideo', {
                     username,
                     path: gift.video_path,
@@ -1759,6 +1925,23 @@ function setupIPC() {
     ipcMain.handle('get-config', () => state.config);
     ipcMain.handle('update-config', (_, updates) => updateConfig(updates));
 
+    // 場景管理
+    ipcMain.handle('get-scenes', () => ({
+        scenes: state.config.scenes || [],
+        activeSceneId: state.config.activeSceneId || 'default'
+    }));
+    ipcMain.handle('get-active-scene', () => getActiveScene());
+    ipcMain.handle('switch-scene', (_, sceneId) => switchScene(sceneId));
+    ipcMain.handle('create-scene', (_, name) => createScene(name));
+    ipcMain.handle('delete-scene', (_, sceneId) => deleteScene(sceneId));
+    ipcMain.handle('rename-scene', (_, sceneId, newName) => renameScene(sceneId, newName));
+    ipcMain.handle('update-scene-video-gifts', (_, sceneId, videoGifts) => updateSceneVideoGifts(sceneId, videoGifts));
+    ipcMain.handle('get-scene-video-gifts', (_, sceneId) => {
+        const scenes = state.config.scenes || [];
+        const scene = scenes.find(s => s.id === sceneId);
+        return scene ? scene.video_gifts || [] : [];
+    });
+
     // 連接
     ipcMain.handle('connect-tiktok', () => connectTikTok());
     ipcMain.handle('disconnect-tiktok', () => disconnectTikTok());
@@ -1881,6 +2064,150 @@ function setupIPC() {
         return state.duckCount;
     });
 
+    // 補鴨子（單純加數量，不播影片）
+    ipcMain.handle('add-duck-for-user', (_, uniqueId, amount) => {
+        amount = Math.max(0, parseInt(amount) || 0);
+        if (amount <= 0) {
+            return { success: false, error: '數量必須大於0' };
+        }
+
+        // 增加總數
+        state.duckCount += amount;
+        sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+
+        // 如果有指定用戶，更新排行榜
+        if (uniqueId && uniqueId.trim()) {
+            const userInfo = {
+                uniqueId: uniqueId.trim(),
+                nickname: uniqueId.trim(),
+                avatar: ''
+            };
+            // 嘗試從快取取得用戶資訊
+            if (state.userCache && state.userCache[uniqueId]) {
+                userInfo.nickname = state.userCache[uniqueId].nickname || uniqueId;
+                userInfo.avatar = state.userCache[uniqueId].avatar || '';
+            }
+            updateLeaderboard(userInfo, amount, false);
+            addLog(`🦆 補鴨子: 為 ${userInfo.nickname} 補 ${amount} 隻（總計: ${state.duckCount}）`);
+        } else {
+            addLog(`🦆 補鴨子: 補 ${amount} 隻（總計: ${state.duckCount}）`);
+        }
+
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+        }
+
+        return { success: true, totalDucks: state.duckCount };
+    });
+
+    // 處理單次抓鴨子（內部函數）
+    function processSingleDuckCatch(userInfo) {
+        const cfg = state.config.duck_catch_config || {};
+
+        // 根據機率決定是否抓到
+        const catchRate = cfg.catch_rate || 50;
+        const caught = Math.random() * 100 < catchRate;
+
+        const videos = caught ? (cfg.caught_videos || []) : (cfg.missed_videos || []);
+        if (videos.length === 0) {
+            return { success: false, error: `尚未設定${caught ? '抓到' : '沒抓到'}影片` };
+        }
+
+        // 根據權重隨機選擇影片
+        const selectedVideo = selectWeightedVideo(videos);
+        if (!selectedVideo || !fs.existsSync(selectedVideo.path)) {
+            return { success: false, error: '影片檔案不存在' };
+        }
+
+        // 計算抓到數量
+        const duckAmount = caught ? (selectedVideo.amount || 1) : 0;
+
+        if (caught && duckAmount > 0) {
+            state.duckCount += duckAmount;
+            sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+
+            // 更新排行榜
+            if (userInfo.uniqueId) {
+                updateLeaderboard(userInfo, duckAmount, false);
+            }
+
+            if (state.mainWindow) {
+                state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+            }
+        }
+
+        addLog(`🦆 模擬抓鴨子: ${userInfo.nickname} ${caught ? `抓到 ${duckAmount} 隻！` : '沒抓到'} -> ${path.basename(selectedVideo.path)}`);
+
+        // 觸發影片播放
+        sendToGreenScreen('triggerDuckVideo', {
+            username: userInfo.nickname,
+            path: selectedVideo.path,
+            caught: caught,
+            duckAmount: duckAmount,
+            speed: cfg.video_speed || 1,
+            volume: cfg.video_volume || 100,
+            seconds: cfg.video_seconds || 0,
+            priority: cfg.video_priority || 1,
+            force_interrupt: cfg.force_interrupt || false
+        });
+
+        return { success: true, caught, duckAmount, totalDucks: state.duckCount };
+    }
+
+    // 處理隊列中的下一個抓鴨子
+    function processNextDuckCatch() {
+        if (state.duckCatchQueue.length === 0) {
+            state.duckCatchProcessing = false;
+            return;
+        }
+
+        state.duckCatchProcessing = true;
+        const item = state.duckCatchQueue.shift();
+        processSingleDuckCatch(item.userInfo);
+    }
+
+    // 鴨子影片播放完成通知
+    ipcMain.handle('notify-duck-video-finished', () => {
+        // 延遲一下再處理下一個，避免影片切換太快
+        setTimeout(() => {
+            processNextDuckCatch();
+        }, 300);
+        return { success: true };
+    });
+
+    // 模擬抓鴨子（觸發完整流程，可指定用戶和次數）
+    ipcMain.handle('simulate-duck-catch', (_, uniqueId, times) => {
+        times = Math.max(1, parseInt(times) || 1);
+
+        // 準備用戶資訊
+        const username = uniqueId ? uniqueId.trim() : '模擬用戶';
+        const userInfo = {
+            uniqueId: uniqueId ? uniqueId.trim() : '',
+            nickname: username,
+            avatar: ''
+        };
+
+        // 嘗試從快取取得用戶資訊
+        if (uniqueId && state.userCache && state.userCache[uniqueId]) {
+            userInfo.nickname = state.userCache[uniqueId].nickname || uniqueId;
+            userInfo.avatar = state.userCache[uniqueId].avatar || '';
+        }
+
+        // 將指定次數的抓鴨子加入隊列
+        for (let i = 0; i < times; i++) {
+            state.duckCatchQueue.push({ userInfo: { ...userInfo } });
+        }
+
+        addLog(`🎲 模擬抓鴨子: ${userInfo.nickname} 觸發 ${times} 次（隊列: ${state.duckCatchQueue.length}）`);
+
+        // 如果沒有正在處理，開始處理隊列
+        if (!state.duckCatchProcessing) {
+            processNextDuckCatch();
+        }
+
+        return { success: true, queued: times, totalInQueue: state.duckCatchQueue.length };
+    });
+
     // 增加鴨子數量
     ipcMain.handle('add-duck', (_, amount) => {
         state.duckCount += amount;
@@ -1908,6 +2235,13 @@ function setupIPC() {
         state.duckPityCounter = 0;
         addLog('🎯 已重置保底計數器');
         return { success: true };
+    });
+
+    // 設定保底計數器
+    ipcMain.handle('set-pity-counter', (event, value) => {
+        state.duckPityCounter = Math.max(0, parseInt(value) || 0);
+        addLog(`🎯 保底計數器已設為 ${state.duckPityCounter}`);
+        return { success: true, value: state.duckPityCounter };
     });
 
     // 取得保底計數器
@@ -2152,6 +2486,7 @@ function setupIPC() {
 
 // ============ 應用啟動 ============
 app.whenReady().then(() => {
+    migrateOldConfig();  // 遷移舊設定檔
     loadConfig();
     loadHighLevelUsers();
     loadEntryHistory();
@@ -2219,7 +2554,19 @@ function registerGlobalShortcuts() {
         }
     });
 
-    console.log('[Shortcuts] 已註冊全域快捷鍵: F9(減1), F10(減5), F11(重置)');
+    // F8: 開啟快速模擬送禮視窗
+    globalShortcut.register('F8', () => {
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('open-quick-simulate');
+            // 確保視窗在前台
+            if (state.mainWindow.isMinimized()) {
+                state.mainWindow.restore();
+            }
+            state.mainWindow.focus();
+        }
+    });
+
+    console.log('[Shortcuts] 已註冊全域快捷鍵: F8(模擬送禮), F9(減1), F10(減5), F11(重置)');
 }
 
 // ============ 自動更新 ============

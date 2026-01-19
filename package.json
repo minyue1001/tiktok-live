@@ -1,6 +1,6 @@
 {
   "name": "tiktok-live-system",
-  "version": "1.0.11",
+  "version": "1.0.21",
   "description": "TikTok 直播互動系統",
   "main": "src/main.js",
   "scripts": {
@@ -64,7 +64,8 @@
     "publish": {
       "provider": "github",
       "owner": "minyue1001",
-      "repo": "tiktok-live"
+      "repo": "tiktok-live",
+      "releaseType": "release"
     }
   }
 }

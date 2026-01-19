@@ -12,6 +12,16 @@ contextBridge.exposeInMainWorld('pywebview', {
         get_config: () => ipcRenderer.invoke('get-config'),
         update_config: (updates) => ipcRenderer.invoke('update-config', updates),
 
+        // 場景管理
+        get_scenes: () => ipcRenderer.invoke('get-scenes'),
+        get_active_scene: () => ipcRenderer.invoke('get-active-scene'),
+        switch_scene: (sceneId) => ipcRenderer.invoke('switch-scene', sceneId),
+        create_scene: (name) => ipcRenderer.invoke('create-scene', name),
+        delete_scene: (sceneId) => ipcRenderer.invoke('delete-scene', sceneId),
+        rename_scene: (sceneId, newName) => ipcRenderer.invoke('rename-scene', sceneId, newName),
+        update_scene_video_gifts: (sceneId, videoGifts) => ipcRenderer.invoke('update-scene-video-gifts', sceneId, videoGifts),
+        get_scene_video_gifts: (sceneId) => ipcRenderer.invoke('get-scene-video-gifts', sceneId),
+
         // 連接控制
         connect_tiktok: () => ipcRenderer.invoke('connect-tiktok'),
         disconnect_tiktok: () => ipcRenderer.invoke('disconnect-tiktok'),
@@ -43,14 +53,19 @@ contextBridge.exposeInMainWorld('pywebview', {
         get_duck_count: () => ipcRenderer.invoke('get-duck-count'),
         set_duck_count: (count) => ipcRenderer.invoke('set-duck-count', count),
         add_duck: (amount) => ipcRenderer.invoke('add-duck', amount),
+        add_duck_for_user: (uniqueId, amount) => ipcRenderer.invoke('add-duck-for-user', uniqueId, amount),
         remove_duck: (amount) => ipcRenderer.invoke('remove-duck', amount),
         test_duck_catch: (caught, duckAmount) =>
             ipcRenderer.invoke('test-duck-catch', caught, duckAmount),
+        simulate_duck_catch: (uniqueId, times) =>
+            ipcRenderer.invoke('simulate-duck-catch', uniqueId, times),
         confirm_duck_catch: (username, videoPath, duckAmount, config) =>
             ipcRenderer.invoke('confirm-duck-catch', username, videoPath, duckAmount, config),
         reset_pity_counter: () => ipcRenderer.invoke('reset-pity-counter'),
+        set_pity_counter: (value) => ipcRenderer.invoke('set-pity-counter', value),
         get_pity_counter: () => ipcRenderer.invoke('get-pity-counter'),
         notify_pity_update: () => ipcRenderer.invoke('notify-pity-update'),
+        notify_duck_video_finished: () => ipcRenderer.invoke('notify-duck-video-finished'),
 
         // 排行榜
         get_leaderboard: () => ipcRenderer.invoke('get-leaderboard'),
@@ -118,6 +133,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
         });
     },
 
+    // 監聽場景切換
+    onSceneChanged: (callback) => {
+        ipcRenderer.on('scene-changed', (_, data) => {
+            callback(data);
+        });
+    },
+
     // 監聽更新事件
     onUpdateAvailable: (callback) => {
         ipcRenderer.on('update-available', (_, info) => callback(info));
@@ -144,6 +166,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     onLeaderboardUpdated: (callback) => {
         ipcRenderer.on('leaderboard-updated', (_, data) => callback(data));
+    },
+
+    // 快捷鍵開啟模擬送禮
+    onOpenQuickSimulate: (callback) => {
+        ipcRenderer.on('open-quick-simulate', () => callback());
     }
 });
 
