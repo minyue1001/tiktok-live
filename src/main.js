@@ -11,19 +11,11 @@ const express = require('express');
 const http = require('http');
 
 // ============ GPU 硬體加速設定 ============
-// 檢查是否要停用硬體加速（在 exe 同目錄放 disable-gpu.txt 檔案即可停用）
-const disableGpuPath = path.join(path.dirname(process.execPath), 'disable-gpu.txt');
-const disableGpu = fs.existsSync(disableGpuPath);
-
-if (disableGpu) {
-    // 完全停用硬體加速（用於有問題的電腦）
-    app.disableHardwareAcceleration();
-    app.commandLine.appendSwitch('disable-gpu');
-    app.commandLine.appendSwitch('disable-gpu-compositing');
-    app.commandLine.appendSwitch('disable-software-rasterizer');
-    console.log('硬體加速已完全停用（偵測到 disable-gpu.txt）');
-}
-// 不加任何 GPU 參數，讓 Electron 使用預設值，避免相容性問題
+// 永遠停用硬體加速，避免某些電腦關閉時重開機的問題
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-compositing');
+console.log('硬體加速已停用（使用 CPU 渲染）');
 
 // ============ 自動更新設定 (可選) ============
 let autoUpdater = null;

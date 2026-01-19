@@ -103,7 +103,7 @@
     "videoContainers": {},
     "videoModuleVisible": false
   },
-  "entry_enabled": false,
+  "entry_enabled": true,
   "entry_config": {
     "enabled": false,
     "media_path": "C:\\Users\\minyue\\Downloads\\PVVGAFRr.mp3",
