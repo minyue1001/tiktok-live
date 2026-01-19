@@ -16,9 +16,12 @@ const disableGpuPath = path.join(path.dirname(process.execPath), 'disable-gpu.tx
 const disableGpu = fs.existsSync(disableGpuPath);
 
 if (disableGpu) {
-    // 停用硬體加速（用於有問題的電腦）
+    // 完全停用硬體加速（用於有問題的電腦）
     app.disableHardwareAcceleration();
-    console.log('硬體加速已停用（偵測到 disable-gpu.txt）');
+    app.commandLine.appendSwitch('disable-gpu');
+    app.commandLine.appendSwitch('disable-gpu-compositing');
+    app.commandLine.appendSwitch('disable-software-rasterizer');
+    console.log('硬體加速已完全停用（偵測到 disable-gpu.txt）');
 }
 // 不加任何 GPU 參數，讓 Electron 使用預設值，避免相容性問題
 
@@ -1845,10 +1848,12 @@ function createMainWindow() {
 
     state.mainWindow.on('closed', () => {
         state.mainWindow = null;
-        if (state.greenWindow) {
-            state.greenWindow.close();
+        // 關閉綠幕視窗（用 destroy 而不是 close 避免觸發額外事件）
+        if (state.greenWindow && !state.greenWindow.isDestroyed()) {
+            state.greenWindow.destroy();
+            state.greenWindow = null;
         }
-        app.quit();
+        // 不直接呼叫 app.quit()，讓 window-all-closed 事件處理
     });
 }
 
@@ -2657,24 +2662,81 @@ function setupAutoUpdater() {
     });
 }
 
-app.on('window-all-closed', () => {
-    disconnectTikTok();
-    saveUserCache();  // 儲存用戶快取
-    // 清理定時器
+// 優雅關閉 - 確保所有資源都正確釋放
+let isQuitting = false;
+
+app.on('before-quit', () => {
+    isQuitting = true;
+});
+
+app.on('window-all-closed', async () => {
+    if (isQuitting) return;
+    isQuitting = true;
+
+    console.log('[關閉] 開始清理資源...');
+
+    // 1. 先斷開網路連接
+    try {
+        disconnectTikTok();
+    } catch (e) {
+        console.error('[關閉] 斷開連接失敗:', e);
+    }
+
+    // 2. 儲存用戶快取
+    try {
+        saveUserCache();
+    } catch (e) {
+        console.error('[關閉] 儲存快取失敗:', e);
+    }
+
+    // 3. 清理定時器
     if (state.userCacheSaveInterval) {
         clearInterval(state.userCacheSaveInterval);
         state.userCacheSaveInterval = null;
     }
+
+    // 4. 關閉媒體伺服器
     if (state.mediaServer) {
-        state.mediaServer.close();
+        try {
+            state.mediaServer.close();
+        } catch (e) {
+            console.error('[關閉] 關閉媒體伺服器失敗:', e);
+        }
     }
-    // 取消註冊全域快捷鍵
-    globalShortcut.unregisterAll();
-    app.quit();
+
+    // 5. 取消註冊全域快捷鍵
+    try {
+        globalShortcut.unregisterAll();
+    } catch (e) {
+        console.error('[關閉] 取消快捷鍵失敗:', e);
+    }
+
+    // 6. 確保綠幕視窗已關閉
+    if (state.greenWindow && !state.greenWindow.isDestroyed()) {
+        try {
+            state.greenWindow.destroy();
+        } catch (e) {
+            console.error('[關閉] 關閉綠幕視窗失敗:', e);
+        }
+    }
+
+    console.log('[關閉] 清理完成，退出應用');
+
+    // 延遲一點再退出，確保清理完成
+    setTimeout(() => {
+        app.quit();
+    }, 100);
 });
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createMainWindow();
     }
+});
+
+// 最終清理
+app.on('will-quit', (event) => {
+    console.log('[will-quit] 最終清理');
+    // 確保所有快捷鍵都被取消
+    globalShortcut.unregisterAll();
 });
