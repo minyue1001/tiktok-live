@@ -2193,8 +2193,9 @@
         async function loadVideoGifts() {
             try {
                 if (window.pywebview && window.pywebview.api) {
-                    const config = await pywebview.api.get_config();
-                    videoGifts = config.video_gifts || [];
+                    // 使用當前場景的影片設定
+                    const activeScene = await pywebview.api.get_active_scene();
+                    videoGifts = (activeScene && activeScene.video_gifts) || [];
                     renderVideoList();
                     generateVideoContainers();
                 }
@@ -2858,8 +2859,9 @@
         async function refreshVideoListOnly() {
             try {
                 if (window.pywebview && window.pywebview.api) {
-                    const config = await pywebview.api.get_config();
-                    videoGifts = config.video_gifts || [];
+                    // 使用當前場景的影片設定
+                    const activeScene = await pywebview.api.get_active_scene();
+                    videoGifts = (activeScene && activeScene.video_gifts) || [];
                     renderVideoList();
                 }
             } catch (e) {

@@ -38,21 +38,6 @@
   "auto_open_green_screen": false,
   "language": "zh-TW",
   "wheel_gifts": [],
-  "video_gifts": [
-    {
-      "name": "Rose",
-      "trigger_type": "gift",
-      "trigger_keyword": "",
-      "video_path": "D:\\7e6a3785dde167db2882f89da921aa8e.mp4",
-      "video_priority": 1,
-      "video_repeat": 1,
-      "video_seconds": 0,
-      "video_speed": 1,
-      "video_volume": 100,
-      "force_interrupt": false,
-      "enabled": true
-    }
-  ],
   "greenscreen_positions": {
     "wheel": {
       "width": 350,
@@ -64,38 +49,61 @@
     "giftbox": {
       "width": 200,
       "height": 200,
-      "left": 465,
-      "top": 245,
+      "left": 69,
+      "top": 83,
       "visible": false,
-      "autoHide": true
+      "autoHide": false
     },
     "entryText": {
       "left": 24,
       "top": 339
     },
     "entryVideo": {
-      "width": 360,
-      "height": 667,
-      "left": 45,
-      "top": 62,
+      "width": 415,
+      "height": 770,
+      "left": 7,
+      "top": 60,
+      "visible": false
+    },
+    "randomVideo": {
+      "width": 190,
+      "height": 331,
+      "left": 119,
+      "top": 356,
+      "visible": false
+    },
+    "duckVideo": {
+      "width": 253,
+      "height": 193,
+      "left": 99,
+      "top": 244,
+      "visible": false
+    },
+    "duckCounter": {
+      "width": 292,
+      "height": 100,
+      "left": 84,
+      "top": 38,
       "visible": true
     },
-    "videoContainers": {
-      "0": {
-        "width": 160,
-        "height": 149,
-        "left": 19,
-        "top": 46,
-        "visible": false,
-        "cropLeft": 0,
-        "cropTop": 0,
-        "originalWidth": 160,
-        "originalHeight": 149
-      }
+    "pityCounter": {
+      "width": 180,
+      "height": 80,
+      "left": 136,
+      "top": 149,
+      "visible": true
     },
+    "leaderboard": {
+      "width": 280,
+      "height": 350,
+      "left": 50,
+      "top": 300,
+      "visible": false
+    },
+    "videoContainers": {},
     "videoModuleVisible": false
   },
-  "entry_enabled": true,
+  "entry_enabled": false,
   "entry_config": {
     "enabled": false,
     "media_path": "C:\\Users\\minyue\\Downloads\\PVVGAFRr.mp3",
@@ -132,7 +140,7 @@
     }
   ],
   "api_key": "euler_ZjJjMjZmYzVlMDdlNWNhZDA0ZjBmMmI2NzIyNzk2Nzk5ZGYwYTFhZjRjZDZlOTFjMmY3MjM4",
-  "tiktok_username": "ruyjcps1j1",
+  "tiktok_username": "user6716936140415",
   "giftbox_gifts": [
     {
       "name": "DG",
@@ -165,5 +173,304 @@
       "video_volume": 100
     }
   ],
-  "giftbox_enabled": true
+  "giftbox_enabled": false,
+  "random_video_list": [
+    {
+      "name": "爹",
+      "trigger_type": "gift",
+      "trigger_gift": "Rose",
+      "trigger_keyword": "",
+      "folder_path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【9.15】皮肤更换擦玻璃\\4：3",
+      "video_priority": 1,
+      "video_repeat": 1,
+      "video_seconds": 0,
+      "video_speed": 1,
+      "video_volume": 100,
+      "avoid_repeat": true,
+      "force_interrupt": false,
+      "enabled": false
+    }
+  ],
+  "random_video_enabled": false,
+  "duck_catch_enabled": true,
+  "duck_catch_config": {
+    "trigger_type": "gift",
+    "trigger_gift": "Rose",
+    "trigger_keyword": "",
+    "catch_rate": 65,
+    "video_seconds": 0,
+    "video_speed": 1,
+    "video_volume": 55,
+    "video_priority": 1,
+    "force_interrupt": false,
+    "quack_sound": "C:\\Users\\minyue\\Downloads\\y1756.mp3",
+    "caught_videos": [
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓100只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 3,
+        "amount": 100
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓11只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 15,
+        "amount": 11
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓15只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 15,
+        "amount": 15
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓1888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 0.2,
+        "amount": 1888
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓1只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 40,
+        "amount": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓200只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 2,
+        "amount": 200
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓20只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 15,
+        "amount": 20
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓2只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 40,
+        "amount": 2
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓300只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 2,
+        "amount": 300
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓3888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 0.15,
+        "amount": 3888
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓400只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 2,
+        "amount": 400
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓40只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 8,
+        "amount": 40
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓50-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 8,
+        "amount": 50
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓5000只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 0.15,
+        "amount": 5000
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓500只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1,
+        "amount": 500
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓5888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 0.15,
+        "amount": 5888
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓5只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 25,
+        "amount": 5
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓6666只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 0.1,
+        "amount": 6666
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓666只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 0.5,
+        "amount": 666
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓66只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 5,
+        "amount": 66
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓80-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 5,
+        "amount": 80
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓8888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 0.1,
+        "amount": 8888
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 0.5,
+        "amount": 888
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓88只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 5,
+        "amount": 88
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓到10000只-创作淘宝店路师傅的特效铺(2).mp4",
+        "weight": 0.05,
+        "amount": 10000
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\抓\\抓到1000只-创作淘宝店路师傅的特效铺(2).mp4",
+        "weight": 0.3,
+        "amount": 1000
+      }
+    ],
+    "missed_videos": [
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）1888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）200只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）2只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）3.888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）400只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）5000只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）5888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）6666只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）666只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）66只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）8888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）888只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）88只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓100只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓11只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓15只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓20只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓40只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓50只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓80只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓到10000只-创作淘宝店路师傅的特效铺(2).mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓到1000只-创作淘宝店路师傅的特效铺(2).mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓到1只-创作淘宝店路师傅的特效铺.mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓到500只-创作淘宝店路师傅的特效铺(2).mp4",
+        "weight": 1
+      },
+      {
+        "path": "C:\\Users\\minyue\\OneDrive\\Desktop\\绿幕\\【12.22】抓鸭子\\沒中\\（没）抓到5只-创作淘宝店路师傅的特效铺(2).mp4",
+        "weight": 1
+      }
+    ],
+    "pity_enabled": true,
+    "pity_threshold": 1000,
+    "pity_min_amount": 5000,
+    "pity_threshold_jackpot": 2000,
+    "pity_jackpot_amount": 10000
+  },
+  "milestone_firework_video": "D:\\BaiduNetdiskDownload\\精选1\\烟花系列视频\\烟花22.mp4",
+  "scenes": [
+    {
+      "id": "default",
+      "name": "預設場景",
+      "video_gifts": [
+        {
+          "display_name": "煙花",
+          "name": "Rose",
+          "trigger_type": "gift",
+          "trigger_keyword": "",
+          "video_path": "D:\\BaiduNetdiskDownload\\精选1\\烟花系列视频\\浪漫烟花孔明灯.mp4",
+          "video_priority": 1,
+          "video_repeat": 1,
+          "video_seconds": 0,
+          "video_speed": 1,
+          "video_volume": 100,
+          "force_interrupt": false,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "scene_1768761001681",
+      "name": "123",
+      "video_gifts": []
+    }
+  ],
+  "activeSceneId": "default"
 }
