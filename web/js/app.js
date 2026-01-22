@@ -1,13 +1,77 @@
 /**
- * TikTok 直播互動系統 - 主程式邏輯
- * pywebview API 版本
+ * LiveGift Pro - 直播互動系統
+ * 主程式邏輯
  */
+
+// ============ 調試設定 ============
+const DEBUG_MODE = false;
+const debugLog = (...args) => { if (DEBUG_MODE) console.log('[DEBUG]', ...args); };
+
+// ============ 統一錯誤處理 ============
+function handleError(error, userMessage = '操作失敗') {
+    if (DEBUG_MODE) console.error('[錯誤]', error);
+    showToast(userMessage, 'error');
+}
+
+// ============ Toast 通知系統 ============
+function showToast(message, type = 'info', duration = 3000) {
+    // 移除現有的 toast
+    const existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'warning' ? '⚠' : 'ℹ'}</span>
+        <span class="toast-message">${message}</span>
+    `;
+    document.body.appendChild(toast);
+
+    // 動畫進入
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    // 自動消失
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+// ============ 載入遮罩 ============
+let loadingOverlay = null;
+
+function showLoading(message = '載入中...') {
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = `
+            <div class="loading-spinner"></div>
+            <div class="loading-text">${message}</div>
+        `;
+        document.body.appendChild(loadingOverlay);
+    } else {
+        loadingOverlay.querySelector('.loading-text').textContent = message;
+    }
+    requestAnimationFrame(() => loadingOverlay.classList.add('active'));
+}
+
+function hideLoading() {
+    if (loadingOverlay) {
+        loadingOverlay.classList.remove('active');
+    }
+}
+
+// 暴露到全局
+window.showToast = showToast;
+window.handleError = handleError;
+window.showLoading = showLoading;
+window.hideLoading = hideLoading;
 
 // 語言翻譯
 const i18n = {
     'zh-TW': {
         // 標題
-        appTitle: 'TikTok 直播互動系統',
+        appTitle: 'LiveGift Pro',
         // 狀態
         connected: '已連接',
         disconnected: '未連接',
@@ -204,12 +268,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     initNavigation();  // 初始化側邊欄導航
     initLogFilters();  // 初始化日誌過濾器
     initConfigUpdateListener();  // 監聽配置更新（即時同步）
-    initSceneChangeListener();  // 監聽場景切換
+    initSceneChangeListener();  // 監聯場景切換
+    initLogUpdateListener();  // 監聽日誌更新（IPC 推送）
     initDialogs();  // 初始化對話框事件
     await refreshAccountList();  // 載入帳號列表
     await updateChatDisplayStatus();  // 初始化彈幕顯示狀態
-    setInterval(updateLogs, 1000);
+    await updateLogs();  // 初始載入日誌
     setInterval(updateStatus, 2000);
+
+    // 隱藏啟動畫面
+    const splashScreen = document.getElementById('splashScreen');
+    if (splashScreen) {
+        setTimeout(() => {
+            splashScreen.classList.add('hidden');
+            setTimeout(() => splashScreen.remove(), 500);
+        }, 500);
+    }
 });
 
 // === 初始化對話框 ===
@@ -250,6 +324,30 @@ function initSceneChangeListener() {
             updateCurrentSceneBadge();
         });
     }
+}
+
+// === 日誌更新監聽（IPC 推送 + 備用輪詢）===
+function initLogUpdateListener() {
+    let ipcWorking = false;
+
+    // 嘗試使用 IPC 推送（electronAPI.onLogUpdate）
+    if (window.electronAPI && window.electronAPI.onLogUpdate) {
+        window.electronAPI.onLogUpdate((logs) => {
+            ipcWorking = true;
+            renderLogs(logs);
+        });
+        console.log('[日誌] IPC 監聯器已註冊');
+    }
+
+    // 備用輪詢（每 2 秒檢查一次，以防 IPC 失效）
+    setInterval(async () => {
+        if (!ipcWorking) {
+            try {
+                const logs = await pywebview.api.get_logs();
+                renderLogs(logs);
+            } catch (e) {}
+        }
+    }, 2000);
 }
 
 // === 側邊欄導航 ===
@@ -1418,6 +1516,8 @@ function renderVideoGiftList() {
             triggerInfo = `彈幕: ${gift.trigger_keyword || '未設定'}`;
         } else if (gift.trigger_type === 'like') {
             triggerInfo = '點讚';
+        } else if (gift.trigger_type === 'shortcut') {
+            triggerInfo = `快捷鍵: ${gift.shortcut || '未設定'}`;
         }
 
         return `
@@ -1456,6 +1556,7 @@ function showAddVideoGiftDialog() {
     document.getElementById('videoVolume').value = 100;
     document.getElementById('volumeValue').textContent = '100%';
     document.getElementById('forceInterrupt').checked = false;
+    document.getElementById('videoShortcut').value = '';
     toggleVideoTriggerOptions();
     openDialog('videoGiftDialog');
 }
@@ -1479,14 +1580,63 @@ function showEditVideoGiftDialog(index) {
     document.getElementById('videoVolume').value = gift.video_volume || 100;
     document.getElementById('volumeValue').textContent = `${gift.video_volume || 100}%`;
     document.getElementById('forceInterrupt').checked = gift.force_interrupt || false;
+    document.getElementById('videoShortcut').value = gift.shortcut || '';
     toggleVideoTriggerOptions();
     openDialog('videoGiftDialog');
+}
+
+// 快捷鍵輸入處理
+let shortcutInputHandler = null;
+function initShortcutInput() {
+    const input = document.getElementById('videoShortcut');
+    if (!input) return;
+
+    // 移除舊的事件監聽器
+    if (shortcutInputHandler) {
+        input.removeEventListener('keydown', shortcutInputHandler);
+    }
+
+    shortcutInputHandler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // 忽略單獨的修飾鍵
+        if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) {
+            return;
+        }
+
+        // 組合快捷鍵字串
+        let shortcut = '';
+        if (e.ctrlKey) shortcut += 'Ctrl+';
+        if (e.altKey) shortcut += 'Alt+';
+        if (e.shiftKey) shortcut += 'Shift+';
+
+        // 處理按鍵名稱
+        let key = e.key;
+        if (key === ' ') key = 'Space';
+        else if (key.length === 1) key = key.toUpperCase();
+
+        shortcut += key;
+        input.value = shortcut;
+    };
+
+    input.addEventListener('keydown', shortcutInputHandler);
+}
+
+function clearVideoShortcut() {
+    document.getElementById('videoShortcut').value = '';
 }
 
 function toggleVideoTriggerOptions() {
     const triggerType = document.getElementById('videoTriggerType').value;
     document.getElementById('videoGiftNameGroup').style.display = triggerType === 'gift' ? 'block' : 'none';
     document.getElementById('videoKeywordGroup').style.display = triggerType === 'chat' ? 'block' : 'none';
+    document.getElementById('videoShortcutGroup').style.display = triggerType === 'shortcut' ? 'block' : 'none';
+
+    // 如果是快捷鍵模式，初始化快捷鍵輸入
+    if (triggerType === 'shortcut') {
+        initShortcutInput();
+    }
 }
 
 async function selectVideoFile() {
@@ -1526,6 +1676,7 @@ async function saveVideoGift() {
         video_speed: parseFloat(document.getElementById('videoSpeed').value) || 1.0,
         video_volume: parseInt(document.getElementById('videoVolume').value) || 100,
         force_interrupt: document.getElementById('forceInterrupt').checked,
+        shortcut: document.getElementById('videoShortcut').value.trim(),
         enabled: existingEnabled !== false
     };
 
@@ -1541,6 +1692,11 @@ async function saveVideoGift() {
 
     if (triggerType === 'chat' && !gift.trigger_keyword) {
         alert('請輸入彈幕關鍵字');
+        return;
+    }
+
+    if (triggerType === 'shortcut' && !gift.shortcut) {
+        alert('請設定快捷鍵');
         return;
     }
 
@@ -2183,8 +2339,6 @@ async function smartImportDuckVideos(type) {
 
         config.duck_catch_config = cfg;
 
-        // 顯示匯入結果
-        console.log('智能匯入結果:', results);
         addLogLocal(`🦆 智能匯入了 ${imported} 個${type === 'caught' ? '抓到' : '沒抓到'}影片`);
 
         if (type === 'caught') {
@@ -2662,6 +2816,15 @@ function initDuckCatchEvents() {
     if (window.electronAPI && window.electronAPI.onLeaderboardUpdated) {
         window.electronAPI.onLeaderboardUpdated((data) => {
             renderLeaderboard(data);
+            // 同時更新總體資料庫快取
+            if (data.allTimeStats) {
+                cachedAlltimeStats = data.allTimeStats;
+                // 如果總體資料庫頁籤可見，也更新顯示
+                const alltimeTab = document.getElementById('leaderboardAlltime');
+                if (alltimeTab && !alltimeTab.classList.contains('hidden')) {
+                    filterAlltimeStats();  // 使用 filter 來重新渲染（會套用搜尋條件）
+                }
+            }
         });
     }
 
@@ -2740,6 +2903,12 @@ function switchLeaderboardTab(tab) {
     // 切換內容
     document.getElementById('leaderboardTotal').classList.toggle('hidden', tab !== 'total');
     document.getElementById('leaderboardSingle').classList.toggle('hidden', tab !== 'single');
+    document.getElementById('leaderboardAlltime')?.classList.toggle('hidden', tab !== 'alltime');
+
+    // 如果切換到總體資料庫，刷新資料
+    if (tab === 'alltime') {
+        refreshAlltimeStats();
+    }
 }
 
 // 刷新排行榜
@@ -2820,6 +2989,132 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// ============ 總體資料庫管理 ============
+let cachedAlltimeStats = [];
+
+async function refreshAlltimeStats() {
+    try {
+        cachedAlltimeStats = await pywebview.api.get_alltime_stats() || [];
+        renderAlltimeStats(cachedAlltimeStats);
+    } catch (e) {
+        console.error('刷新總體資料庫失敗:', e);
+    }
+}
+
+function filterAlltimeStats() {
+    const search = document.getElementById('alltimeSearch')?.value?.toLowerCase() || '';
+    const filtered = cachedAlltimeStats.filter(item =>
+        (item.nickname || '').toLowerCase().includes(search) ||
+        (item.uniqueId || '').toLowerCase().includes(search)
+    );
+    renderAlltimeStats(filtered);
+}
+
+function renderAlltimeStats(data) {
+    const list = document.getElementById('alltimeStatsList');
+    if (!list) return;
+
+    if (data && data.length > 0) {
+        list.innerHTML = data.slice(0, 100).map((item, index) => {
+            const avatarHtml = item.avatar
+                ? '<img class="leaderboard-avatar" src="' + item.avatar + '" onerror="this.outerHTML=\'<div class=leaderboard-avatar>🦆</div>\'">'
+                : '<div class="leaderboard-avatar placeholder">🦆</div>';
+            return `
+            <div class="leaderboard-item clickable" onclick="openEditUserDialog('${escapeHtml(item.uniqueId)}')">
+                <div class="leaderboard-rank">${index + 1}</div>
+                ${avatarHtml}
+                <div class="leaderboard-info">
+                    <div class="leaderboard-name">${escapeHtml(item.nickname || item.uniqueId)}</div>
+                    <div class="leaderboard-id" style="font-size:11px;color:var(--text-muted)">@${escapeHtml(item.uniqueId)}</div>
+                </div>
+                <div class="leaderboard-score">${item.totalDucks.toLocaleString()} <span class="duck-icon">🦆</span></div>
+            </div>
+            `;
+        }).join('');
+    } else {
+        list.innerHTML = '<div class="empty-state">暫無資料</div>';
+    }
+}
+
+function openAddUserDialog() {
+    document.getElementById('userDuckDialogTitle').textContent = '新增用戶';
+    document.getElementById('userDuckEditMode').value = 'add';
+    document.getElementById('userDuckUniqueId').value = '';
+    document.getElementById('userDuckUniqueId').disabled = false;
+    document.getElementById('userDuckNickname').value = '';
+    document.getElementById('userDuckAmount').value = '0';
+    document.getElementById('userDuckAdjustBtns').style.display = 'none';
+    document.getElementById('userDuckDeleteBtn').style.display = 'none';
+    openDialog('userDuckDialog');
+}
+
+function openEditUserDialog(uniqueId) {
+    const user = cachedAlltimeStats.find(u => u.uniqueId === uniqueId);
+    if (!user) return;
+
+    document.getElementById('userDuckDialogTitle').textContent = '編輯用戶';
+    document.getElementById('userDuckEditMode').value = 'edit';
+    document.getElementById('userDuckUniqueId').value = user.uniqueId;
+    document.getElementById('userDuckUniqueId').disabled = true;
+    document.getElementById('userDuckNickname').value = user.nickname || '';
+    document.getElementById('userDuckAmount').value = user.totalDucks || 0;
+    document.getElementById('userDuckAdjustBtns').style.display = 'flex';
+    document.getElementById('userDuckDeleteBtn').style.display = 'block';
+    openDialog('userDuckDialog');
+}
+
+function adjustUserDuckAmount(delta) {
+    const input = document.getElementById('userDuckAmount');
+    const current = parseInt(input.value) || 0;
+    input.value = Math.max(0, current + delta);
+}
+
+async function saveUserDuck() {
+    const uniqueId = document.getElementById('userDuckUniqueId').value.trim();
+    const nickname = document.getElementById('userDuckNickname').value.trim();
+    const amount = parseInt(document.getElementById('userDuckAmount').value) || 0;
+
+    if (!uniqueId) {
+        alert('請輸入用戶 ID');
+        return;
+    }
+
+    try {
+        const result = await pywebview.api.set_user_ducks(uniqueId, amount, nickname);
+        if (result.success) {
+            closeDialog('userDuckDialog');
+            refreshAlltimeStats();
+            addLogLocal('🦆 已更新 ' + (nickname || uniqueId) + ' 的鴨子數量: ' + amount);
+        } else {
+            alert(result.error || '儲存失敗');
+        }
+    } catch (e) {
+        console.error('儲存用戶鴨子失敗:', e);
+        alert('儲存失敗');
+    }
+}
+
+async function deleteUserFromAlltime() {
+    const uniqueId = document.getElementById('userDuckUniqueId').value;
+    if (!uniqueId) return;
+
+    if (!confirm('確定要刪除用戶 ' + uniqueId + ' 的所有鴨子記錄嗎？')) return;
+
+    try {
+        const result = await pywebview.api.delete_user_from_alltime(uniqueId);
+        if (result.success) {
+            closeDialog('userDuckDialog');
+            refreshAlltimeStats();
+            addLogLocal('🦆 已刪除用戶 ' + uniqueId);
+        } else {
+            alert(result.error || '刪除失敗');
+        }
+    } catch (e) {
+        console.error('刪除用戶失敗:', e);
+        alert('刪除失敗');
+    }
+}
+
 // 啟用/禁用抓鴨子模組
 document.getElementById('duckCatchEnabled')?.addEventListener('change', async (e) => {
     config.duck_catch_enabled = e.target.checked;
@@ -2877,53 +3172,40 @@ function initVolumeSlider() {
 }
 
 // === 日誌 ===
-let lastLogCount = 0;
+let lastLogHash = '';  // 用於比較日誌是否有變化
 const MAX_DISPLAY_LOGS = 500;  // 最多顯示的日誌數量
 
+// 初始載入日誌
 async function updateLogs() {
     try {
         const logs = await pywebview.api.get_logs();
-        if (logs.length !== lastLogCount) {
-            const container = document.getElementById('logContent');
-            const newLogsCount = logs.length - lastLogCount;
-
-            // 如果是首次載入或日誌被清空，重建全部
-            if (lastLogCount === 0 || newLogsCount < 0 || newLogsCount > 50) {
-                const displayLogs = logs.slice(-MAX_DISPLAY_LOGS);
-                container.innerHTML = displayLogs.map(log => {
-                    const logType = getLogType(log);
-                    const display = logFilters[logType] ? 'block' : 'none';
-                    return `<div class="log-item" data-log-type="${logType}" style="display:${display}">${log}</div>`;
-                }).join('');
-            } else {
-                // 只追加新日誌
-                const fragment = document.createDocumentFragment();
-                for (let i = lastLogCount; i < logs.length; i++) {
-                    const log = logs[i];
-                    const logType = getLogType(log);
-                    const item = document.createElement('div');
-                    item.className = 'log-item';
-                    item.dataset.logType = logType;
-                    item.style.display = logFilters[logType] ? 'block' : 'none';
-                    item.textContent = log;
-                    fragment.appendChild(item);
-                }
-                container.appendChild(fragment);
-
-                // 移除超出數量的舊日誌
-                while (container.children.length > MAX_DISPLAY_LOGS) {
-                    container.removeChild(container.firstChild);
-                }
-            }
-
-            // 使用 requestAnimationFrame 確保滾動流暢
-            requestAnimationFrame(() => {
-                container.scrollTop = container.scrollHeight;
-            });
-
-            lastLogCount = logs.length;
-        }
+        renderLogs(logs);
     } catch (e) {}
+}
+
+// 渲染日誌（由 IPC 推送調用）
+function renderLogs(logs) {
+    if (!logs || !Array.isArray(logs)) return;
+
+    // 用最後一條日誌判斷是否有變化
+    const newHash = logs.length > 0 ? logs[logs.length - 1] : '';
+    if (newHash === lastLogHash && logs.length > 0) return;
+    lastLogHash = newHash;
+
+    const container = document.getElementById('logContent');
+    if (!container) return;
+
+    const displayLogs = logs.slice(-MAX_DISPLAY_LOGS);
+    container.innerHTML = displayLogs.map(log => {
+        const logType = getLogType(log);
+        const display = logFilters[logType] ? 'block' : 'none';
+        return `<div class="log-item" data-log-type="${logType}" style="display:${display}">${escapeHtml(log)}</div>`;
+    }).join('');
+
+    // 使用 requestAnimationFrame 確保滾動流暢
+    requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+    });
 }
 
 // 日誌過濾狀態
@@ -3414,3 +3696,432 @@ async function clearHighLevelUsers() {
         console.error('清空失敗:', e);
     }
 }
+
+// ============ 禮物圖生成器 ============
+let giftImageItems = [];
+
+function addGiftImageItem() {
+    showGiftImageDialog();
+}
+window.addGiftImageItem = addGiftImageItem;
+
+function showGiftImageDialog(editIndex = -1) {
+    const isEdit = editIndex >= 0;
+    const item = isEdit ? giftImageItems[editIndex] : { name: '', iconUrl: '', font: 'Microsoft JhengHei' };
+
+    const dialog = document.createElement('div');
+    dialog.className = 'gift-dialog-overlay';
+    dialog.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;';
+    dialog.innerHTML = `
+        <div class="gift-dialog-box" style="background:var(--bg-card, #1e1e2e);border-radius:12px;padding:0;min-width:400px;max-width:90%;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.1);">
+                <h3 style="margin:0;font-size:16px;font-weight:600;">${isEdit ? '編輯禮物' : '新增禮物'}</h3>
+                <button class="modal-close" onclick="this.closest('.gift-dialog-overlay').remove()" style="background:none;border:none;color:#999;font-size:24px;cursor:pointer;padding:0;width:32px;height:32px;">×</button>
+            </div>
+            <div class="modal-body" style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+                <div class="preview-icon" id="giftDialogPreview" style="width:80px;height:80px;margin:0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1);border-radius:12px;font-size:40px;">
+                    ${item.iconUrl ? `<img src="${item.iconUrl}" style="max-width:100%;max-height:100%;" onerror="this.parentElement.innerHTML='🎁'">` : '🎁'}
+                </div>
+                <div class="form-group">
+                    <label style="display:block;margin-bottom:6px;font-size:13px;color:#aaa;">禮物名稱（顯示名稱）</label>
+                    <input type="text" id="giftDialogName" class="input" value="${item.name}" placeholder="例如: 烏薩奇" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;">
+                </div>
+                <div class="form-group">
+                    <label style="display:block;margin-bottom:6px;font-size:13px;color:#aaa;">字體</label>
+                    <select id="giftDialogFont" class="input" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;">
+                        <option value="Microsoft JhengHei" ${item.font === 'Microsoft JhengHei' ? 'selected' : ''}>微軟正黑體</option>
+                        <option value="Noto Sans TC" ${item.font === 'Noto Sans TC' ? 'selected' : ''}>Noto Sans TC</option>
+                        <option value="Arial" ${item.font === 'Arial' ? 'selected' : ''}>Arial</option>
+                        <option value="Times New Roman" ${item.font === 'Times New Roman' ? 'selected' : ''}>Times New Roman</option>
+                        <option value="Comic Sans MS" ${item.font === 'Comic Sans MS' ? 'selected' : ''}>Comic Sans MS</option>
+                        <option value="Impact" ${item.font === 'Impact' ? 'selected' : ''}>Impact</option>
+                        <option value="Georgia" ${item.font === 'Georgia' ? 'selected' : ''}>Georgia</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display:block;margin-bottom:6px;font-size:13px;color:#aaa;">禮物圖片</label>
+                    <input type="file" id="giftDialogFile" accept="image/*" onchange="previewGiftDialogFile(this)" style="display:none;">
+                    <input type="hidden" id="giftDialogUrl" value="${item.iconUrl}">
+                    <div style="display:flex;gap:10px;">
+                        <button type="button" onclick="document.getElementById('giftDialogFile').click()" style="flex:1;padding:10px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;cursor:pointer;">選擇圖片檔案</button>
+                        <button type="button" onclick="clearGiftDialogImage()" style="padding:10px 12px;background:rgba(255,100,100,0.2);border:1px solid rgba(255,100,100,0.3);border-radius:8px;color:#ff6b6b;cursor:pointer;">清除</button>
+                    </div>
+                    <div id="giftDialogFileName" style="margin-top:8px;font-size:12px;color:#888;">${item.iconUrl ? '已選擇圖片' : '未選擇圖片'}</div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);">
+                <button class="btn btn-outline" onclick="this.closest('.gift-dialog-overlay').remove()" style="padding:8px 16px;background:transparent;border:1px solid rgba(255,255,255,0.3);border-radius:8px;color:#fff;cursor:pointer;">取消</button>
+                <button class="btn btn-primary" onclick="saveGiftImageItem(${editIndex})" style="padding:8px 16px;background:#7c3aed;border:none;border-radius:8px;color:#fff;cursor:pointer;">${isEdit ? '儲存' : '新增'}</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    document.getElementById('giftDialogName').focus();
+}
+
+function previewGiftDialogFile(input) {
+    const preview = document.getElementById('giftDialogPreview');
+    const fileNameDiv = document.getElementById('giftDialogFileName');
+    const urlInput = document.getElementById('giftDialogUrl');
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            preview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:100%;">`;
+            urlInput.value = dataUrl;
+            fileNameDiv.textContent = file.name;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function clearGiftDialogImage() {
+    const preview = document.getElementById('giftDialogPreview');
+    const fileNameDiv = document.getElementById('giftDialogFileName');
+    const urlInput = document.getElementById('giftDialogUrl');
+    const fileInput = document.getElementById('giftDialogFile');
+
+    preview.innerHTML = '🎁';
+    urlInput.value = '';
+    fileInput.value = '';
+    fileNameDiv.textContent = '未選擇圖片';
+}
+
+function saveGiftImageItem(editIndex) {
+    const name = document.getElementById('giftDialogName').value.trim();
+    const iconUrl = document.getElementById('giftDialogUrl').value.trim();
+    const font = document.getElementById('giftDialogFont').value;
+
+    if (!name) {
+        alert('請輸入禮物名稱');
+        return;
+    }
+
+    const item = { name, iconUrl, font };
+
+    if (editIndex >= 0) {
+        giftImageItems[editIndex] = item;
+    } else {
+        giftImageItems.push(item);
+    }
+
+    document.querySelector('.gift-dialog-overlay')?.remove();
+    renderGiftImageList();
+    updateGiftImagePreview();
+    saveGiftImageConfig();
+}
+
+function deleteGiftImageItem(index) {
+    if (!confirm('確定要刪除此禮物嗎？')) return;
+    giftImageItems.splice(index, 1);
+    renderGiftImageList();
+    updateGiftImagePreview();
+    saveGiftImageConfig();
+}
+
+function moveGiftImageItem(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= giftImageItems.length) return;
+    [giftImageItems[index], giftImageItems[newIndex]] = [giftImageItems[newIndex], giftImageItems[index]];
+    renderGiftImageList();
+    updateGiftImagePreview();
+    saveGiftImageConfig();
+}
+
+function renderGiftImageList() {
+    const container = document.getElementById('giftImageList');
+    if (!container) return;
+
+    if (giftImageItems.length === 0) {
+        container.innerHTML = '<div class="empty-list">尚未新增禮物，點擊上方「新增」按鈕開始</div>';
+        return;
+    }
+
+    container.innerHTML = giftImageItems.map((item, i) => `
+        <div class="gift-image-item">
+            ${item.iconUrl
+                ? `<img class="gift-icon" src="${item.iconUrl}" onerror="this.className='gift-icon placeholder'; this.outerHTML='<div class=\\'gift-icon placeholder\\'>🎁</div>'">`
+                : '<div class="gift-icon placeholder">🎁</div>'
+            }
+            <div class="gift-info">
+                <div class="gift-name" style="font-family:'${item.font || 'Microsoft JhengHei'}',sans-serif;">${escapeHtml(item.name)}</div>
+                <div class="gift-url" style="font-size:11px;color:#888;">${item.font || '微軟正黑體'}</div>
+            </div>
+            <div class="gift-actions">
+                <button onclick="moveGiftImageItem(${i}, -1)" title="上移">⬆️</button>
+                <button onclick="moveGiftImageItem(${i}, 1)" title="下移">⬇️</button>
+                <button onclick="showGiftImageDialog(${i})" title="編輯">✏️</button>
+                <button class="delete" onclick="deleteGiftImageItem(${i})" title="刪除">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getGiftImageSettings() {
+    return {
+        columns: parseInt(document.getElementById('giftImageColumns')?.value || 3),
+        gap: parseInt(document.getElementById('giftImageGap')?.value || 20),
+        iconSize: parseInt(document.getElementById('giftImageIconSize')?.value || 64),
+        padding: parseInt(document.getElementById('giftImagePadding')?.value || 30),
+        iconPosition: document.getElementById('giftImageIconPosition')?.value || 'left',
+        bgType: document.getElementById('giftImageBgType')?.value || 'solid',
+        bgColor: document.getElementById('giftImageBgColor')?.value || '#1a1a2e',
+        bgColor2: document.getElementById('giftImageBgColor2')?.value || '#16213e',
+        rounded: document.getElementById('giftImageRounded')?.checked !== false,
+        fontSize: parseInt(document.getElementById('giftImageFontSize')?.value || 24),
+        fontColor: document.getElementById('giftImageFontColor')?.value || '#ffffff',
+        fontBold: document.getElementById('giftImageFontBold')?.checked !== false,
+        textShadow: document.getElementById('giftImageTextShadow')?.checked !== false
+    };
+}
+
+function toggleGiftImageBgOptions() {
+    const bgType = document.getElementById('giftImageBgType')?.value;
+    const colorGroup = document.getElementById('giftImageBgColorGroup');
+    const color2Group = document.getElementById('giftImageBgColor2Group');
+
+    if (bgType === 'transparent') {
+        colorGroup.style.display = 'none';
+        color2Group.style.display = 'none';
+    } else if (bgType === 'gradient') {
+        colorGroup.style.display = '';
+        color2Group.style.display = '';
+    } else {
+        colorGroup.style.display = '';
+        color2Group.style.display = 'none';
+    }
+}
+
+function updateGiftImagePreview() {
+    const container = document.getElementById('giftImagePreview');
+    if (!container) return;
+
+    if (giftImageItems.length === 0) {
+        container.innerHTML = '<div class="preview-placeholder">新增禮物後即可預覽</div>';
+        return;
+    }
+
+    const settings = getGiftImageSettings();
+
+    // 背景樣式
+    let bgStyle = '';
+    if (settings.bgType === 'transparent') {
+        bgStyle = 'background: transparent;';
+    } else if (settings.bgType === 'gradient') {
+        bgStyle = `background: linear-gradient(135deg, ${settings.bgColor}, ${settings.bgColor2});`;
+    } else {
+        bgStyle = `background: ${settings.bgColor};`;
+    }
+
+    // 文字樣式
+    const textStyle = `
+        font-size: ${settings.fontSize}px;
+        color: ${settings.fontColor};
+        font-weight: ${settings.fontBold ? 'bold' : 'normal'};
+        ${settings.textShadow ? 'text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);' : ''}
+    `;
+
+    // 圖示位置樣式
+    const itemFlexDirection = settings.iconPosition === 'right' ? 'row-reverse' : 'row';
+
+    container.innerHTML = `
+        <div class="gift-image-grid" style="
+            ${bgStyle}
+            padding: ${settings.padding}px;
+            gap: ${settings.gap}px;
+            grid-template-columns: repeat(${settings.columns}, 1fr);
+            ${settings.rounded ? 'border-radius: 16px;' : ''}
+        ">
+            ${giftImageItems.map(item => `
+                <div class="gift-image-grid-item" style="flex-direction: ${itemFlexDirection};">
+                    ${item.iconUrl
+                        ? `<img src="${item.iconUrl}" style="width: ${settings.iconSize}px; height: ${settings.iconSize}px;" onerror="this.style.display='none'">`
+                        : `<div style="width: ${settings.iconSize}px; height: ${settings.iconSize}px; display: flex; align-items: center; justify-content: center; font-size: ${settings.iconSize * 0.6}px;">🎁</div>`
+                    }
+                    <span class="gift-label" style="${textStyle} font-family: '${item.font || 'Microsoft JhengHei'}', sans-serif;">${escapeHtml(item.name)}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+async function saveGiftImageConfig() {
+    try {
+        const settings = getGiftImageSettings();
+        const config = {
+            items: giftImageItems,
+            settings: settings
+        };
+        await pywebview.api.save_gift_image_config(config);
+    } catch (e) {
+        console.error('儲存禮物圖設定失敗:', e);
+    }
+}
+
+async function loadGiftImageConfig() {
+    try {
+        const config = await pywebview.api.get_gift_image_config();
+        if (config) {
+            giftImageItems = config.items || [];
+            const s = config.settings || {};
+
+            if (s.columns) document.getElementById('giftImageColumns').value = s.columns;
+            if (s.gap !== undefined) document.getElementById('giftImageGap').value = s.gap;
+            if (s.iconSize) document.getElementById('giftImageIconSize').value = s.iconSize;
+            if (s.padding !== undefined) document.getElementById('giftImagePadding').value = s.padding;
+            if (s.iconPosition) document.getElementById('giftImageIconPosition').value = s.iconPosition;
+            if (s.bgType) document.getElementById('giftImageBgType').value = s.bgType;
+            if (s.bgColor) document.getElementById('giftImageBgColor').value = s.bgColor;
+            if (s.bgColor2) document.getElementById('giftImageBgColor2').value = s.bgColor2;
+            if (s.rounded !== undefined) document.getElementById('giftImageRounded').checked = s.rounded;
+            if (s.fontSize) document.getElementById('giftImageFontSize').value = s.fontSize;
+            if (s.fontColor) document.getElementById('giftImageFontColor').value = s.fontColor;
+            if (s.fontBold !== undefined) document.getElementById('giftImageFontBold').checked = s.fontBold;
+            if (s.textShadow !== undefined) document.getElementById('giftImageTextShadow').checked = s.textShadow;
+
+            toggleGiftImageBgOptions();
+            renderGiftImageList();
+            updateGiftImagePreview();
+        }
+    } catch (e) {
+        console.error('載入禮物圖設定失敗:', e);
+    }
+}
+
+// 禮物圖是否已發送到綠幕
+let giftImageSentToGreenScreen = false;
+
+async function sendGiftImageToGreenScreen() {
+    if (giftImageItems.length === 0) {
+        alert('請先新增禮物');
+        return;
+    }
+
+    const settings = getGiftImageSettings();
+    try {
+        await pywebview.api.send_gift_image_to_greenscreen({
+            items: giftImageItems,
+            settings: settings
+        });
+        addLogLocal('已發送禮物圖到綠幕');
+    } catch (e) {
+        console.error('發送失敗:', e);
+        alert('發送失敗: ' + e.message);
+    }
+}
+
+// 切換禮物圖顯示在綠幕上
+async function toggleGiftImageOnGreenScreen() {
+    const btn = document.getElementById('btnSendGiftImage');
+    const refreshBtn = document.getElementById('btnRefreshGiftImage');
+
+    if (giftImageSentToGreenScreen) {
+        // 取消發送 - 隱藏綠幕上的禮物圖
+        try {
+            await pywebview.api.hide_gift_image_on_greenscreen();
+            giftImageSentToGreenScreen = false;
+            btn.textContent = '📺 發送到綠幕';
+            btn.classList.remove('btn-danger');
+            btn.classList.add('btn-outline');
+            refreshBtn.style.display = 'none';
+            addLogLocal('已從綠幕移除禮物圖');
+        } catch (e) {
+            console.error('取消發送失敗:', e);
+        }
+    } else {
+        // 發送到綠幕
+        if (giftImageItems.length === 0) {
+            alert('請先新增禮物');
+            return;
+        }
+
+        const settings = getGiftImageSettings();
+        try {
+            await pywebview.api.send_gift_image_to_greenscreen({
+                items: giftImageItems,
+                settings: settings
+            });
+            giftImageSentToGreenScreen = true;
+            btn.textContent = '❌ 取消發送';
+            btn.classList.remove('btn-outline');
+            btn.classList.add('btn-danger');
+            refreshBtn.style.display = 'inline-block';
+            addLogLocal('已發送禮物圖到綠幕');
+        } catch (e) {
+            console.error('發送失敗:', e);
+            alert('發送失敗: ' + e.message);
+        }
+    }
+}
+
+// 重新整理綠幕上的禮物圖
+async function refreshGiftImageOnGreenScreen() {
+    if (!giftImageSentToGreenScreen) return;
+
+    if (giftImageItems.length === 0) {
+        alert('請先新增禮物');
+        return;
+    }
+
+    const settings = getGiftImageSettings();
+    try {
+        await pywebview.api.send_gift_image_to_greenscreen({
+            items: giftImageItems,
+            settings: settings
+        });
+        addLogLocal('已重新整理綠幕禮物圖');
+    } catch (e) {
+        console.error('重新整理失敗:', e);
+        alert('重新整理失敗: ' + e.message);
+    }
+}
+
+async function exportGiftImage() {
+    if (giftImageItems.length === 0) {
+        alert('請先新增禮物');
+        return;
+    }
+
+    const settings = getGiftImageSettings();
+    try {
+        const result = await pywebview.api.export_gift_image({
+            items: giftImageItems,
+            settings: settings
+        });
+        if (result.success) {
+            addLogLocal(`禮物圖已匯出: ${result.path}`);
+            alert('圖片已匯出！\n' + result.path);
+        } else {
+            alert('匯出失敗: ' + result.error);
+        }
+    } catch (e) {
+        console.error('匯出失敗:', e);
+        alert('匯出失敗: ' + e.message);
+    }
+}
+
+// 暴露禮物圖函數到全局作用域
+window.showGiftImageDialog = showGiftImageDialog;
+window.previewGiftDialogFile = previewGiftDialogFile;
+window.clearGiftDialogImage = clearGiftDialogImage;
+window.saveGiftImageItem = saveGiftImageItem;
+window.deleteGiftImageItem = deleteGiftImageItem;
+window.moveGiftImageItem = moveGiftImageItem;
+window.renderGiftImageList = renderGiftImageList;
+window.updateGiftImagePreview = updateGiftImagePreview;
+window.getGiftImageSettings = getGiftImageSettings;
+window.saveGiftImageConfig = saveGiftImageConfig;
+window.loadGiftImageConfig = loadGiftImageConfig;
+window.sendGiftImageToGreenScreen = sendGiftImageToGreenScreen;
+window.toggleGiftImageOnGreenScreen = toggleGiftImageOnGreenScreen;
+window.refreshGiftImageOnGreenScreen = refreshGiftImageOnGreenScreen;
+window.exportGiftImage = exportGiftImage;
+
+// 初始化時載入禮物圖設定
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        loadGiftImageConfig();
+    }, 500);
+});

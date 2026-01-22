@@ -26,6 +26,18 @@
             user-select: none;
         }
 
+        /* 初始化期間隱藏所有元素，防止閃爍 */
+        body.initializing .draggable:not(.debug-panel):not(.window-controls) {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            transition: none !important;
+        }
+
+        /* 初始化完成後的淡入效果 */
+        body:not(.initializing) .draggable {
+            transition: opacity 0.3s ease;
+        }
+
         /* 8個調整點 */
         .resize-handle {
             position: absolute;
@@ -97,7 +109,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             z-index: 1;
         }
 
@@ -112,7 +124,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             z-index: 2;
             display: none;
             visibility: hidden;
@@ -147,8 +159,9 @@
 
         .debug-panel h3 {
             color: #4ecca3;
-            margin-bottom: 15px;
-            font-size: 16px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 600;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             padding-bottom: 8px;
             display: flex;
@@ -156,8 +169,37 @@
             align-items: center;
         }
 
+        .debug-hint-text {
+            font-size: 10px;
+            font-weight: 400;
+            opacity: 0.5;
+        }
+
+        .debug-quick-actions {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .debug-btn-mini {
+            flex: 1;
+            padding: 6px 8px;
+            font-size: 11px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #f0f6fc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .debug-btn-mini:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(78, 204, 163, 0.5);
+        }
+
         .debug-section {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .debug-section h4 {
@@ -274,13 +316,39 @@
         }
 
         .video-list.compact {
-            max-height: 150px;
+            max-height: 200px;
             overflow-y: auto;
         }
 
-        .video-list.compact .video-list-item {
-            padding: 6px 8px;
-            font-size: 11px;
+        .video-list.compact .video-item {
+            padding: 8px;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .video-list.compact .video-thumbnail {
+            width: 50px;
+            height: 38px;
+        }
+
+        .video-list.compact .video-name {
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .video-list.compact .video-type {
+            font-size: 10px;
+        }
+
+        .video-list.compact .video-actions {
+            flex-direction: row;
+            gap: 4px;
+        }
+
+        .video-list.compact .video-actions button {
+            padding: 4px 8px;
+            font-size: 10px;
+            min-width: auto;
         }
 
         .debug-toggle {
@@ -398,6 +466,11 @@
             color: #8b949e;
             padding: 30px;
             font-size: 13px;
+        }
+
+        .video-list.compact .empty-list {
+            padding: 15px 10px;
+            font-size: 11px;
         }
 
         .refresh-btn {
@@ -534,6 +607,24 @@
             color: #4ecca3;
         }
 
+        .context-menu-item .menu-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        .context-menu-header {
+            padding: 8px 16px;
+            color: #8b949e;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .context-menu-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.1);
+            margin: 4px 0;
+        }
+
         /* 滾動條 */
         .debug-panel::-webkit-scrollbar,
         .video-list::-webkit-scrollbar {
@@ -572,7 +663,7 @@
         .entry-video {
             max-width: 100%;
             max-height: 100%;
-            object-fit: cover;
+            object-fit: contain;
         }
 
         /* 隨機影片專用容器（可拖曳縮圖版） */
@@ -699,20 +790,39 @@
         }
 
         /* 鴨子計數顯示 */
+        .scalable-box {
+            overflow: visible;
+        }
+
+        .scalable-box .scalable-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            white-space: nowrap;
+        }
+
         .duck-counter-box {
             position: absolute;
             width: 200px;
             height: 100px;
             left: 50px;
             top: 50px;
+            z-index: 200;
+        }
+
+        .duck-counter-box .scalable-content {
+            min-width: 200px;
+            height: 100px;
+            padding: 0 25px;
             background: rgba(0, 0, 0, 0.5);
             border: 5px solid rgba(255, 193, 7, 0.9);
             border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             gap: 12px;
-            z-index: 200;
             box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
         }
 
@@ -723,6 +833,7 @@
         .duck-counter-icon {
             font-size: 48px;
             animation: duckBounce 2s ease-in-out infinite;
+            filter: hue-rotate(180deg);
         }
 
         @keyframes duckBounce {
@@ -744,8 +855,8 @@
             right: -10px;
             font-size: 32px;
             font-weight: bold;
-            color: #4ade80;
-            text-shadow: 0 0 10px rgba(74, 222, 128, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
             font-family: 'Arial Black', sans-serif;
             opacity: 0;
             pointer-events: none;
@@ -780,15 +891,18 @@
             height: 80px;
             left: 50px;
             top: 170px;
+            z-index: 200;
+        }
+
+        .pity-counter-box .scalable-content {
+            min-width: 180px;
+            height: 80px;
+            padding: 0 20px;
             background: rgba(0, 0, 0, 0.5);
             border: 4px solid rgba(147, 51, 234, 0.9);
             border-radius: 16px;
-            display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
             gap: 4px;
-            z-index: 200;
             box-shadow: 0 4px 20px rgba(147, 51, 234, 0.3);
         }
 
@@ -797,7 +911,8 @@
         }
 
         .pity-counter-label {
-            font-size: 14px;
+            font-size: 22px;
+            font-weight: bold;
             color: #c084fc;
             text-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
         }
@@ -825,21 +940,123 @@
         .leaderboard-box {
             position: absolute;
             width: 280px;
-            height: 350px;
+            height: 120px;
             right: 50px;
             top: 50px;
-            background: rgba(0, 0, 0, 0.7);
-            border: 3px solid rgba(255, 193, 7, 0.8);
-            border-radius: 16px;
             z-index: 200;
-            box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
         }
 
         .leaderboard-box.hidden {
             display: none !important;
+        }
+
+        /* 霓虹邊框動畫 */
+        @keyframes neonPulse {
+            0%, 100% {
+                box-shadow: 0 0 5px #ffc107, 0 0 10px #ffc107, 0 0 20px #ffc107, 0 0 40px #ff9800;
+            }
+            50% {
+                box-shadow: 0 0 10px #ffc107, 0 0 20px #ffc107, 0 0 40px #ffc107, 0 0 80px #ff9800;
+            }
+        }
+
+        @keyframes neonAvatarPulse {
+            0%, 100% {
+                box-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 15px #00ffff;
+            }
+            50% {
+                box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+            }
+        }
+
+        .leaderboard-box .scalable-content {
+            min-width: 320px;
+            height: 100px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 10, 40, 0.95));
+            border: 2px solid transparent;
+            border-image: linear-gradient(135deg, #ffc107, #ff6b6b, #a855f7) 1;
+            border-radius: 12px;
+            gap: 6px;
+            padding: 10px 15px;
+            flex-direction: column;
+        }
+
+        .leaderboard-box .scalable-content.neon-border {
+            animation: neonPulse 2s ease-in-out infinite;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.4), inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .lb-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+            filter: drop-shadow(0 0 5px currentColor);
+        }
+
+        .lb-icon.gold { color: #ffc107; }
+        .lb-icon.purple { color: #a855f7; }
+
+        .lb-avatar-mini {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .lb-avatar-mini.gold-border { border-color: #ffc107; box-shadow: 0 0 8px rgba(255, 193, 7, 0.5); }
+        .lb-avatar-mini.purple-border { border-color: #a855f7; box-shadow: 0 0 8px rgba(168, 85, 247, 0.5); }
+
+        .lb-avatar-mini.placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 20px;
+        }
+
+        .lb-name {
+            font-size: 13px;
+            color: #fff;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        .lb-value {
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 'Arial Black', sans-serif;
+            white-space: nowrap;
+            text-shadow: 0 0 10px currentColor, 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .lb-value.gold { color: #ffc107; }
+        .lb-value.purple { color: #a855f7; }
+
+        /* 排行榜更新動畫 */
+        @keyframes lbUpdate {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.15); filter: brightness(1.5); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+
+        .lb-row.updating {
+            animation: lbUpdate 0.5s ease-out;
+        }
+
+        .lb-row.updating .lb-value {
+            animation: lbUpdate 0.5s ease-out;
         }
 
         .leaderboard-header {
@@ -915,6 +1132,28 @@
         .lb-item.top-1 {
             background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.15));
             border: 1px solid rgba(255, 215, 0, 0.5);
+        }
+
+        .lb-item.first-only {
+            padding: 12px 15px;
+            margin-bottom: 0;
+        }
+
+        .lb-item.first-only .lb-rank {
+            font-size: 28px;
+        }
+
+        .lb-item.first-only .lb-avatar {
+            width: 48px;
+            height: 48px;
+        }
+
+        .lb-item.first-only .lb-name {
+            font-size: 18px;
+        }
+
+        .lb-item.first-only .lb-score {
+            font-size: 20px;
         }
 
         .lb-item.top-2 {
@@ -1003,6 +1242,43 @@
             font-size: 14px;
         }
 
+        /* 禮物圖顯示區域 */
+        .gift-image-display {
+            position: absolute;
+            z-index: 250;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 100px;
+            min-height: 50px;
+            overflow: hidden;
+        }
+
+        .gift-image-display .gift-image-wrapper {
+            transform-origin: top left;
+            display: inline-block;
+        }
+
+        .gift-image-display .gift-image-content {
+            display: grid;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .gift-image-display .gift-image-grid-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .gift-image-display .gift-image-grid-item img {
+            object-fit: contain;
+        }
+
+        .gift-image-display .gift-label {
+            white-space: nowrap;
+        }
+
         /* 里程碑慶祝容器 */
         .milestone-overlay {
             position: fixed;
@@ -1027,7 +1303,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             z-index: 1;
         }
 
@@ -1133,7 +1409,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             z-index: 1;
         }
 
@@ -1147,7 +1423,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             z-index: 2;
             display: none;
         }
@@ -1434,7 +1710,7 @@
         .giftbox-video {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
         }
 
         /* 盲盒自動顯示狀態 */
@@ -1455,7 +1731,7 @@
         }
     </style>
 </head>
-<body>
+<body class="initializing">
     <!-- 視窗控制列 (滑鼠移到頂部顯示) -->
     <div class="window-controls" id="windowControls">
         <span class="title">綠幕視窗 (按 Tab 調整設定)</span>
@@ -1507,10 +1783,12 @@
     </div>
 
     <!-- 鴨子計數顯示 -->
-    <div class="draggable duck-counter-box" id="duckCounterBox">
-        <span class="duck-counter-icon">🦆</span>
-        <span class="duck-counter-value" id="duckCounterValue">0</span>
-        <span class="duck-counter-add" id="duckCounterAdd"></span>
+    <div class="draggable duck-counter-box scalable-box" id="duckCounterBox" data-base-width="200" data-base-height="100">
+        <div class="scalable-content">
+            <span class="duck-counter-icon">🦆</span>
+            <span class="duck-counter-value" id="duckCounterValue">0</span>
+            <span class="duck-counter-add" id="duckCounterAdd"></span>
+        </div>
         <div class="resize-handle nw"></div>
         <div class="resize-handle n"></div>
         <div class="resize-handle ne"></div>
@@ -1522,10 +1800,12 @@
     </div>
 
     <!-- 保底計數顯示 -->
-    <div class="draggable pity-counter-box hidden" id="pityCounterBox">
-        <span class="pity-counter-label">🎰 保底進度</span>
-        <span class="pity-counter-value" id="pityCounterValue">0 / 1000</span>
-        <span class="pity-counter-stage" id="pityCounterStage"></span>
+    <div class="draggable pity-counter-box scalable-box hidden" id="pityCounterBox" data-base-width="180" data-base-height="80">
+        <div class="scalable-content">
+            <span class="pity-counter-label">🎰 保底進度</span>
+            <span class="pity-counter-value" id="pityCounterValue">0 / 1000</span>
+            <span class="pity-counter-stage" id="pityCounterStage"></span>
+        </div>
         <div class="resize-handle nw"></div>
         <div class="resize-handle n"></div>
         <div class="resize-handle ne"></div>
@@ -1537,20 +1817,35 @@
     </div>
 
     <!-- 排行榜 -->
-    <div class="draggable leaderboard-box hidden" id="leaderboardBox">
-        <div class="leaderboard-header">
-            <span>🏆</span>
-            <span class="leaderboard-title">排行榜</span>
+    <div class="draggable leaderboard-box scalable-box hidden" id="leaderboardBox" data-base-width="320" data-base-height="100">
+        <div class="scalable-content lb-simple neon-border" id="gsLeaderboardSimple">
+            <div class="lb-row">
+                <span class="lb-icon gold">👑</span>
+                <div class="lb-avatar-mini gold-border placeholder">🦆</div>
+                <span class="lb-name">---</span>
+                <span class="lb-value gold">0🦆</span>
+            </div>
+            <div class="lb-row">
+                <span class="lb-icon purple">⭐</span>
+                <div class="lb-avatar-mini purple-border placeholder">🦆</div>
+                <span class="lb-name">---</span>
+                <span class="lb-value purple">0🦆</span>
+            </div>
         </div>
-        <div class="leaderboard-tabs-gs">
-            <button class="leaderboard-tab-gs active" data-tab="total" onclick="switchGsLeaderboardTab('total')">📊 累計</button>
-            <button class="leaderboard-tab-gs" data-tab="single" onclick="switchGsLeaderboardTab('single')">🎯 單次</button>
-        </div>
-        <div class="leaderboard-scroll" id="gsLeaderboardTotal">
-            <div class="lb-empty">暫無資料</div>
-        </div>
-        <div class="leaderboard-scroll hidden" id="gsLeaderboardSingle">
-            <div class="lb-empty">暫無資料</div>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle n"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div>
+        <div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle s"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- 禮物圖顯示區域 -->
+    <div class="draggable gift-image-display" id="giftImageDisplay" style="display: none;">
+        <div class="gift-image-wrapper" id="giftImageWrapper">
+            <div class="gift-image-content" id="giftImageContent"></div>
         </div>
         <div class="resize-handle nw"></div>
         <div class="resize-handle n"></div>
@@ -1642,35 +1937,53 @@
 
     <!-- 調試面板 -->
     <div class="debug-panel" id="debugPanel">
-        <h3>🛠️ 控制面板 <span style="font-size: 11px; opacity: 0.5;">Tab 鍵關閉</span></h3>
+        <h3>控制面板 <span class="debug-hint-text">Tab 關閉</span></h3>
+
+        <!-- 快速操作 -->
+        <div class="debug-quick-actions">
+            <button class="debug-btn-mini" onclick="hideAllElements()" title="隱藏全部">👁️‍🗨️ 全部隱藏</button>
+            <button class="debug-btn-mini" onclick="showAllElements()" title="顯示全部">👁️ 全部顯示</button>
+        </div>
 
         <div class="debug-section">
-            <h4>顯示控制</h4>
+            <h4>🎮 遊戲元素</h4>
             <div class="debug-grid">
                 <div class="debug-chip" id="toggleWheel" onclick="toggleWheelVisibility()">🎡 轉盤</div>
                 <div class="debug-chip" id="toggleGiftbox" onclick="toggleGiftboxVisibility()">🎁 盲盒</div>
-                <div class="debug-chip" id="toggleVideo" onclick="toggleVideoVisibility()">🎬 影片</div>
-                <div class="debug-chip" id="toggleEntryVideo" onclick="toggleEntryVideoVisibility()">👋 進場</div>
-                <div class="debug-chip" id="toggleRandomVideo" onclick="toggleRandomVideoVisible(); document.getElementById('toggleRandomVideo').classList.toggle('active', randomVideoVisible);">🎲 隨機</div>
-                <div class="debug-chip" id="toggleDuckVideo" onclick="toggleDuckVideoVisible(); document.getElementById('toggleDuckVideo').classList.toggle('active', duckVideoVisible);">🦆 抓鴨</div>
-                <div class="debug-chip" id="toggleDuckCounter" onclick="toggleDuckCounterVisible(); document.getElementById('toggleDuckCounter').classList.toggle('active', duckCounterVisible);">🔢 計數</div>
-                <div class="debug-chip" id="togglePityCounter" onclick="togglePityCounterVisible(); document.getElementById('togglePityCounter').classList.toggle('active', pityCounterVisible);">🎰 保底</div>
-                <div class="debug-chip" id="toggleLeaderboard" onclick="toggleLeaderboardVisible(); document.getElementById('toggleLeaderboard').classList.toggle('active', leaderboardVisible);">🏆 排行</div>
-                <div class="debug-chip" id="toggleGiftboxAutoHide" onclick="toggleGiftboxAutoHide()">⏱️ 自動隱藏</div>
+                <div class="debug-chip" id="toggleGiftboxAutoHide" onclick="toggleGiftboxAutoHide()">⏱️ 盲盒自動隱藏</div>
             </div>
         </div>
 
         <div class="debug-section">
-            <h4>測試功能</h4>
+            <h4>🎬 影片控制</h4>
+            <div class="debug-grid">
+                <div class="debug-chip" id="toggleVideo" onclick="toggleVideoVisibility()">📹 禮物影片</div>
+                <div class="debug-chip" id="toggleEntryVideo" onclick="toggleEntryVideoVisibility()">👋 進場影片</div>
+                <div class="debug-chip" id="toggleRandomVideo" onclick="toggleRandomVideoVisible(); document.getElementById('toggleRandomVideo').classList.toggle('active', randomVideoVisible);">🎲 隨機影片</div>
+                <div class="debug-chip" id="toggleDuckVideo" onclick="toggleDuckVideoVisible(); document.getElementById('toggleDuckVideo').classList.toggle('active', duckVideoVisible);">🦆 抓鴨影片</div>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h4>📊 統計顯示</h4>
+            <div class="debug-grid">
+                <div class="debug-chip" id="toggleDuckCounter" onclick="toggleDuckCounterVisible(); document.getElementById('toggleDuckCounter').classList.toggle('active', duckCounterVisible);">🦆 鴨子計數</div>
+                <div class="debug-chip" id="togglePityCounter" onclick="togglePityCounterVisible(); document.getElementById('togglePityCounter').classList.toggle('active', pityCounterVisible);">🎰 保底計數</div>
+                <div class="debug-chip" id="toggleLeaderboard" onclick="toggleLeaderboardVisible(); document.getElementById('toggleLeaderboard').classList.toggle('active', leaderboardVisible);">🏆 排行榜</div>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h4>🧪 測試功能</h4>
             <div class="debug-btn-grid">
                 <button class="debug-btn compact" id="testWheelBtn" onclick="testWheelSpin()">🎡 轉盤</button>
                 <button class="debug-btn compact" id="testGiftboxBtn" onclick="testGiftboxOpen()">🎁 盲盒</button>
                 <button class="debug-btn compact" onclick="testEntryText()">📝 文字</button>
                 <button class="debug-btn compact" onclick="testEntryVideo()">🎬 進場</button>
             </div>
-            <div class="debug-btn-grid" style="margin-top: 8px;">
-                <button class="debug-btn compact secondary" onclick="reloadAllThumbnails()">🖼️ 重載縮圖</button>
-                <button class="debug-btn compact danger" onclick="resetAllCropStates()">🔄 重置裁切</button>
+            <div class="debug-btn-grid" style="margin-top: 6px;">
+                <button class="debug-btn compact secondary" onclick="reloadAllThumbnails()">🔄 重載縮圖</button>
+                <button class="debug-btn compact danger" onclick="resetAllCropStates()">✂️ 重置裁切</button>
             </div>
         </div>
 
@@ -1726,7 +2039,38 @@
         </div>
     </div>
 
+    <!-- 元素右鍵選單 (圖層控制) -->
+    <div class="context-menu" id="elementContextMenu">
+        <div class="context-menu-header" id="elementMenuTitle">元素控制</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="moveLayerToTop()">
+            <span class="menu-icon">⬆️</span>
+            <span>移到最上層</span>
+        </div>
+        <div class="context-menu-item" onclick="moveLayerUp()">
+            <span class="menu-icon">🔼</span>
+            <span>上移一層</span>
+        </div>
+        <div class="context-menu-item" onclick="moveLayerDown()">
+            <span class="menu-icon">🔽</span>
+            <span>下移一層</span>
+        </div>
+        <div class="context-menu-item" onclick="moveLayerToBottom()">
+            <span class="menu-icon">⬇️</span>
+            <span>移到最下層</span>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="hideCurrentElement()">
+            <span class="menu-icon">👁️</span>
+            <span>隱藏此元素</span>
+        </div>
+    </div>
+
     <script>
+        // === 調試設定 (商用版本請設為 false) ===
+        const DEBUG_MODE = false;
+        const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
+
         // === 全域變數 ===
         let wheelOptions = [];
         let giftboxOptions = [];
@@ -1805,6 +2149,7 @@
             initDraggable();
             initResizable();
             initContextMenu();
+            applyElementZIndexes();  // 套用儲存的圖層順序
             initMessageListener();
             initKeyboardShortcuts();
             showHint();
@@ -1817,9 +2162,14 @@
                 }
             }, 3000);
 
+            // 移除初始化狀態，顯示所有已配置的元素
+            requestAnimationFrame(() => {
+                document.body.classList.remove('initializing');
+            });
+
             // 延遲重新載入縮圖
             setTimeout(() => {
-                console.log('[初始化] 完成，重載縮圖');
+                debugLog('[初始化] 完成，重載縮圖');
                 reloadAllThumbnails();
             }, 500);
         });
@@ -2023,6 +2373,42 @@
             }
         }
 
+        // 套用縮放內容的比例（等比例縮放，置中顯示）
+        function applyScalableBoxScale(elem, width, height) {
+            if (!elem || !elem.classList.contains('scalable-box')) return;
+            const content = elem.querySelector('.scalable-content');
+            if (!content) return;
+
+            // 取得基礎尺寸（用於計算縮放比例）
+            const baseWidth = parseInt(elem.dataset.baseWidth) || 200;
+            const baseHeight = parseInt(elem.dataset.baseHeight) || 100;
+
+            // 先重置 transform 以取得真實內容尺寸
+            content.style.transform = 'translate(-50%, -50%)';
+
+            // 取得實際內容尺寸（會根據文字自動拉長）
+            let contentWidth = content.offsetWidth;
+            let contentHeight = content.offsetHeight;
+
+            // 如果元素隱藏時 offset 為 0，使用基礎尺寸作為參考
+            if (contentWidth <= 0) contentWidth = baseWidth;
+            if (contentHeight <= 0) contentHeight = baseHeight;
+
+            // 計算縮放比例（取較小值以確保完整顯示）
+            const scaleX = width / contentWidth;
+            const scaleY = height / contentHeight;
+            const scale = Math.min(scaleX, scaleY);
+
+            // 確保 scale 是有效值
+            if (!isFinite(scale) || scale <= 0) {
+                content.style.transform = 'translate(-50%, -50%) scale(1)';
+                return;
+            }
+
+            // 置中 + 縮放
+            content.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+
         // 套用抓鴨子位置
         function applyDuckPositions() {
             const duckVideo = document.getElementById('duckVideoContainer');
@@ -2054,10 +2440,21 @@
             if (duckCounter) {
                 if (savedPositions && savedPositions.duckCounter) {
                     const data = savedPositions.duckCounter;
-                    duckCounter.style.width = (data.width || 200) + 'px';
-                    duckCounter.style.height = (data.height || 100) + 'px';
-                    duckCounter.style.left = (data.left || 50) + 'px';
-                    duckCounter.style.top = (data.top || 50) + 'px';
+                    const w = data.width || 200;
+                    const h = data.height || 100;
+                    const l = data.left || 50;
+                    const t = data.top || 50;
+
+                    duckCounter.style.width = w + 'px';
+                    duckCounter.style.height = h + 'px';
+                    duckCounter.style.left = l + 'px';
+                    duckCounter.style.top = t + 'px';
+
+                    // 更新緩存
+                    scalableBoxCache.duckCounterBox = { width: w, height: h, left: l, top: t };
+
+                    // 套用縮放
+                    applyScalableBoxScale(duckCounter, w, h);
 
                     duckCounterVisible = data.visible !== false;
                     if (!duckCounterVisible) {
@@ -2068,6 +2465,14 @@
                     document.getElementById('toggleDuckCounter')?.classList.toggle('active', duckCounterVisible);
                     console.log('[鴨子計數] 已套用位置:', data);
                 } else {
+                    // 設置預設值到 style（確保保存時能讀取）
+                    duckCounter.style.width = '200px';
+                    duckCounter.style.height = '100px';
+                    duckCounter.style.left = '50px';
+                    duckCounter.style.top = '50px';
+                    // 緩存使用預設值（已在聲明時設定）
+                    // 預設縮放（scale = 1）
+                    applyScalableBoxScale(duckCounter, 200, 100);
                     console.log('[鴨子計數] 使用預設位置');
                 }
             }
@@ -2077,10 +2482,21 @@
             if (pityCounter) {
                 if (savedPositions && savedPositions.pityCounter) {
                     const data = savedPositions.pityCounter;
-                    pityCounter.style.width = (data.width || 180) + 'px';
-                    pityCounter.style.height = (data.height || 80) + 'px';
-                    pityCounter.style.left = (data.left || 50) + 'px';
-                    pityCounter.style.top = (data.top || 170) + 'px';
+                    const w = data.width || 180;
+                    const h = data.height || 80;
+                    const l = data.left || 50;
+                    const t = data.top || 170;
+
+                    pityCounter.style.width = w + 'px';
+                    pityCounter.style.height = h + 'px';
+                    pityCounter.style.left = l + 'px';
+                    pityCounter.style.top = t + 'px';
+
+                    // 更新緩存
+                    scalableBoxCache.pityCounterBox = { width: w, height: h, left: l, top: t };
+
+                    // 套用縮放
+                    applyScalableBoxScale(pityCounter, w, h);
 
                     pityCounterVisible = data.visible !== false;
                     if (!pityCounterVisible) {
@@ -2091,6 +2507,14 @@
                     document.getElementById('togglePityCounter')?.classList.toggle('active', pityCounterVisible);
                     console.log('[保底計數] 已套用位置:', data);
                 } else {
+                    // 設置預設值到 style（確保保存時能讀取）
+                    pityCounter.style.width = '180px';
+                    pityCounter.style.height = '80px';
+                    pityCounter.style.left = '50px';
+                    pityCounter.style.top = '170px';
+                    // 緩存使用預設值（已在聲明時設定）
+                    // 預設縮放（scale = 1）
+                    applyScalableBoxScale(pityCounter, 180, 80);
                     console.log('[保底計數] 使用預設位置');
                 }
             }
@@ -2100,10 +2524,21 @@
             if (leaderboard) {
                 if (savedPositions && savedPositions.leaderboard) {
                     const data = savedPositions.leaderboard;
-                    leaderboard.style.width = (data.width || 280) + 'px';
-                    leaderboard.style.height = (data.height || 350) + 'px';
-                    leaderboard.style.left = (data.left || 50) + 'px';
-                    leaderboard.style.top = (data.top || 300) + 'px';
+                    const w = data.width || 320;
+                    const h = data.height || 100;
+                    const l = data.left || 50;
+                    const t = data.top || 300;
+
+                    leaderboard.style.width = w + 'px';
+                    leaderboard.style.height = h + 'px';
+                    leaderboard.style.left = l + 'px';
+                    leaderboard.style.top = t + 'px';
+
+                    // 更新緩存
+                    scalableBoxCache.leaderboardBox = { width: w, height: h, left: l, top: t };
+
+                    // 套用縮放
+                    applyScalableBoxScale(leaderboard, w, h);
 
                     leaderboardVisible = data.visible !== false;
                     if (!leaderboardVisible) {
@@ -2114,7 +2549,60 @@
                     document.getElementById('toggleLeaderboard')?.classList.toggle('active', leaderboardVisible);
                     console.log('[排行榜] 已套用位置:', data);
                 } else {
+                    // 設置預設值到 style（確保保存時能讀取）
+                    leaderboard.style.width = '320px';
+                    leaderboard.style.height = '100px';
+                    leaderboard.style.left = '50px';
+                    leaderboard.style.top = '300px';
+                    // 緩存使用預設值（已在聲明時設定）
+                    // 預設縮放
+                    applyScalableBoxScale(leaderboard, 320, 100);
                     console.log('[排行榜] 使用預設位置');
+                }
+            }
+
+            // 禮物圖顯示
+            const giftImageDisplay = document.getElementById('giftImageDisplay');
+            if (giftImageDisplay) {
+                if (savedPositions && savedPositions.giftImage) {
+                    const data = savedPositions.giftImage;
+                    // 套用尺寸
+                    if (data.width !== undefined && data.width > 0) {
+                        giftImageDisplay.style.width = data.width + 'px';
+                    }
+                    if (data.height !== undefined && data.height > 0) {
+                        giftImageDisplay.style.height = data.height + 'px';
+                    }
+                    // 套用位置
+                    if (data.left !== undefined) giftImageDisplay.style.left = data.left + 'px';
+                    if (data.top !== undefined) giftImageDisplay.style.top = data.top + 'px';
+                    // 禮物圖使用 transform 置中，需要移除置中效果才能使用自定義位置
+                    if (data.left !== undefined || data.top !== undefined) {
+                        giftImageDisplay.style.transform = 'none';
+                    }
+                    // 保存原始尺寸到 dataset（用於後續縮放計算）
+                    if (data.originalWidth > 0) {
+                        giftImageDisplay.dataset.originalWidth = data.originalWidth;
+                    }
+                    if (data.originalHeight > 0) {
+                        giftImageDisplay.dataset.originalHeight = data.originalHeight;
+                    }
+                    // 如果有保存的禮物圖資料，恢復內容
+                    if (data.data && data.visible) {
+                        // 延遲執行以確保函數已定義
+                        setTimeout(() => {
+                            showGiftImageOnGreenScreen(data.data);
+                            // 恢復縮放
+                            const wrapper = giftImageDisplay.querySelector('.gift-image-wrapper');
+                            if (wrapper && data.originalWidth > 0 && data.originalHeight > 0 && data.width > 0 && data.height > 0) {
+                                const scaleX = data.width / data.originalWidth;
+                                const scaleY = data.height / data.originalHeight;
+                                const scale = Math.min(scaleX, scaleY);
+                                wrapper.style.transform = `scale(${scale})`;
+                            }
+                        }, 100);
+                    }
+                    console.log('[禮物圖] 已套用位置:', data);
                 }
             }
         }
@@ -2302,6 +2790,17 @@
             // 重新初始化拖曳和縮放
             initDraggable();
             initResizable();
+
+            // 套用儲存的圖層順序到影片容器
+            if (savedPositions && savedPositions.elementZIndexes) {
+                document.querySelectorAll('.video-container').forEach(vc => {
+                    const key = vc.dataset.index;
+                    if (savedPositions.elementZIndexes[key]) {
+                        vc.style.zIndex = savedPositions.elementZIndexes[key];
+                        elementZIndexes[key] = savedPositions.elementZIndexes[key];
+                    }
+                });
+            }
         }
 
         // 渲染影片列表
@@ -2729,14 +3228,16 @@
             }
 
             // 重要：先保存當前所有容器的位置和裁切狀態
-            // 這樣當 configUpdated 觸發 regenerate 時，會使用最新的狀態
             await savePositions();
 
             try {
                 if (window.pywebview && window.pywebview.api) {
                     // 標記這是僅可見性更新，不需要重新生成容器
                     window._skipContainerRegeneration = true;
-                    await pywebview.api.update_config({ video_gifts: videoGifts });
+                    // 使用場景 API 更新影片設定
+                    const scenes = await pywebview.api.get_scenes();
+                    const activeSceneId = scenes.activeSceneId || 'default';
+                    await pywebview.api.update_scene_video_gifts(activeSceneId, videoGifts);
                     // 延遲重置標記，確保 configUpdated 事件已處理
                     setTimeout(() => { window._skipContainerRegeneration = false; }, 100);
                 }
@@ -2949,14 +3450,33 @@
                 updatePityCounter(event.detail);
             });
 
-            // 排行榜更新事件
+            // 排行榜更新事件（非抓鴨子來源的更新，如手動調整）
             window.addEventListener('updateLeaderboard', (event) => {
-                updateLeaderboard(event.detail);
+                // 如果不是抓鴨子影片播放中，直接更新
+                if (!duckVideoPlaying) {
+                    updateLeaderboard(event.detail);
+                }
+                // 抓鴨子期間的排行榜更新由 triggerDuckVideo 事件內的 leaderboardData 處理
             });
 
             // 里程碑慶祝事件
             window.addEventListener('triggerMilestone', (event) => {
                 triggerMilestoneCelebration(event.detail);
+            });
+
+            // 禮物圖顯示事件
+            window.addEventListener('showGiftImage', (event) => {
+                showGiftImageOnGreenScreen(event.detail);
+            });
+
+            // 禮物圖隱藏事件
+            window.addEventListener('hideGiftImage', () => {
+                hideGiftImage();
+            });
+
+            // 禮物圖匯出事件
+            window.addEventListener('exportGiftImage', (event) => {
+                exportGiftImageToFile(event.detail);
             });
 
             // 全域測試函數 - 可從控制台呼叫
@@ -3190,23 +3710,110 @@
             savePositions();
         }
 
-        // 更新所有進場效果的顯示/隱藏按鈕狀態
-        function updateEntryVisibilityButtons() {
+        // 更新所有進場效果的顯示/隱藏按鈕狀態（根據各自的 enabled 狀態）
+        async function updateEntryVisibilityButtons() {
             // 更新專屬進場的按鈕
             entryList.forEach((entry, index) => {
+                const enabled = entry.enabled !== false;
+                const item = document.getElementById(`entryItem_${index}`);
                 const btn = document.getElementById(`entryVisBtn_${index}`);
+                if (item) {
+                    item.classList.toggle('hidden-item', !enabled);
+                }
                 if (btn) {
-                    btn.className = `debug-btn small ${entryVideoVisible ? 'secondary' : 'danger'}`;
-                    btn.innerHTML = entryVideoVisible ? '👁️' : '🚫';
+                    btn.className = `debug-btn small ${enabled ? 'secondary' : 'danger'}`;
+                    btn.innerHTML = enabled ? '👁️' : '🚫';
                 }
             });
 
             // 更新全局進場的按鈕
-            const globalBtn = document.getElementById('entryVisBtn_global');
-            if (globalBtn) {
-                globalBtn.className = `debug-btn small ${entryVideoVisible ? 'secondary' : 'danger'}`;
-                globalBtn.innerHTML = entryVideoVisible ? '👁️' : '🚫';
+            try {
+                const config = await pywebview.api.get_config();
+                const entryConfig = config.entry_config || {};
+                const globalEnabled = entryConfig.enabled !== false;
+                const item = document.getElementById('entryItem_global');
+                const btn = document.getElementById('entryVisBtn_global');
+                if (item) {
+                    item.classList.toggle('hidden-item', !globalEnabled);
+                }
+                if (btn) {
+                    btn.className = `debug-btn small ${globalEnabled ? 'secondary' : 'danger'}`;
+                    btn.innerHTML = globalEnabled ? '👁️' : '🚫';
+                }
+            } catch (e) {
+                // 忽略錯誤
             }
+        }
+
+        // === 快速隱藏/顯示全部 ===
+        function hideAllElements() {
+            // 隱藏轉盤
+            wheelVisible = false;
+            setElementVisible(document.getElementById('wheelContainer'), false);
+            document.getElementById('wheelCheck').textContent = '';
+            document.getElementById('toggleWheel').classList.remove('active');
+
+            // 隱藏盲盒
+            giftboxVisible = false;
+            setElementVisible(document.getElementById('giftboxContainer'), false);
+            document.getElementById('giftboxCheck').textContent = '';
+            document.getElementById('toggleGiftbox').classList.remove('active');
+
+            // 隱藏影片容器
+            videoVisible = false;
+            document.querySelectorAll('.video-container').forEach(vc => {
+                setElementVisible(vc, false);
+            });
+            document.getElementById('videoCheck').textContent = '';
+            document.getElementById('toggleVideo').classList.remove('active');
+
+            // 隱藏進場影片容器
+            entryVideoVisible = false;
+            const entryContainer = document.getElementById('entryVideoContainer');
+            if (entryContainer) {
+                setElementVisible(entryContainer, false);
+            }
+            document.getElementById('toggleEntryVideo').classList.remove('active');
+            updateEntryVisibilityButtons();
+
+            savePositions();
+            debugLog('所有元素已隱藏');
+        }
+
+        function showAllElements() {
+            // 顯示轉盤
+            wheelVisible = true;
+            setElementVisible(document.getElementById('wheelContainer'), true);
+            document.getElementById('wheelCheck').textContent = '✓';
+            document.getElementById('toggleWheel').classList.add('active');
+
+            // 顯示盲盒
+            giftboxVisible = true;
+            setElementVisible(document.getElementById('giftboxContainer'), true);
+            document.getElementById('giftboxCheck').textContent = '✓';
+            document.getElementById('toggleGiftbox').classList.add('active');
+
+            // 顯示影片容器
+            videoVisible = true;
+            document.querySelectorAll('.video-container').forEach(vc => {
+                const idx = parseInt(vc.dataset.index);
+                const shouldShow = videoGifts[idx]?.visible !== false;
+                setElementVisible(vc, shouldShow);
+            });
+            document.getElementById('videoCheck').textContent = '✓';
+            document.getElementById('toggleVideo').classList.add('active');
+
+            // 顯示進場影片容器
+            entryVideoVisible = true;
+            const entryContainer = document.getElementById('entryVideoContainer');
+            if (entryContainer) {
+                setElementVisible(entryContainer, true);
+            }
+            document.getElementById('toggleEntryVideo').classList.add('active');
+            updateEntryVisibilityButtons();
+
+            savePositions();
+            debugLog('所有元素已顯示');
         }
 
         async function loadEntryList() {
@@ -3231,7 +3838,7 @@
                     const isVideo = /\.(mp4|avi|mov|mkv|webm)$/i.test(entry.media_path);
                     const enabled = entry.enabled !== false;
                     html += `
-                        <div class="video-item ${enabled ? '' : 'disabled'}">
+                        <div class="video-item ${enabled ? '' : 'hidden-item'}" id="entryItem_${index}">
                             <div class="video-thumbnail">
                                 ${isVideo
                                     ? `<video src="${formatVideoPath(entry.media_path)}" muted preload="metadata"></video>`
@@ -3240,12 +3847,14 @@
                             </div>
                             <div class="video-info">
                                 <div class="video-name">👤 ${entry.username || '未命名'}</div>
-                                <div class="video-path">${entry.media_path.split('\\').pop()}</div>
+                                <div class="video-type">${entry.media_path.split('\\').pop()}</div>
                             </div>
-                            <button class="debug-btn small" onclick="testEntryByIndex(${index})">▶️</button>
-                            <button class="debug-btn small ${entryVideoVisible ? 'secondary' : 'danger'}" onclick="toggleEntryVideoVisibility()" id="entryVisBtn_${index}">
-                                ${entryVideoVisible ? '👁️' : '🚫'}
-                            </button>
+                            <div class="video-actions">
+                                <button class="debug-btn small" onclick="testEntryByIndex(${index})">▶️</button>
+                                <button class="debug-btn small ${enabled ? 'secondary' : 'danger'}" onclick="toggleEntryEnabled(${index})" id="entryVisBtn_${index}">
+                                    ${enabled ? '👁️' : '🚫'}
+                                </button>
+                            </div>
                         </div>
                     `;
                 });
@@ -3255,7 +3864,7 @@
                     const isVideo = /\.(mp4|avi|mov|mkv|webm)$/i.test(entryConfig.media_path);
                     const enabled = entryConfig.enabled !== false;
                     html += `
-                        <div class="video-item ${enabled ? '' : 'disabled'}">
+                        <div class="video-item ${enabled ? '' : 'hidden-item'}" id="entryItem_global">
                             <div class="video-thumbnail">
                                 ${isVideo
                                     ? `<video src="${formatVideoPath(entryConfig.media_path)}" muted preload="metadata"></video>`
@@ -3264,12 +3873,14 @@
                             </div>
                             <div class="video-info">
                                 <div class="video-name">🌐 全局進場</div>
-                                <div class="video-path">${entryConfig.media_path.split('\\').pop()}</div>
+                                <div class="video-type">${entryConfig.media_path.split('\\').pop()}</div>
                             </div>
-                            <button class="debug-btn small" onclick="testGlobalEntry()">▶️</button>
-                            <button class="debug-btn small ${entryVideoVisible ? 'secondary' : 'danger'}" onclick="toggleEntryVideoVisibility()" id="entryVisBtn_global">
-                                ${entryVideoVisible ? '👁️' : '🚫'}
-                            </button>
+                            <div class="video-actions">
+                                <button class="debug-btn small" onclick="testGlobalEntry()">▶️</button>
+                                <button class="debug-btn small ${enabled ? 'secondary' : 'danger'}" onclick="toggleGlobalEntryEnabled()" id="entryVisBtn_global">
+                                    ${enabled ? '👁️' : '🚫'}
+                                </button>
+                            </div>
                         </div>
                     `;
                 }
@@ -3280,6 +3891,65 @@
                 updateEntryThumbnail();
             } catch (e) {
                 console.error('[進場列表] 載入失敗:', e);
+            }
+        }
+
+        // 切換單個進場項目的啟用狀態
+        async function toggleEntryEnabled(index) {
+            if (!entryList[index]) return;
+
+            const currentEnabled = entryList[index].enabled !== false;
+            const newEnabled = !currentEnabled;
+
+            // 更新本地狀態
+            entryList[index].enabled = newEnabled;
+
+            // 更新 UI
+            const item = document.getElementById(`entryItem_${index}`);
+            const btn = document.getElementById(`entryVisBtn_${index}`);
+            if (item) {
+                item.classList.toggle('hidden-item', !newEnabled);
+            }
+            if (btn) {
+                btn.className = `debug-btn small ${newEnabled ? 'secondary' : 'danger'}`;
+                btn.innerHTML = newEnabled ? '👁️' : '🚫';
+            }
+
+            // 保存到配置
+            try {
+                await pywebview.api.update_config({ entry_list: entryList });
+                console.log(`[進場] ${entryList[index].username} ${newEnabled ? '已啟用' : '已停用'}`);
+            } catch (e) {
+                console.error('[進場] 更新配置失敗:', e);
+            }
+        }
+
+        // 切換全局進場的啟用狀態
+        async function toggleGlobalEntryEnabled() {
+            try {
+                const config = await pywebview.api.get_config();
+                const entryConfig = config.entry_config || {};
+                const currentEnabled = entryConfig.enabled !== false;
+                const newEnabled = !currentEnabled;
+
+                // 更新配置
+                entryConfig.enabled = newEnabled;
+                await pywebview.api.update_config({ entry_config: entryConfig });
+
+                // 更新 UI
+                const item = document.getElementById('entryItem_global');
+                const btn = document.getElementById('entryVisBtn_global');
+                if (item) {
+                    item.classList.toggle('hidden-item', !newEnabled);
+                }
+                if (btn) {
+                    btn.className = `debug-btn small ${newEnabled ? 'secondary' : 'danger'}`;
+                    btn.innerHTML = newEnabled ? '👁️' : '🚫';
+                }
+
+                console.log(`[進場] 全局進場 ${newEnabled ? '已啟用' : '已停用'}`);
+            } catch (e) {
+                console.error('[進場] 更新全局配置失敗:', e);
             }
         }
 
@@ -3361,6 +4031,7 @@
             const duckCounter = document.getElementById('duckCounterBox');
             const pityCounter = document.getElementById('pityCounterBox');
             const leaderboard = document.getElementById('leaderboardBox');
+            const giftImageDisplay = document.getElementById('giftImageDisplay');
 
             // 收集影片容器資料
             const videoData = {};
@@ -3386,71 +4057,131 @@
                 };
             });
 
+            // 輔助函數：可靠地取得元素尺寸（即使隱藏）
+            function getElementDimensions(el, defaultW, defaultH) {
+                if (!el) return { width: defaultW, height: defaultH, left: 0, top: 0 };
+
+                // 對於 scalable-box 元素，優先使用緩存
+                if (el.classList.contains('scalable-box') && scalableBoxCache[el.id]) {
+                    const cached = scalableBoxCache[el.id];
+                    console.log(`[getElementDimensions] 使用緩存: ${el.id}`, cached);
+                    return {
+                        width: cached.width,
+                        height: cached.height,
+                        left: cached.left,
+                        top: cached.top
+                    };
+                }
+
+                // 優先使用 style 值（隱藏時 offset 會是 0）
+                // 注意：parseInt 可能返回 NaN，需要明確檢查
+                const styleW = parseInt(el.style.width);
+                const styleH = parseInt(el.style.height);
+                const styleL = parseInt(el.style.left);
+                const styleT = parseInt(el.style.top);
+
+                // 使用 isNaN 檢查，避免 NaN || 0 的問題
+                const w = !isNaN(styleW) && styleW > 0 ? styleW : (el.offsetWidth > 0 ? el.offsetWidth : defaultW);
+                const h = !isNaN(styleH) && styleH > 0 ? styleH : (el.offsetHeight > 0 ? el.offsetHeight : defaultH);
+                const l = !isNaN(styleL) ? styleL : (el.offsetLeft || 0);
+                const t = !isNaN(styleT) ? styleT : (el.offsetTop || 0);
+
+                return {
+                    width: Math.max(50, w),
+                    height: Math.max(50, h),
+                    left: l,
+                    top: t
+                };
+            }
+
             // 組合完整資料
+            const wheelDim = getElementDimensions(wheel, 350, 350);
+            const giftboxDim = getElementDimensions(giftbox, 200, 200);
+            const entryVideoDim = getElementDimensions(entryVideo, 400, 300);
+            const randomVideoDim = getElementDimensions(randomVideo, 300, 200);
+            const duckVideoDim = getElementDimensions(duckVideo, 300, 200);
+            const duckCounterDim = getElementDimensions(duckCounter, 200, 100);
+            const pityCounterDim = getElementDimensions(pityCounter, 180, 80);
+            const leaderboardDim = getElementDimensions(leaderboard, 320, 100);
+            const giftImageDim = getElementDimensions(giftImageDisplay, 300, 200);
+
             const positions = {
                 wheel: {
-                    width: Math.max(50, wheel.offsetWidth || 350),
-                    height: Math.max(50, wheel.offsetHeight || 350),
-                    left: wheel.offsetLeft || 0,
-                    top: wheel.offsetTop || 150,
+                    width: wheelDim.width,
+                    height: wheelDim.height,
+                    left: wheelDim.left,
+                    top: wheelDim.top || 150,
                     visible: wheelVisible
                 },
                 giftbox: {
-                    width: Math.max(50, giftbox.offsetWidth || 200),
-                    height: Math.max(50, giftbox.offsetHeight || 200),
-                    left: giftbox.offsetLeft || parseInt(giftbox.style.left) || 0,
-                    top: giftbox.offsetTop || parseInt(giftbox.style.top) || 150,
+                    width: giftboxDim.width,
+                    height: giftboxDim.height,
+                    left: giftboxDim.left,
+                    top: giftboxDim.top || 150,
                     visible: giftboxVisible,
                     autoHide: giftboxAutoHide
                 },
                 entryText: {
-                    left: entryText ? (entryText.offsetLeft || parseInt(entryText.style.left) || 0) : 0,
-                    top: entryText ? (entryText.offsetTop || parseInt(entryText.style.top) || 50) : 50
+                    left: entryText ? (parseInt(entryText.style.left) || entryText.offsetLeft || 0) : 0,
+                    top: entryText ? (parseInt(entryText.style.top) || entryText.offsetTop || 50) : 50
                 },
                 entryVideo: {
-                    width: entryVideo ? Math.max(50, entryVideo.offsetWidth || parseInt(entryVideo.style.width) || 400) : 400,
-                    height: entryVideo ? Math.max(50, entryVideo.offsetHeight || parseInt(entryVideo.style.height) || 300) : 300,
-                    left: entryVideo ? (entryVideo.offsetLeft || parseInt(entryVideo.style.left) || 100) : 100,
-                    top: entryVideo ? (entryVideo.offsetTop || parseInt(entryVideo.style.top) || 100) : 100,
+                    width: entryVideoDim.width,
+                    height: entryVideoDim.height,
+                    left: entryVideoDim.left || 100,
+                    top: entryVideoDim.top || 100,
                     visible: entryVideoVisible
                 },
                 randomVideo: {
-                    width: randomVideo ? Math.max(50, randomVideo.offsetWidth || parseInt(randomVideo.style.width) || 300) : 300,
-                    height: randomVideo ? Math.max(50, randomVideo.offsetHeight || parseInt(randomVideo.style.height) || 200) : 200,
-                    left: randomVideo ? (randomVideo.offsetLeft || parseInt(randomVideo.style.left) || 50) : 50,
-                    top: randomVideo ? (randomVideo.offsetTop || parseInt(randomVideo.style.top) || 400) : 400,
+                    width: randomVideoDim.width,
+                    height: randomVideoDim.height,
+                    left: randomVideoDim.left || 50,
+                    top: randomVideoDim.top || 400,
                     visible: randomVideoVisible
                 },
                 duckVideo: {
-                    width: duckVideo ? Math.max(50, duckVideo.offsetWidth || parseInt(duckVideo.style.width) || 300) : 300,
-                    height: duckVideo ? Math.max(50, duckVideo.offsetHeight || parseInt(duckVideo.style.height) || 200) : 200,
-                    left: duckVideo ? (duckVideo.offsetLeft || parseInt(duckVideo.style.left) || 400) : 400,
-                    top: duckVideo ? (duckVideo.offsetTop || parseInt(duckVideo.style.top) || 400) : 400,
+                    width: duckVideoDim.width,
+                    height: duckVideoDim.height,
+                    left: duckVideoDim.left || 400,
+                    top: duckVideoDim.top || 400,
                     visible: duckVideoVisible
                 },
                 duckCounter: {
-                    width: duckCounter ? Math.max(50, duckCounter.offsetWidth || parseInt(duckCounter.style.width) || 200) : 200,
-                    height: duckCounter ? Math.max(50, duckCounter.offsetHeight || parseInt(duckCounter.style.height) || 100) : 100,
-                    left: duckCounter ? (duckCounter.offsetLeft || parseInt(duckCounter.style.left) || 50) : 50,
-                    top: duckCounter ? (duckCounter.offsetTop || parseInt(duckCounter.style.top) || 50) : 50,
+                    width: duckCounterDim.width,
+                    height: duckCounterDim.height,
+                    left: duckCounterDim.left || 50,
+                    top: duckCounterDim.top || 50,
                     visible: duckCounterVisible
                 },
                 pityCounter: {
-                    width: pityCounter ? Math.max(50, pityCounter.offsetWidth || parseInt(pityCounter.style.width) || 180) : 180,
-                    height: pityCounter ? Math.max(50, pityCounter.offsetHeight || parseInt(pityCounter.style.height) || 80) : 80,
-                    left: pityCounter ? (pityCounter.offsetLeft || parseInt(pityCounter.style.left) || 50) : 50,
-                    top: pityCounter ? (pityCounter.offsetTop || parseInt(pityCounter.style.top) || 170) : 170,
+                    width: pityCounterDim.width,
+                    height: pityCounterDim.height,
+                    left: pityCounterDim.left || 50,
+                    top: pityCounterDim.top || 170,
                     visible: pityCounterVisible
                 },
                 leaderboard: {
-                    width: leaderboard ? Math.max(50, leaderboard.offsetWidth || parseInt(leaderboard.style.width) || 280) : 280,
-                    height: leaderboard ? Math.max(50, leaderboard.offsetHeight || parseInt(leaderboard.style.height) || 350) : 350,
-                    left: leaderboard ? (leaderboard.offsetLeft || parseInt(leaderboard.style.left) || 50) : 50,
-                    top: leaderboard ? (leaderboard.offsetTop || parseInt(leaderboard.style.top) || 300) : 300,
+                    width: leaderboardDim.width,
+                    height: leaderboardDim.height,
+                    left: leaderboardDim.left || 50,
+                    top: leaderboardDim.top || 300,
                     visible: leaderboardVisible
                 },
+                giftImage: {
+                    width: giftImageDim.width,
+                    height: giftImageDim.height,
+                    left: giftImageDim.left,
+                    top: giftImageDim.top,
+                    visible: giftImageVisible,
+                    // 保存原始內容尺寸（用於計算縮放比例）
+                    originalWidth: giftImageDisplay ? (parseInt(giftImageDisplay.dataset.originalWidth) || 0) : 0,
+                    originalHeight: giftImageDisplay ? (parseInt(giftImageDisplay.dataset.originalHeight) || 0) : 0,
+                    // 保存禮物圖資料（用於恢復）
+                    data: giftImageData
+                },
                 videoContainers: videoData,
-                videoModuleVisible: videoVisible
+                videoModuleVisible: videoVisible,
+                elementZIndexes: elementZIndexes  // 保存圖層順序
             };
 
             // 保存到配置文件
@@ -3542,6 +4273,255 @@
                 console.error('[進場影片測試] 錯誤:', e);
                 alert('測試失敗: ' + e.message);
             }
+        }
+
+        // === 禮物圖顯示功能 ===
+        let giftImageVisible = false;
+        let giftImageData = null;  // 保存禮物圖資料用於恢復
+
+        function showGiftImageOnGreenScreen(data) {
+            // 保存資料以便恢復
+            giftImageData = data;
+            console.log('[禮物圖] 顯示', data);
+            const container = document.getElementById('giftImageDisplay');
+            const content = document.getElementById('giftImageContent');
+            if (!container || !content) return;
+
+            const { items, settings } = data;
+            if (!items || items.length === 0) {
+                container.style.display = 'none';
+                giftImageVisible = false;
+                return;
+            }
+
+            // 背景樣式
+            let bgStyle = '';
+            if (settings.bgType === 'transparent') {
+                bgStyle = 'background: transparent;';
+            } else if (settings.bgType === 'gradient') {
+                bgStyle = `background: linear-gradient(135deg, ${settings.bgColor}, ${settings.bgColor2});`;
+            } else {
+                bgStyle = `background: ${settings.bgColor};`;
+            }
+
+            // 文字樣式
+            const textStyle = `
+                font-size: ${settings.fontSize}px;
+                color: ${settings.fontColor};
+                font-weight: ${settings.fontBold ? 'bold' : 'normal'};
+                ${settings.textShadow ? 'text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);' : ''}
+            `;
+
+            // 圖示位置樣式
+            const itemFlexDirection = settings.iconPosition === 'right' ? 'row-reverse' : 'row';
+
+            content.style.cssText = `
+                ${bgStyle}
+                padding: ${settings.padding}px;
+                gap: ${settings.gap}px;
+                grid-template-columns: repeat(${settings.columns}, 1fr);
+                ${settings.rounded ? 'border-radius: 16px;' : ''}
+            `;
+
+            content.innerHTML = items.map(item => `
+                <div class="gift-image-grid-item" style="flex-direction: ${itemFlexDirection};">
+                    ${item.iconUrl
+                        ? `<img src="${item.iconUrl}" style="width: ${settings.iconSize}px; height: ${settings.iconSize}px;" onerror="this.style.display='none'">`
+                        : `<div style="width: ${settings.iconSize}px; height: ${settings.iconSize}px; display: flex; align-items: center; justify-content: center; font-size: ${settings.iconSize * 0.6}px;">🎁</div>`
+                    }
+                    <span class="gift-label" style="${textStyle} font-family: '${item.font || 'Microsoft JhengHei'}', sans-serif;">${escapeHtmlGs(item.name)}</span>
+                </div>
+            `).join('');
+
+            container.style.display = 'block';
+            giftImageVisible = true;
+
+            // 使用 requestAnimationFrame 等待內容渲染完成後保存原始尺寸
+            const wrapper = container.querySelector('.gift-image-wrapper');
+            if (wrapper) {
+                // 重置縮放以取得真實尺寸
+                wrapper.style.transform = 'none';
+            }
+            requestAnimationFrame(() => {
+                // 保存原始尺寸到 dataset
+                const origW = content.offsetWidth || content.scrollWidth || 300;
+                const origH = content.offsetHeight || content.scrollHeight || 200;
+                container.dataset.originalWidth = origW;
+                container.dataset.originalHeight = origH;
+
+                // 如果容器有自訂尺寸，套用縮放
+                const containerW = parseInt(container.style.width);
+                const containerH = parseInt(container.style.height);
+                if (wrapper && containerW > 0 && containerH > 0) {
+                    const scaleX = containerW / origW;
+                    const scaleY = containerH / origH;
+                    const scale = Math.min(scaleX, scaleY);
+                    wrapper.style.transform = `scale(${scale})`;
+                }
+
+                savePositionsDebounced();
+            });
+        }
+
+        function hideGiftImage() {
+            const container = document.getElementById('giftImageDisplay');
+            if (container) {
+                container.style.display = 'none';
+                giftImageVisible = false;
+                giftImageData = null;  // 清除資料
+                savePositionsDebounced();  // 保存狀態
+            }
+        }
+
+        function toggleGiftImageVisible() {
+            if (giftImageVisible) {
+                hideGiftImage();
+            } else {
+                // 如果要顯示但沒有內容，提示用戶
+                const content = document.getElementById('giftImageContent');
+                if (!content || !content.innerHTML) {
+                    console.log('[禮物圖] 尚無內容，請從主介面發送');
+                    return;
+                }
+                document.getElementById('giftImageDisplay').style.display = 'block';
+                giftImageVisible = true;
+            }
+            savePositionsDebounced();
+        }
+
+        async function exportGiftImageToFile(data) {
+            console.log('[禮物圖] 匯出', data);
+            const { items, settings, savePath } = data;
+            if (!items || items.length === 0) return;
+
+            // 創建一個臨時的 canvas 來繪製禮物圖
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const columns = settings.columns || 3;
+            const gap = settings.gap || 20;
+            const iconSize = settings.iconSize || 64;
+            const padding = settings.padding || 30;
+            const fontSize = settings.fontSize || 24;
+
+            // 計算文字最大寬度（考慮每個項目的字體）
+            let maxTextWidth = 0;
+            items.forEach(item => {
+                const itemFont = item.font || 'Microsoft JhengHei';
+                ctx.font = `${settings.fontBold ? 'bold' : 'normal'} ${fontSize}px '${itemFont}', sans-serif`;
+                const w = ctx.measureText(item.name).width;
+                if (w > maxTextWidth) maxTextWidth = w;
+            });
+
+            const itemWidth = iconSize + 12 + maxTextWidth + 20;
+            const itemHeight = Math.max(iconSize, fontSize + 10);
+            const rows = Math.ceil(items.length / columns);
+
+            const canvasWidth = padding * 2 + columns * itemWidth + (columns - 1) * gap;
+            const canvasHeight = padding * 2 + rows * itemHeight + (rows - 1) * gap;
+
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            // 背景
+            if (settings.bgType === 'gradient') {
+                const gradient = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight);
+                gradient.addColorStop(0, settings.bgColor);
+                gradient.addColorStop(1, settings.bgColor2);
+                ctx.fillStyle = gradient;
+            } else if (settings.bgType !== 'transparent') {
+                ctx.fillStyle = settings.bgColor;
+            }
+
+            if (settings.bgType !== 'transparent') {
+                if (settings.rounded) {
+                    roundRect(ctx, 0, 0, canvasWidth, canvasHeight, 16);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                }
+            }
+
+            // 載入所有圖片
+            const loadImage = (url) => {
+                return new Promise((resolve) => {
+                    if (!url) {
+                        resolve(null);
+                        return;
+                    }
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => resolve(img);
+                    img.onerror = () => resolve(null);
+                    img.src = url;
+                });
+            };
+
+            const images = await Promise.all(items.map(item => loadImage(item.iconUrl)));
+
+            // 繪製每個禮物
+            ctx.fillStyle = settings.fontColor;
+            ctx.textBaseline = 'middle';
+
+            if (settings.textShadow) {
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+            }
+
+            items.forEach((item, i) => {
+                const col = i % columns;
+                const row = Math.floor(i / columns);
+                const x = padding + col * (itemWidth + gap);
+                const y = padding + row * (itemHeight + gap);
+
+                // 繪製圖示
+                const img = images[i];
+                if (img) {
+                    ctx.drawImage(img, x, y + (itemHeight - iconSize) / 2, iconSize, iconSize);
+                } else {
+                    // 繪製預設圖示
+                    ctx.save();
+                    ctx.font = `${iconSize * 0.6}px sans-serif`;
+                    ctx.fillText('🎁', x + iconSize / 4, y + itemHeight / 2);
+                    ctx.restore();
+                }
+
+                // 繪製文字（使用每個項目自己的字體）
+                const itemFont = item.font || 'Microsoft JhengHei';
+                ctx.font = `${settings.fontBold ? 'bold' : 'normal'} ${fontSize}px '${itemFont}', sans-serif`;
+                ctx.fillStyle = settings.fontColor;
+                ctx.fillText(item.name, x + iconSize + 12, y + itemHeight / 2);
+            });
+
+            // 匯出為圖片並保存
+            const dataUrl = canvas.toDataURL('image/png');
+            // 通知主進程保存文件
+            if (window.electronAPI && savePath) {
+                // 發送 base64 數據到主進程保存
+                const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+                try {
+                    await window.electronAPI.saveExportedImage(savePath, base64Data);
+                    console.log('[禮物圖] 已匯出到:', savePath);
+                } catch (e) {
+                    console.error('[禮物圖] 匯出失敗:', e);
+                }
+            }
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
         }
 
         // === 盲盒功能 ===
@@ -4293,6 +5273,8 @@
         let pendingDuckUsername = '';  // 抓到鴨子的用戶名
         let pendingPityData = null;  // 等待影片播完後要更新的保底資料
         let duckVideoQueue = [];  // 抓鴨子影片佇列
+        let pendingLeaderboardData = null;  // 當前影片播完後要更新的排行榜資料
+        let pendingMilestoneData = null;  // 當前影片播完後要觸發的里程碑
 
         // 播放抓鴨子影片
         async function playDuckVideo(videoData) {
@@ -4331,6 +5313,10 @@
             } else {
                 pendingPityData = null;
             }
+            // 儲存排行榜資料（影片播完後更新）
+            pendingLeaderboardData = videoData.leaderboardData || null;
+            // 儲存里程碑資料（影片播完後觸發）
+            pendingMilestoneData = videoData.milestoneData || null;
 
             try {
                 // 取得媒體 URL
@@ -4432,9 +5418,13 @@
             // 先捕獲當前的數據，然後重置（避免競態條件）
             const amountToAdd = pendingDuckAmount;
             const pityData = pendingPityData;
+            const leaderboardData = pendingLeaderboardData;
+            const milestoneData = pendingMilestoneData;
             pendingDuckAmount = 0;
             pendingDuckUsername = '';
             pendingPityData = null;
+            pendingLeaderboardData = null;
+            pendingMilestoneData = null;
 
             // 影片播完後才增加鴨子數量
             if (amountToAdd > 0) {
@@ -4456,6 +5446,18 @@
                 }
             }
 
+            // 影片播完後才更新排行榜
+            if (leaderboardData) {
+                console.log('[排行榜] 影片播完，更新排行榜');
+                updateLeaderboard(leaderboardData);
+            }
+
+            // 影片播完後才觸發里程碑
+            if (milestoneData) {
+                console.log('[里程碑] 影片播完，觸發里程碑:', milestoneData.type);
+                triggerMilestoneCelebration(milestoneData);
+            }
+
             // 全部處理完成後才設為 false，確保新事件會被正確排隊
             duckVideoPlaying = false;
 
@@ -4469,7 +5471,7 @@
                 const nextVideo = duckVideoQueue.shift();
                 playDuckVideoNow(nextVideo);
             } else {
-                // 本地佇列空了，通知主進程處理下一個
+                // 通知主進程處理下一個
                 try {
                     window.pywebview.api.notify_duck_video_finished();
                 } catch (e) {
@@ -4483,6 +5485,7 @@
         function updateDuckCounter(count) {
             const counterValue = document.getElementById('duckCounterValue');
             const counterAdd = document.getElementById('duckCounterAdd');
+            const counterBox = document.getElementById('duckCounterBox');
 
             if (counterValue) {
                 // 計算增加的數量
@@ -4530,7 +5533,25 @@
 
             duckCounterVisible = !duckCounterVisible;
             if (duckCounterVisible) {
+                // 先套用尺寸（在顯示之前）
+                if (scalableBoxCache.duckCounterBox) {
+                    const cached = scalableBoxCache.duckCounterBox;
+                    container.style.width = cached.width + 'px';
+                    container.style.height = cached.height + 'px';
+                    container.style.left = cached.left + 'px';
+                    container.style.top = cached.top + 'px';
+                }
+                // 先用 visibility:hidden 顯示（佔位但不可見）以便計算尺寸
+                container.style.visibility = 'hidden';
                 container.classList.remove('hidden');
+                // 下一幀再套用縮放並顯示
+                requestAnimationFrame(() => {
+                    if (scalableBoxCache.duckCounterBox) {
+                        const cached = scalableBoxCache.duckCounterBox;
+                        applyScalableBoxScale(container, cached.width, cached.height);
+                    }
+                    container.style.visibility = 'visible';
+                });
             } else {
                 container.classList.add('hidden');
             }
@@ -4540,6 +5561,13 @@
 
         // 保底計數顯示
         let pityCounterVisible = false;
+
+        // scalable-box 元素尺寸緩存（解決隱藏時無法讀取尺寸的問題）
+        const scalableBoxCache = {
+            pityCounterBox: { width: 180, height: 80, left: 50, top: 170 },
+            duckCounterBox: { width: 200, height: 100, left: 50, top: 50 },
+            leaderboardBox: { width: 320, height: 100, left: 50, top: 300 }
+        };
 
         function updatePityCounter(data) {
             const counterValue = document.getElementById('pityCounterValue');
@@ -4584,7 +5612,25 @@
 
             pityCounterVisible = !pityCounterVisible;
             if (pityCounterVisible) {
+                // 先套用尺寸（在顯示之前）
+                if (scalableBoxCache.pityCounterBox) {
+                    const cached = scalableBoxCache.pityCounterBox;
+                    container.style.width = cached.width + 'px';
+                    container.style.height = cached.height + 'px';
+                    container.style.left = cached.left + 'px';
+                    container.style.top = cached.top + 'px';
+                }
+                // 先用 visibility:hidden 顯示（佔位但不可見）以便計算尺寸
+                container.style.visibility = 'hidden';
                 container.classList.remove('hidden');
+                // 下一幀再套用縮放並顯示
+                requestAnimationFrame(() => {
+                    if (scalableBoxCache.pityCounterBox) {
+                        const cached = scalableBoxCache.pityCounterBox;
+                        applyScalableBoxScale(container, cached.width, cached.height);
+                    }
+                    container.style.visibility = 'visible';
+                });
             } else {
                 container.classList.add('hidden');
             }
@@ -4594,7 +5640,6 @@
 
         // === 排行榜 ===
         let leaderboardVisible = false;
-        let gsLeaderboardTab = 'total';
         let leaderboardData = { totalRanking: [], singleHighest: [] };
 
         // 切換排行榜顯示
@@ -4604,7 +5649,25 @@
 
             leaderboardVisible = !leaderboardVisible;
             if (leaderboardVisible) {
+                // 先套用尺寸（在顯示之前）
+                if (scalableBoxCache.leaderboardBox) {
+                    const cached = scalableBoxCache.leaderboardBox;
+                    container.style.width = cached.width + 'px';
+                    container.style.height = cached.height + 'px';
+                    container.style.left = cached.left + 'px';
+                    container.style.top = cached.top + 'px';
+                }
+                // 先用 visibility:hidden 顯示（佔位但不可見）以便計算尺寸
+                container.style.visibility = 'hidden';
                 container.classList.remove('hidden');
+                // 下一幀再套用縮放並顯示
+                requestAnimationFrame(() => {
+                    if (scalableBoxCache.leaderboardBox) {
+                        const cached = scalableBoxCache.leaderboardBox;
+                        applyScalableBoxScale(container, cached.width, cached.height);
+                    }
+                    container.style.visibility = 'visible';
+                });
             } else {
                 container.classList.add('hidden');
             }
@@ -4612,67 +5675,51 @@
             return leaderboardVisible;
         }
 
-        // 切換排行榜標籤
-        function switchGsLeaderboardTab(tab) {
-            gsLeaderboardTab = tab;
-
-            // 更新標籤樣式
-            document.querySelectorAll('.leaderboard-tab-gs').forEach(t => {
-                t.classList.toggle('active', t.dataset.tab === tab);
-            });
-
-            // 切換內容
-            document.getElementById('gsLeaderboardTotal').classList.toggle('hidden', tab !== 'total');
-            document.getElementById('gsLeaderboardSingle').classList.toggle('hidden', tab !== 'single');
-        }
-
         // 更新排行榜
+        let lastLeaderboardState = { totalDucks: 0, singleAmount: 0, totalUser: '', singleUser: '' };
+
         function updateLeaderboard(data) {
             if (!data) return;
             leaderboardData = data;
 
-            // 渲染累計排行
-            const totalList = document.getElementById('gsLeaderboardTotal');
-            if (totalList) {
-                if (data.totalRanking && data.totalRanking.length > 0) {
-                    totalList.innerHTML = data.totalRanking.slice(0, 10).map((item, index) => `
-                        <div class="lb-item ${index < 3 ? 'top-' + (index + 1) : ''}">
-                            <div class="lb-rank">${index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
-                            ${item.avatar
-                                ? `<img class="lb-avatar" src="${item.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar placeholder\\'>🦆</div>'">`
-                                : '<div class="lb-avatar placeholder">🦆</div>'
-                            }
-                            <div class="lb-info">
-                                <div class="lb-name">${escapeHtmlGs(item.nickname || item.uniqueId)}</div>
-                            </div>
-                            <div class="lb-score">${item.totalDucks.toLocaleString()}🦆</div>
-                        </div>
-                    `).join('');
-                } else {
-                    totalList.innerHTML = '<div class="lb-empty">暫無資料</div>';
-                }
-            }
+            // 渲染排行榜（累計第一名 + 單次最高）
+            const simpleList = document.getElementById('gsLeaderboardSimple');
+            if (simpleList) {
+                const totalItem = data.totalRanking && data.totalRanking.length > 0 ? data.totalRanking[0] : null;
+                const singleItem = data.singleHighest && data.singleHighest.length > 0 ? data.singleHighest[0] : null;
 
-            // 渲染單次最高
-            const singleList = document.getElementById('gsLeaderboardSingle');
-            if (singleList) {
-                if (data.singleHighest && data.singleHighest.length > 0) {
-                    singleList.innerHTML = data.singleHighest.slice(0, 10).map((item, index) => `
-                        <div class="lb-item ${index < 3 ? 'top-' + (index + 1) : ''}">
-                            <div class="lb-rank">${index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
-                            ${item.avatar
-                                ? `<img class="lb-avatar" src="${item.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar placeholder\\'>🦆</div>'">`
-                                : '<div class="lb-avatar placeholder">🦆</div>'
-                            }
-                            <div class="lb-info">
-                                <div class="lb-name">${escapeHtmlGs(item.nickname || item.uniqueId)}</div>
-                            </div>
-                            <div class="lb-score">${item.amount.toLocaleString()}🦆</div>
-                        </div>
-                    `).join('');
-                } else {
-                    singleList.innerHTML = '<div class="lb-empty">暫無資料</div>';
-                }
+                // 檢查是否有變化
+                const newTotalDucks = totalItem ? totalItem.totalDucks : 0;
+                const newSingleAmount = singleItem ? singleItem.amount : 0;
+                const newTotalUser = totalItem ? (totalItem.uniqueId || totalItem.nickname) : '';
+                const newSingleUser = singleItem ? (singleItem.uniqueId || singleItem.nickname) : '';
+
+                const totalChanged = newTotalDucks !== lastLeaderboardState.totalDucks || newTotalUser !== lastLeaderboardState.totalUser;
+                const singleChanged = newSingleAmount !== lastLeaderboardState.singleAmount || newSingleUser !== lastLeaderboardState.singleUser;
+
+                // 更新狀態
+                lastLeaderboardState = { totalDucks: newTotalDucks, singleAmount: newSingleAmount, totalUser: newTotalUser, singleUser: newSingleUser };
+
+                simpleList.innerHTML = `
+                    <div class="lb-row${totalChanged ? ' updating' : ''}">
+                        <span class="lb-icon gold">👑</span>
+                        ${totalItem && totalItem.avatar
+                            ? `<img class="lb-avatar-mini gold-border" src="${totalItem.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar-mini gold-border placeholder\\'>🦆</div>'">`
+                            : '<div class="lb-avatar-mini gold-border placeholder">🦆</div>'
+                        }
+                        <span class="lb-name">${totalItem ? escapeHtmlGs(totalItem.nickname || totalItem.name) : '---'}</span>
+                        <span class="lb-value gold">${totalItem ? totalItem.totalDucks.toLocaleString() : 0}🦆</span>
+                    </div>
+                    <div class="lb-row${singleChanged ? ' updating' : ''}">
+                        <span class="lb-icon purple">⭐</span>
+                        ${singleItem && singleItem.avatar
+                            ? `<img class="lb-avatar-mini purple-border" src="${singleItem.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar-mini purple-border placeholder\\'>🦆</div>'">`
+                            : '<div class="lb-avatar-mini purple-border placeholder">🦆</div>'
+                        }
+                        <span class="lb-name">${singleItem ? escapeHtmlGs(singleItem.nickname || singleItem.name) : '---'}</span>
+                        <span class="lb-value purple">${singleItem ? singleItem.amount.toLocaleString() : 0}🦆</span>
+                    </div>
+                `;
             }
         }
 
@@ -4998,10 +6045,26 @@
             if (e.target.classList.contains('resize-handle')) return;
 
             const elem = e.currentTarget;
+
+            // 取得元素位置（優先使用 style 值，避免隱藏時 offset 為 0）
+            let elemLeft = elem.offsetLeft;
+            let elemTop = elem.offsetTop;
+
+            // 如果是 scalable-box 且有緩存，使用緩存值
+            if (elem.classList.contains('scalable-box') && scalableBoxCache[elem.id]) {
+                const cached = scalableBoxCache[elem.id];
+                if (elemLeft <= 0 && cached.left > 0) elemLeft = cached.left;
+                if (elemTop <= 0 && cached.top > 0) elemTop = cached.top;
+            }
+
+            // 如果還是 0，嘗試從 style 取得
+            if (elemLeft <= 0) elemLeft = parseInt(elem.style.left) || 0;
+            if (elemTop <= 0) elemTop = parseInt(elem.style.top) || 0;
+
             dragState.active = true;
             dragState.elem = elem;
-            dragState.offsetX = e.clientX - elem.offsetLeft;
-            dragState.offsetY = e.clientY - elem.offsetTop;
+            dragState.offsetX = e.clientX - elemLeft;
+            dragState.offsetY = e.clientY - elemTop;
             elem.style.transform = 'none';
             e.preventDefault();
         }
@@ -5015,6 +6078,15 @@
 
         document.addEventListener('mouseup', () => {
             if (dragState.active) {
+                const elem = dragState.elem;
+
+                // 更新 scalable-box 緩存的位置
+                if (elem && elem.classList.contains('scalable-box') && scalableBoxCache[elem.id]) {
+                    scalableBoxCache[elem.id].left = parseInt(elem.style.left) || 0;
+                    scalableBoxCache[elem.id].top = parseInt(elem.style.top) || 0;
+                    console.log(`[ScalableBox] 拖動後緩存更新: ${elem.id}`, scalableBoxCache[elem.id]);
+                }
+
                 dragState.active = false;
                 dragState.elem = null;
                 savePositionsDebounced();
@@ -5073,11 +6145,66 @@
             resizeState.direction = direction;
             resizeState.startX = e.clientX;
             resizeState.startY = e.clientY;
-            resizeState.startWidth = elem.offsetWidth;
-            resizeState.startHeight = elem.offsetHeight;
-            resizeState.startLeft = elem.offsetLeft;
-            resizeState.startTop = elem.offsetTop;
+
+            // 取得元素尺寸（優先使用 style 值，避免隱藏時 offset 為 0）
+            let startWidth = elem.offsetWidth;
+            let startHeight = elem.offsetHeight;
+            let startLeft = elem.offsetLeft;
+            let startTop = elem.offsetTop;
+
+            // 如果是 scalable-box 且有緩存，使用緩存值
+            if (elem.classList.contains('scalable-box') && scalableBoxCache[elem.id]) {
+                const cached = scalableBoxCache[elem.id];
+                if (startWidth <= 0) startWidth = cached.width;
+                if (startHeight <= 0) startHeight = cached.height;
+                if (startLeft <= 0 && cached.left > 0) startLeft = cached.left;
+                if (startTop <= 0 && cached.top > 0) startTop = cached.top;
+            }
+
+            // 如果還是 0，嘗試從 style 取得
+            if (startWidth <= 0) startWidth = parseInt(elem.style.width) || 100;
+            if (startHeight <= 0) startHeight = parseInt(elem.style.height) || 100;
+            if (startLeft <= 0) startLeft = parseInt(elem.style.left) || 0;
+            if (startTop <= 0) startTop = parseInt(elem.style.top) || 0;
+
+            resizeState.startWidth = startWidth;
+            resizeState.startHeight = startHeight;
+            resizeState.startLeft = startLeft;
+            resizeState.startTop = startTop;
             elem.style.transform = 'none';
+
+            // 縮放框：儲存內容的實際尺寸
+            if (elem.classList.contains('scalable-box')) {
+                const content = elem.querySelector('.scalable-content');
+                if (content) {
+                    // 暫時重置 transform 以取得真實尺寸
+                    content.style.transform = 'translate(-50%, -50%)';
+                    let contentW = content.offsetWidth;
+                    let contentH = content.offsetHeight;
+
+                    // 如果內容尺寸為 0，使用基礎尺寸
+                    if (contentW <= 0) contentW = parseInt(elem.dataset.baseWidth) || 200;
+                    if (contentH <= 0) contentH = parseInt(elem.dataset.baseHeight) || 100;
+
+                    resizeState.contentWidth = contentW;
+                    resizeState.contentHeight = contentH;
+                }
+            }
+
+            // 禮物圖：儲存內容的實際尺寸
+            if (elem.id === 'giftImageDisplay') {
+                const wrapper = elem.querySelector('.gift-image-wrapper');
+                const content = elem.querySelector('.gift-image-content');
+                if (wrapper && content) {
+                    // 暫時重置 transform 以取得真實尺寸
+                    const prevTransform = wrapper.style.transform;
+                    wrapper.style.transform = 'none';
+                    // 使用 content 的尺寸（因為 wrapper 是 inline-block 會自動調整）
+                    resizeState.giftImageOrigWidth = content.offsetWidth || content.scrollWidth || 300;
+                    resizeState.giftImageOrigHeight = content.offsetHeight || content.scrollHeight || 200;
+                    wrapper.style.transform = prevTransform;
+                }
+            }
 
             // 影片容器的裁切狀態
             if (elem.classList.contains('video-container')) {
@@ -5268,6 +6395,50 @@
                 canvas.height = newHeight;
                 drawWheel();
             }
+
+            // 縮放內容（鴨子計數、保底計數等）
+            if (elem.classList.contains('scalable-box')) {
+                const content = elem.querySelector('.scalable-content');
+                const contentWidth = resizeState.contentWidth || 200;
+                const contentHeight = resizeState.contentHeight || 100;
+
+                if (content) {
+                    // 計算縮放比例（取較小值確保完整顯示）
+                    const scaleX = newWidth / contentWidth;
+                    const scaleY = newHeight / contentHeight;
+                    const scale = Math.min(scaleX, scaleY);
+                    // 置中 + 縮放
+                    content.style.transform = `translate(-50%, -50%) scale(${scale})`;
+                }
+
+                // 更新緩存
+                if (scalableBoxCache[elem.id]) {
+                    scalableBoxCache[elem.id] = {
+                        width: newWidth,
+                        height: newHeight,
+                        left: newLeft,
+                        top: newTop
+                    };
+                    console.log(`[ScalableBox] 緩存更新: ${elem.id}`, scalableBoxCache[elem.id]);
+                }
+            }
+
+            // 禮物圖縮放內容
+            if (elem.id === 'giftImageDisplay') {
+                const wrapper = elem.querySelector('.gift-image-wrapper');
+                if (wrapper) {
+                    // 取得內容原始尺寸（儲存在 resizeState 或使用當前尺寸）
+                    const origW = resizeState.giftImageOrigWidth || 300;
+                    const origH = resizeState.giftImageOrigHeight || 200;
+                    // 計算縮放比例
+                    const scaleX = newWidth / origW;
+                    const scaleY = newHeight / origH;
+                    const scale = Math.min(scaleX, scaleY);
+                    wrapper.style.transform = `scale(${scale})`;
+                    // 儲存當前縮放比例到容器的 dataset
+                    elem.dataset.currentScale = scale;
+                }
+            }
         });
 
         document.addEventListener('mouseup', () => {
@@ -5279,19 +6450,144 @@
         });
 
         // === 右鍵選單 ===
+        let currentContextElement = null;  // 當前右鍵點擊的元素
+        let baseZIndex = 10;  // 基礎 z-index
+        let elementZIndexes = {};  // 儲存各元素的 z-index
+
         function initContextMenu() {
             const menu = document.getElementById('contextMenu');
+            const elementMenu = document.getElementById('elementContextMenu');
 
             document.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                menu.style.left = e.clientX + 'px';
-                menu.style.top = e.clientY + 'px';
-                menu.classList.add('visible');
+
+                // 隱藏所有選單
+                menu.classList.remove('visible');
+                elementMenu.classList.remove('visible');
+
+                // 檢查是否點擊了可調整圖層的元素
+                const draggable = e.target.closest('.draggable');
+
+                if (draggable) {
+                    // 元素右鍵選單
+                    currentContextElement = draggable;
+                    const title = getElementTitle(draggable);
+                    document.getElementById('elementMenuTitle').textContent = title;
+                    elementMenu.style.left = e.clientX + 'px';
+                    elementMenu.style.top = e.clientY + 'px';
+                    elementMenu.classList.add('visible');
+                } else {
+                    // 一般右鍵選單
+                    menu.style.left = e.clientX + 'px';
+                    menu.style.top = e.clientY + 'px';
+                    menu.classList.add('visible');
+                }
             });
 
             document.addEventListener('click', () => {
                 menu.classList.remove('visible');
+                elementMenu.classList.remove('visible');
             });
+        }
+
+        // 套用儲存的圖層順序
+        function applyElementZIndexes() {
+            if (!savedPositions || !savedPositions.elementZIndexes) {
+                console.log('[圖層] 無儲存的圖層順序');
+                return;
+            }
+
+            // 恢復 elementZIndexes 資料
+            elementZIndexes = { ...savedPositions.elementZIndexes };
+
+            // 套用到所有元素
+            getAllDraggables().forEach(elem => {
+                const key = elem.id || elem.dataset.index;
+                if (elementZIndexes[key]) {
+                    elem.style.zIndex = elementZIndexes[key];
+                }
+            });
+
+            console.log('[圖層] 已套用儲存的圖層順序:', Object.keys(elementZIndexes).length, '個元素');
+        }
+
+        function getElementTitle(elem) {
+            if (elem.id === 'wheelContainer') return '🎡 轉盤';
+            if (elem.id === 'giftboxContainer') return '🎁 盲盒';
+            if (elem.id === 'entryTextContainer') return '👋 進場文字';
+            if (elem.id === 'entryVideoContainer') return '🎬 進場影片';
+            if (elem.id === 'randomVideoContainer') return '🎲 隨機影片';
+            if (elem.id === 'duckVideoContainer') return '🦆 抓鴨影片';
+            if (elem.id === 'duckCounterContainer') return '🔢 鴨子計數';
+            if (elem.id === 'pityCounterContainer') return '🎰 保底計數';
+            if (elem.id === 'leaderboardContainer') return '🏆 排行榜';
+            if (elem.classList.contains('video-container')) {
+                const idx = elem.dataset.index;
+                const gift = videoGifts[idx];
+                return `🎬 ${gift?.display_name || gift?.name || '影片 ' + idx}`;
+            }
+            return '元素';
+        }
+
+        function getAllDraggables() {
+            return Array.from(document.querySelectorAll('.draggable'));
+        }
+
+        function getElementZIndex(elem) {
+            const key = elem.id || elem.dataset.index;
+            return elementZIndexes[key] || parseInt(elem.style.zIndex) || baseZIndex;
+        }
+
+        function setElementZIndex(elem, zIndex) {
+            const key = elem.id || elem.dataset.index;
+            elementZIndexes[key] = zIndex;
+            elem.style.zIndex = zIndex;
+            savePositions();
+        }
+
+        function moveLayerToTop() {
+            if (!currentContextElement) return;
+            const maxZ = Math.max(...getAllDraggables().map(el => getElementZIndex(el)));
+            setElementZIndex(currentContextElement, maxZ + 1);
+        }
+
+        function moveLayerUp() {
+            if (!currentContextElement) return;
+            const currentZ = getElementZIndex(currentContextElement);
+            setElementZIndex(currentContextElement, currentZ + 1);
+        }
+
+        function moveLayerDown() {
+            if (!currentContextElement) return;
+            const currentZ = getElementZIndex(currentContextElement);
+            setElementZIndex(currentContextElement, Math.max(1, currentZ - 1));
+        }
+
+        function moveLayerToBottom() {
+            if (!currentContextElement) return;
+            const minZ = Math.min(...getAllDraggables().map(el => getElementZIndex(el)));
+            setElementZIndex(currentContextElement, Math.max(1, minZ - 1));
+        }
+
+        function hideCurrentElement() {
+            if (!currentContextElement) return;
+
+            // 根據元素類型調用對應的隱藏函數
+            if (currentContextElement.id === 'wheelContainer') {
+                if (wheelVisible) toggleWheelVisibility();
+            } else if (currentContextElement.id === 'giftboxContainer') {
+                if (giftboxVisible) toggleGiftboxVisibility();
+            } else if (currentContextElement.id === 'entryVideoContainer') {
+                if (entryVideoVisible) toggleEntryVideoVisibility();
+            } else if (currentContextElement.classList.contains('video-container')) {
+                const idx = parseInt(currentContextElement.dataset.index);
+                if (videoGifts[idx]?.visible !== false) {
+                    toggleVideoGiftVisible(idx);
+                }
+            } else {
+                // 直接隱藏
+                setElementVisible(currentContextElement, false);
+            }
         }
 
         // 暴露給外部的函數

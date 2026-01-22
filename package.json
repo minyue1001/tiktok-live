@@ -1,7 +1,7 @@
 {
-  "name": "tiktok-live-system",
-  "version": "1.0.24",
-  "description": "TikTok 直播互動系統",
+  "name": "livegift-pro",
+  "version": "2.0.0",
+  "description": "LiveGift Pro - 直播互動系統",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -10,7 +10,7 @@
     "build:nsis": "electron-builder --win nsis",
     "build:portable": "electron-builder --win portable"
   },
-  "author": "TikTok Live",
+  "author": "LiveGift Pro",
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.0.0",
@@ -22,8 +22,8 @@
     "electron-updater": "^6.1.7"
   },
   "build": {
-    "appId": "com.tiktok.live.system",
-    "productName": "TikTok Live",
+    "appId": "com.livegift.pro",
+    "productName": "LiveGift Pro",
     "directories": {
       "output": "dist"
     },
@@ -57,7 +57,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "TikTok Live",
+      "shortcutName": "LiveGift Pro",
       "installerLanguages": ["zh_TW", "zh_CN", "en_US"],
       "language": "2052"
     },

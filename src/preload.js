@@ -70,6 +70,9 @@ contextBridge.exposeInMainWorld('pywebview', {
         // 排行榜
         get_leaderboard: () => ipcRenderer.invoke('get-leaderboard'),
         clear_leaderboard: () => ipcRenderer.invoke('clear-leaderboard'),
+        get_alltime_stats: () => ipcRenderer.invoke('get-alltime-stats'),
+        set_user_ducks: (uniqueId, amount, nickname) => ipcRenderer.invoke('set-user-ducks', uniqueId, amount, nickname),
+        delete_user_from_alltime: (uniqueId) => ipcRenderer.invoke('delete-user-from-alltime', uniqueId),
 
         // 高等級用戶管理
         get_all_accounts: () => ipcRenderer.invoke('get-all-accounts'),
@@ -101,7 +104,14 @@ contextBridge.exposeInMainWorld('pywebview', {
 
         // 彈幕顯示（保持與 Python 版相容）
         toggle_chat_display: (enabled) => ipcRenderer.invoke('toggle-chat-display', enabled),
-        get_chat_display_status: () => ipcRenderer.invoke('get-chat-display-status')
+        get_chat_display_status: () => ipcRenderer.invoke('get-chat-display-status'),
+
+        // 禮物圖生成器
+        get_gift_image_config: () => ipcRenderer.invoke('get-gift-image-config'),
+        save_gift_image_config: (config) => ipcRenderer.invoke('save-gift-image-config', config),
+        send_gift_image_to_greenscreen: (data) => ipcRenderer.invoke('send-gift-image-to-greenscreen', data),
+        hide_gift_image_on_greenscreen: () => ipcRenderer.invoke('hide-gift-image-on-greenscreen'),
+        export_gift_image: (data) => ipcRenderer.invoke('export-gift-image', data)
     }
 });
 
@@ -171,7 +181,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // 快捷鍵開啟模擬送禮
     onOpenQuickSimulate: (callback) => {
         ipcRenderer.on('open-quick-simulate', () => callback());
-    }
+    },
+
+    // 禮物圖生成器
+    getGiftImageConfig: () => ipcRenderer.invoke('get-gift-image-config'),
+    saveGiftImageConfig: (config) => ipcRenderer.invoke('save-gift-image-config', config),
+    sendGiftImageToGreenScreen: (data) => ipcRenderer.invoke('send-gift-image-to-greenscreen', data),
+    exportGiftImage: (data) => ipcRenderer.invoke('export-gift-image', data),
+    saveExportedImage: (filePath, base64Data) => ipcRenderer.invoke('save-exported-image', filePath, base64Data)
 });
 
 // 標記已準備好（模擬 pywebviewready 事件）

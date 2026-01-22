@@ -402,8 +402,10 @@ async function connectToTikTok(username) {
             nickname: msg.nickname,
             uniqueId: msg.uniqueId,
             userId: msg.userId,
+            profilePictureUrl: msg.profilePictureUrl || '',
             giftId: msg.giftId,
             giftName: msg.giftName,
+            giftPictureUrl: msg.giftPictureUrl || '',
             repeatCount: giftCount,
             diamondCount: msg.diamondCount,
             giftType: msg.giftType

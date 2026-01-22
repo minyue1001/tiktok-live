@@ -1,5 +1,6 @@
 /**
- * TikTok 直播互動系統 - Electron 主進程
+ * LiveGift Pro - 直播互動系統
+ * Electron 主進程
  */
 
 const { app, BrowserWindow, ipcMain, dialog, Menu, globalShortcut } = require('electron');
@@ -10,12 +11,15 @@ const { spawn } = require('child_process');
 const express = require('express');
 const http = require('http');
 
+// ============ 調試設定 ============
+const DEBUG_MODE = false;
+const debugLog = (...args) => { if (DEBUG_MODE) console.log('[DEBUG]', ...args); };
+
 // ============ GPU 硬體加速設定 ============
 // 永遠停用硬體加速，避免某些電腦關閉時重開機的問題
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-gpu-compositing');
-console.log('硬體加速已停用（使用 CPU 渲染）');
 
 // ============ 自動更新設定 (可選) ============
 let autoUpdater = null;
@@ -57,11 +61,21 @@ const state = {
     lastDuckVideo: null,      // 上次播放的鴨子影片
     duckPityCounter: 0,       // 保底計數器
     duckLeaderboard: {        // 抓鴨子排行榜
-        totalRanking: [],     // 累計排行 [{uniqueId, nickname, avatar, totalDucks}]
-        singleHighest: []     // 單次最高 [{uniqueId, nickname, avatar, amount, date}]
+        totalRanking: [],     // 累計排行（每週重置）[{uniqueId, nickname, avatar, totalDucks}]
+        singleHighest: [],    // 單次最高（每天重置）[{uniqueId, nickname, avatar, amount, date}]
+        allTimeStats: [],     // 總體資料庫（永久）[{uniqueId, nickname, avatar, totalDucks}]
+        lastWeeklyReset: null, // 上次週重置時間
+        lastDailyReset: null   // 上次日重置時間
     },
     duckCatchQueue: [],       // 抓鴨子隊列
-    duckCatchProcessing: false // 是否正在處理隊列
+    duckCatchProcessing: false, // 是否正在處理隊列
+    // 重連機制
+    reconnectEnabled: true,    // 是否啟用自動重連
+    reconnectAttempts: 0,      // 當前重連嘗試次數
+    reconnectMaxAttempts: 5,   // 最大重連嘗試次數
+    reconnectDelay: 5000,      // 重連間隔（毫秒）
+    reconnectTimer: null,      // 重連計時器
+    manualDisconnect: false    // 是否為手動斷線（手動斷線不重連）
 };
 
 // ============ 路徑設定 ============
@@ -74,6 +88,7 @@ const CONFIG_PATH = path.join(DATA_DIR, 'tiktok_config.json');
 const HIGH_LEVEL_USERS_PATH = path.join(DATA_DIR, 'high_level_users.json');
 const USER_CACHE_PATH = path.join(DATA_DIR, 'user_cache.json');
 const LEADERBOARD_PATH = path.join(DATA_DIR, 'duck_leaderboard.json');
+const DUCK_STATE_PATH = path.join(DATA_DIR, 'duck_state.json');
 
 // 遷移舊設定檔到新位置
 function migrateOldConfig() {
@@ -83,7 +98,8 @@ function migrateOldConfig() {
         'tiktok_config.json',
         'high_level_users.json',
         'user_cache.json',
-        'duck_leaderboard.json'
+        'duck_leaderboard.json',
+        'duck_state.json'
     ];
 
     for (const file of filesToMigrate) {
@@ -205,7 +221,9 @@ function getDefaultConfig() {
             giftbox: { width: 200, height: 200, left: 465, top: 245, visible: false, autoHide: true },
             videoContainers: {},
             videoModuleVisible: true,
-            duckCounter: { left: 50, top: 50, visible: true, fontSize: 48 }
+            duckCounter: { left: 50, top: 50, visible: true, fontSize: 48 },
+            leaderboard: { left: 50, top: 150, width: 300, height: 400, visible: true },
+            pityCounter: { left: 50, top: 570, visible: true, fontSize: 24 }
         }
     };
 }
@@ -243,6 +261,8 @@ function switchScene(sceneId) {
         if (state.mainWindow && !state.mainWindow.isDestroyed()) {
             state.mainWindow.webContents.send('scene-changed', { sceneId, scene });
         }
+        // 重新註冊影片快捷鍵
+        registerVideoShortcuts();
         addLog(`🎬 已切換到場景: ${scene.name}`);
         return { success: true, scene };
     }
@@ -303,6 +323,10 @@ function updateSceneVideoGifts(sceneId, videoGifts) {
     if (scene) {
         scene.video_gifts = videoGifts;
         saveConfig();
+        // 如果是當前場景，重新註冊快捷鍵
+        if (sceneId === state.config.activeSceneId) {
+            registerVideoShortcuts();
+        }
         return { success: true, scene };
     }
     return { success: false, error: '場景不存在' };
@@ -537,6 +561,10 @@ async function connectTikTok() {
         return { success: false, message: '請先設定 TikTok 用戶名' };
     }
 
+    // 重置手動斷線標記（允許自動重連）
+    state.manualDisconnect = false;
+    cancelReconnect();
+
     // 先停止舊的連接和伺服器
     if (state.wsClient) {
         state.wsClient.close();
@@ -588,6 +616,11 @@ async function connectTikTok() {
             state.wsClient.on('close', () => {
                 addLog('WebSocket 連接已關閉');
                 state.connected = false;
+
+                // 如果不是手動斷線且啟用重連，則嘗試重連
+                if (!state.manualDisconnect && state.reconnectEnabled) {
+                    attemptReconnect();
+                }
             });
 
             state.wsClient.on('error', (err) => {
@@ -610,6 +643,10 @@ async function connectTikTok() {
 }
 
 function disconnectTikTok() {
+    // 標記為手動斷線，不觸發自動重連
+    state.manualDisconnect = true;
+    cancelReconnect();
+
     if (state.wsClient) {
         state.wsClient.close();
         state.wsClient = null;
@@ -617,6 +654,74 @@ function disconnectTikTok() {
     stopNodeServer();
     state.connected = false;
     addLog('已斷開連接');
+}
+
+// 取消重連
+function cancelReconnect() {
+    if (state.reconnectTimer) {
+        clearTimeout(state.reconnectTimer);
+        state.reconnectTimer = null;
+    }
+    state.reconnectAttempts = 0;
+}
+
+// 嘗試重連
+async function attemptReconnect() {
+    // 如果已取消重連或已連接，則跳過
+    if (state.manualDisconnect || state.connected) {
+        return;
+    }
+
+    // 檢查重連次數
+    if (state.reconnectAttempts >= state.reconnectMaxAttempts) {
+        addLog(`❌ 已達最大重連次數 (${state.reconnectMaxAttempts})，停止重連`);
+        state.reconnectAttempts = 0;
+        // 通知前端連接失敗
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('connection-failed', {
+                reason: '多次重連失敗',
+                attempts: state.reconnectMaxAttempts
+            });
+        }
+        return;
+    }
+
+    state.reconnectAttempts++;
+    const delay = state.reconnectDelay * state.reconnectAttempts; // 遞增延遲
+
+    addLog(`🔄 ${delay / 1000} 秒後嘗試重連... (${state.reconnectAttempts}/${state.reconnectMaxAttempts})`);
+
+    // 通知前端正在重連
+    if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+        state.mainWindow.webContents.send('reconnecting', {
+            attempt: state.reconnectAttempts,
+            maxAttempts: state.reconnectMaxAttempts,
+            delay: delay
+        });
+    }
+
+    state.reconnectTimer = setTimeout(async () => {
+        if (state.manualDisconnect || state.connected) {
+            return;
+        }
+
+        addLog(`🔄 正在重連... (${state.reconnectAttempts}/${state.reconnectMaxAttempts})`);
+
+        try {
+            const result = await connectTikTok();
+            if (result.success) {
+                addLog('✅ 重連成功！');
+                state.reconnectAttempts = 0;
+                state.manualDisconnect = false;
+            } else {
+                // 連接失敗，繼續嘗試
+                attemptReconnect();
+            }
+        } catch (e) {
+            console.error('重連錯誤:', e);
+            attemptReconnect();
+        }
+    }, delay);
 }
 
 // ============ 用戶暱稱快取（持久化） ============
@@ -664,13 +769,76 @@ function loadLeaderboard() {
             const data = JSON.parse(fs.readFileSync(LEADERBOARD_PATH, 'utf8'));
             state.duckLeaderboard = {
                 totalRanking: data.totalRanking || [],
-                singleHighest: data.singleHighest || []
+                singleHighest: data.singleHighest || [],
+                allTimeStats: data.allTimeStats || [],
+                lastWeeklyReset: data.lastWeeklyReset || null,
+                lastDailyReset: data.lastDailyReset || null
             };
-            console.log(`[Leaderboard] 已載入排行榜: 累計${state.duckLeaderboard.totalRanking.length}人, 單次${state.duckLeaderboard.singleHighest.length}人`);
+            console.log(`[Leaderboard] 已載入排行榜: 累計${state.duckLeaderboard.totalRanking.length}人, 單次${state.duckLeaderboard.singleHighest.length}人, 總體${state.duckLeaderboard.allTimeStats.length}人`);
+
+            // 檢查是否需要自動重置
+            checkLeaderboardReset();
         }
     } catch (e) {
         console.error('[Leaderboard] 載入失敗:', e.message);
     }
+}
+
+// 檢查並執行排行榜自動重置
+function checkLeaderboardReset() {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    // 取得本週日的日期（週日為一週的最後一天）
+    const dayOfWeek = now.getDay(); // 0 = 週日
+    const thisSunday = new Date(now);
+    thisSunday.setDate(now.getDate() + (7 - dayOfWeek) % 7);
+    const thisSundayStr = thisSunday.toISOString().split('T')[0];
+
+    // 檢查每日重置（單次最高）
+    if (state.duckLeaderboard.lastDailyReset !== today) {
+        console.log('[Leaderboard] 執行每日重置（單次最高）');
+        state.duckLeaderboard.singleHighest = [];
+        state.duckLeaderboard.lastDailyReset = today;
+        saveLeaderboard();
+        addLog('🔄 單次最高排行榜已自動重置（每日）');
+    }
+
+    // 檢查每週重置（累計排行）- 週日 00:00 後重置
+    const lastWeeklyReset = state.duckLeaderboard.lastWeeklyReset;
+    if (dayOfWeek === 0) { // 今天是週日
+        if (!lastWeeklyReset || lastWeeklyReset !== today) {
+            console.log('[Leaderboard] 執行每週重置（累計排行）');
+            state.duckLeaderboard.totalRanking = [];
+            state.duckLeaderboard.lastWeeklyReset = today;
+            saveLeaderboard();
+            addLog('🔄 累計排行榜已自動重置（每週日）');
+        }
+    }
+}
+
+// 設定排行榜自動重置定時器
+function setupLeaderboardResetTimer() {
+    // 每分鐘檢查一次是否需要重置
+    setInterval(() => {
+        checkLeaderboardReset();
+    }, 60 * 1000); // 60秒
+
+    // 計算到下一個午夜的時間，設定精確的重置
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    const msUntilMidnight = midnight - now;
+
+    setTimeout(() => {
+        checkLeaderboardReset();
+        // 之後每24小時執行一次
+        setInterval(() => {
+            checkLeaderboardReset();
+        }, 24 * 60 * 60 * 1000);
+    }, msUntilMidnight);
+
+    console.log(`[Leaderboard] 已設定自動重置定時器，距離下次午夜: ${Math.round(msUntilMidnight / 1000 / 60)}分鐘`);
 }
 
 function saveLeaderboard() {
@@ -679,6 +847,34 @@ function saveLeaderboard() {
         console.log('[Leaderboard] 已儲存排行榜');
     } catch (e) {
         console.error('[Leaderboard] 儲存失敗:', e.message);
+    }
+}
+
+// ============ 鴨子狀態管理（計數器和保底）============
+function loadDuckState() {
+    try {
+        if (fs.existsSync(DUCK_STATE_PATH)) {
+            const data = JSON.parse(fs.readFileSync(DUCK_STATE_PATH, 'utf8'));
+            state.duckCount = data.duckCount || 0;
+            state.duckPityCounter = data.duckPityCounter || 0;
+            console.log(`[DuckState] 已載入: 鴨子數=${state.duckCount}, 保底=${state.duckPityCounter}`);
+        }
+    } catch (e) {
+        console.error('[DuckState] 載入失敗:', e.message);
+    }
+}
+
+function saveDuckState() {
+    try {
+        const data = {
+            duckCount: state.duckCount,
+            duckPityCounter: state.duckPityCounter,
+            lastSaved: new Date().toISOString()
+        };
+        fs.writeFileSync(DUCK_STATE_PATH, JSON.stringify(data, null, 2), 'utf8');
+        console.log(`[DuckState] 已儲存: 鴨子數=${state.duckCount}, 保底=${state.duckPityCounter}`);
+    } catch (e) {
+        console.error('[DuckState] 儲存失敗:', e.message);
     }
 }
 
@@ -697,7 +893,7 @@ function updateLeaderboard(userInfo, duckAmount, isPity = false) {
     const prevTotalFirst = state.duckLeaderboard.totalRanking[0] || null;
     const prevSingleFirst = state.duckLeaderboard.singleHighest[0] || null;
 
-    // 1. 更新累計排行
+    // 1. 更新累計排行（每週重置）
     let totalEntry = state.duckLeaderboard.totalRanking.find(e => e.uniqueId === uniqueId);
     if (totalEntry) {
         totalEntry.totalDucks += duckAmount;
@@ -715,7 +911,24 @@ function updateLeaderboard(userInfo, duckAmount, isPity = false) {
     state.duckLeaderboard.totalRanking.sort((a, b) => b.totalDucks - a.totalDucks);
     state.duckLeaderboard.totalRanking = state.duckLeaderboard.totalRanking.slice(0, 50);
 
-    // 2. 更新單次最高排行
+    // 2. 更新總體資料庫（永久，不重置）
+    let allTimeEntry = state.duckLeaderboard.allTimeStats.find(e => e.uniqueId === uniqueId);
+    if (allTimeEntry) {
+        allTimeEntry.totalDucks += duckAmount;
+        allTimeEntry.nickname = nickname || allTimeEntry.nickname;
+        allTimeEntry.avatar = avatar || allTimeEntry.avatar;
+    } else {
+        state.duckLeaderboard.allTimeStats.push({
+            uniqueId,
+            nickname,
+            avatar,
+            totalDucks: duckAmount
+        });
+    }
+    // 排序（不限制數量，保留所有人）
+    state.duckLeaderboard.allTimeStats.sort((a, b) => b.totalDucks - a.totalDucks);
+
+    // 3. 更新單次最高排行（每天重置）
     let singleEntry = state.duckLeaderboard.singleHighest.find(e => e.uniqueId === uniqueId);
     let newSingleRecord = false;
     if (singleEntry) {
@@ -748,45 +961,63 @@ function updateLeaderboard(userInfo, duckAmount, isPity = false) {
         state.mainWindow.webContents.send('leaderboard-updated', state.duckLeaderboard);
     }
 
-    // 通知綠幕更新
-    sendToGreenScreen('updateLeaderboard', state.duckLeaderboard);
+    // 不直接通知綠幕 - 改為在 triggerDuckVideo 中傳遞排行榜資料
+    // sendToGreenScreen('updateLeaderboard', state.duckLeaderboard);
 
-    // === 里程碑檢測 ===
+    // === 里程碑檢測（返回里程碑資料，不直接觸發）===
     const newTotalFirst = state.duckLeaderboard.totalRanking[0] || null;
     const newSingleFirst = state.duckLeaderboard.singleHighest[0] || null;
+    let milestoneData = null;
 
-    // 里程碑 1: 累計第一名達到 10000+
-    // 觸發條件：新的第一名達到 10000 且（之前沒有第一名 或 新第一名不同 或 新第一名超越了之前的紀錄）
+    // 取得里程碑影片路徑
+    const fireworkVideo = state.config.milestone_firework_video || '';
+    const hasFireworkVideo = fireworkVideo && fs.existsSync(fireworkVideo);
+
+    // 里程碑 1: 累計第一名達到 10000+，或有人超越現任第一名
     const TOTAL_MILESTONE = 10000;
-    if (newTotalFirst && newTotalFirst.totalDucks >= TOTAL_MILESTONE) {
+    if (newTotalFirst && newTotalFirst.totalDucks >= TOTAL_MILESTONE && hasFireworkVideo) {
+        // 觸發條件：
+        // 1. 之前沒有第一名
+        // 2. 新的第一名是不同的人（有人超越了）
+        // 3. 同一個人首次達到 10000
         const isNewChampion = !prevTotalFirst ||
             prevTotalFirst.uniqueId !== newTotalFirst.uniqueId ||
             (prevTotalFirst.totalDucks < TOTAL_MILESTONE && newTotalFirst.totalDucks >= TOTAL_MILESTONE);
 
         if (isNewChampion) {
-            addLog(`🎆 里程碑！${newTotalFirst.nickname} 成為累計第一名 (${newTotalFirst.totalDucks}🦆)！`);
-            triggerMilestoneCelebration('total', {
+            const reason = !prevTotalFirst ? '成為首位累計冠軍' :
+                          (prevTotalFirst.uniqueId !== newTotalFirst.uniqueId ? '超越成為新的累計冠軍' : '首次突破一萬大關');
+            addLog(`🎆 里程碑！${newTotalFirst.nickname} ${reason} (${newTotalFirst.totalDucks}🦆)！`);
+            milestoneData = {
+                type: 'total',
                 nickname: newTotalFirst.nickname,
                 avatar: newTotalFirst.avatar,
-                amount: newTotalFirst.totalDucks
-            });
+                amount: newTotalFirst.totalDucks,
+                videoPath: fireworkVideo
+            };
         }
     }
 
     // 里程碑 2: 單次最高達到 5000+（保底不計）
-    // 觸發條件：新紀錄、達到 5000+、非保底
     const SINGLE_MILESTONE = 5000;
     if (!isPity && newSingleRecord && duckAmount >= SINGLE_MILESTONE) {
-        // 檢查是否打破紀錄（成為新的第一名 或 刷新自己的第一名紀錄）
-        if (newSingleFirst && newSingleFirst.uniqueId === uniqueId && newSingleFirst.amount === duckAmount) {
+        if (newSingleFirst && newSingleFirst.uniqueId === uniqueId && newSingleFirst.amount === duckAmount && hasFireworkVideo) {
             addLog(`🎆 里程碑！${nickname} 創下單次最高紀錄 (${duckAmount}🦆)！`);
-            triggerMilestoneCelebration('single', {
+            milestoneData = {
+                type: 'single',
                 nickname: nickname,
                 avatar: avatar,
-                amount: duckAmount
-            });
+                amount: duckAmount,
+                videoPath: fireworkVideo
+            };
         }
     }
+
+    // 返回排行榜和里程碑資料
+    return {
+        leaderboard: state.duckLeaderboard,
+        milestone: milestoneData
+    };
 }
 
 // 觸發里程碑慶祝
@@ -810,7 +1041,7 @@ function triggerMilestoneCelebration(type, data) {
     });
 }
 
-function cacheUserNickname(userId, nickname, uniqueId) {
+function cacheUserNickname(userId, nickname, uniqueId, avatar = '') {
     if (!userId || (!nickname && !uniqueId)) return;
 
     // 只快取有效暱稱（非空、非亂碼）
@@ -818,10 +1049,11 @@ function cacheUserNickname(userId, nickname, uniqueId) {
     if (cleanedNickname || uniqueId) {
         const existing = state.userNicknameCache.get(userId);
 
-        // 更新快取（保留已有的資訊）
+        // 更新快取（保留已有的資訊，包含頭像）
         state.userNicknameCache.set(userId, {
             nickname: cleanedNickname || existing?.nickname || nickname || '',
             uniqueId: uniqueId || existing?.uniqueId || '',
+            avatar: avatar || existing?.avatar || '',
             time: Date.now()
         });
 
@@ -850,18 +1082,68 @@ function handleTikTokMessage(msg) {
     const msgType = (msg.type || '').toLowerCase();
     const data = msg.data || msg;
 
+    // 連接成功
+    if (msgType === 'connected') {
+        const roomId = msg.roomId || data.roomId || '';
+        const username = msg.username || data.username || '';
+        addLog(`✅ 已連接到 TikTok 直播間${roomId ? ` (roomId: ${roomId})` : ''}`);
+        return;
+    }
+
+    // 錯誤訊息
+    if (msgType === 'error') {
+        // 嘗試提取錯誤訊息
+        let errorMsg = msg.message || msg.error || msg.reason || msg.errorMessage ||
+                       data.message || data.error || data.reason || data.errorMessage || '';
+
+        // 清理錯誤訊息
+        errorMsg = String(errorMsg).trim();
+
+        // 如果沒有有效的錯誤訊息，不顯示（可能只是暫時性的連接問題）
+        if (!errorMsg || errorMsg === '{}' || errorMsg === '{"type":"error"}') {
+            // 空錯誤訊息不顯示，等待具體錯誤或成功
+            return;
+        }
+
+        // 判斷是否為「用戶不在線」的錯誤
+        const isOfflineError = errorMsg.toLowerCase().includes('not online') ||
+                               errorMsg.toLowerCase().includes('offline') ||
+                               errorMsg.includes('isn\'t online');
+
+        // 避免重複顯示相同的錯誤
+        if (!state.lastErrorMsg || state.lastErrorMsg !== errorMsg) {
+            if (isOfflineError) {
+                addLog(`❌ TikTok 連接錯誤: 主播目前不在線上`);
+            } else {
+                addLog(`❌ TikTok 連接錯誤: ${errorMsg}`);
+            }
+            state.lastErrorMsg = errorMsg;
+            // 5 秒後清除，允許再次顯示相同錯誤
+            setTimeout(() => { state.lastErrorMsg = ''; }, 5000);
+        }
+
+        state.connected = false;
+        return;
+    }
+
+    // 狀態訊息
+    if (msgType === 'status') {
+        return; // 忽略狀態訊息
+    }
+
     // 禮物消息
     if (['gift', 'giftmessage', 'webcastgiftmessage'].includes(msgType)) {
         const username = data.nickname || data.uniqueId || data.user?.nickname || '未知用戶';
         const uniqueId = data.uniqueId || data.user?.uniqueId || '';
         const userId = data.userId || data.user?.userId || '';
         const giftName = data.giftName || data.gift_name || data.gift?.name || '';
+        const giftPictureUrl = data.giftPictureUrl || data.gift?.pictureUrl || '';
         const count = parseInt(data.repeatCount || data.giftCount || data.count || 1);
         const level = parseInt(data.level || data.user?.level || 0);
         const profilePictureUrl = data.profilePictureUrl || data.user?.profilePictureUrl || '';
 
-        // 快取用戶暱稱
-        if (userId) cacheUserNickname(userId, data.nickname, uniqueId);
+        // 快取用戶暱稱（包含頭像）
+        if (userId) cacheUserNickname(userId, data.nickname, uniqueId, profilePictureUrl);
 
         // 記錄高等級用戶
         if (userId && level >= 20) {
@@ -895,9 +1177,10 @@ function handleTikTokMessage(msg) {
         const userId = data.userId || data.user?.userId || '';
         const comment = data.comment || data.content || data.text || '';
         const level = parseInt(data.level || data.user?.level || 0);
+        const profilePictureUrl = data.profilePictureUrl || data.user?.profilePictureUrl || '';
 
-        // 快取用戶暱稱
-        if (userId) cacheUserNickname(userId, data.nickname, uniqueId);
+        // 快取用戶暱稱（包含頭像）
+        if (userId) cacheUserNickname(userId, data.nickname, uniqueId, profilePictureUrl);
 
         // 記錄高等級用戶
         if (userId && level >= 20) {
@@ -921,9 +1204,10 @@ function handleTikTokMessage(msg) {
         const userId = data.userId || data.user?.userId || '';
         const count = parseInt(data.likeCount || data.count || 1);
         const level = parseInt(data.level || data.user?.level || 0);
+        const profilePictureUrl = data.profilePictureUrl || data.user?.profilePictureUrl || '';
 
-        // 快取用戶暱稱
-        if (userId) cacheUserNickname(userId, data.nickname, uniqueId);
+        // 快取用戶暱稱（包含頭像）
+        if (userId) cacheUserNickname(userId, data.nickname, uniqueId, profilePictureUrl);
 
         // 記錄高等級用戶
         if (userId && level >= 20) {
@@ -944,20 +1228,30 @@ function handleTikTokMessage(msg) {
         const nickname = data.nickname || data.user?.nickname || '';
         const uniqueId = data.uniqueId || data.user?.uniqueId || '';
         const userId = data.userId || data.user?.userId || '';
+        const profilePictureUrl = data.profilePictureUrl || data.user?.profilePictureUrl || '';
+        const level = parseInt(data.level || 0);
 
         // 除錯：輸出原始資料
         console.log('[Entry Raw]', JSON.stringify({
-            nickname, uniqueId, userId, level: data.level
+            nickname, uniqueId, userId, level
         }));
 
-        // 快取用戶暱稱
-        if (userId) cacheUserNickname(userId, nickname, uniqueId);
+        // 快取用戶暱稱（包含頭像）
+        if (userId) cacheUserNickname(userId, nickname, uniqueId, profilePictureUrl);
+
+        // 檢查是否有專屬進場設定，若有則顯示在日誌
+        const hasSpecific = checkHasSpecificEntry(userId, uniqueId, nickname);
+        if (hasSpecific) {
+            addLog(`👋 ${nickname || uniqueId} 進入直播間 (專屬進場)`);
+        } else {
+            addLog(`👋 ${nickname || uniqueId} 進入直播間${level >= 20 ? ` Lv${level}` : ''}`);
+        }
 
         processEntry({
             nickname,
             uniqueId,
             userId,
-            level: data.level || 0
+            level
         });
     }
 
@@ -1211,29 +1505,12 @@ function cleanupEntryDedup(now) {
 // 用於記錄透過聊天回推的進場，避免短時間內重複觸發
 const chatBasedEntryDedup = new Map();
 
-function checkChatBasedEntry(userId, nickname, uniqueId) {
-    if (!userId) return;
-
-    const now = Date.now();
-    const account = state.currentTikTokAccount;
-    if (!account) return;
-
-    // 1. 檢查是否在最近 60 秒內已有進場記錄（避免重複）
-    const existingDedup = state.entryDedup[userId];
-    if (existingDedup && now - existingDedup.time < 60000) {
-        return; // 已有進場記錄，跳過
-    }
-
-    // 2. 檢查是否在最近 60 秒內透過互動回推過（避免每條互動都觸發）
-    const lastChatEntry = chatBasedEntryDedup.get(userId);
-    if (lastChatEntry && now - lastChatEntry < 60000) {
-        return; // 60 秒內已回推過
-    }
-
-    // 3. 檢查是否有專屬進場設定（用 userId、uniqueId 或暱稱匹配）
+// 檢查用戶是否有專屬進場設定
+function checkHasSpecificEntry(userId, uniqueId, nickname) {
     const entryList = state.config.entry_list || [];
-    let hasSpecificEntry = false;
-    const cleanedNick = cleanNickname(nickname).toLowerCase();
+    if (entryList.length === 0) return false;
+
+    const cleanedNick = cleanNickname(nickname || '').toLowerCase();
 
     for (const entry of entryList) {
         if (entry.enabled === false) continue;
@@ -1245,13 +1522,42 @@ function checkChatBasedEntry(userId, nickname, uniqueId) {
             (entryUsername && uniqueId && entryUsername === uniqueId.toLowerCase()) ||
             (entryUsername && cleanedNick && entryUsername === cleanedNick) ||
             (entryUsername && /^7\d{18}$/.test(entry.username) && entry.username === userId)) {
-            hasSpecificEntry = true;
             console.log(`[EntryMatch] 匹配成功: entry.username="${entry.username}" userId=${userId} uniqueId=${uniqueId} nickname="${nickname}"`);
-            break;
+            return true;
         }
     }
+    return false;
+}
 
-    // 4. 檢查是否為高等級用戶
+function checkChatBasedEntry(userId, nickname, uniqueId) {
+    if (!userId) return;
+
+    const now = Date.now();
+    const account = state.currentTikTokAccount;
+    if (!account) return;
+
+    // 調試：顯示檢查資訊
+    debugLog(`[ChatBasedEntry] 檢查: userId=${userId} nickname="${nickname}" uniqueId=${uniqueId}`);
+
+    // 1. 檢查是否在最近 60 秒內已有進場記錄（避免重複）
+    const existingDedup = state.entryDedup[userId];
+    if (existingDedup && now - existingDedup.time < 60000) {
+        debugLog(`[ChatBasedEntry] 跳過: 60秒內已有進場記錄`);
+        return; // 已有進場記錄，跳過
+    }
+
+    // 2. 檢查是否在最近內透過互動回推過（避免每條互動都觸發）
+    // 專屬進場用戶的冷卻時間較短（30秒），一般用戶 60 秒
+    const hasSpecificEntry = checkHasSpecificEntry(userId, uniqueId, nickname);
+    const cooldownTime = hasSpecificEntry ? 30000 : 60000;
+
+    const lastChatEntry = chatBasedEntryDedup.get(userId);
+    if (lastChatEntry && now - lastChatEntry < cooldownTime) {
+        debugLog(`[ChatBasedEntry] 跳過: ${cooldownTime/1000}秒內已回推過`);
+        return;
+    }
+
+    // 3. 檢查是否為高等級用戶
     const accountUsers = state.highLevelUsers[account] || {};
     const userInfo = accountUsers[userId];
     const level = userInfo?.level || 0;
@@ -1259,19 +1565,20 @@ function checkChatBasedEntry(userId, nickname, uniqueId) {
 
     // 必須是高等級用戶或有專屬進場設定
     if (!isHighLevel && !hasSpecificEntry) {
+        debugLog(`[ChatBasedEntry] 跳過: 非高等級(Lv${level})且無專屬設定`);
         return;
     }
 
-    // 5. 記錄回推時間
+    // 4. 記錄回推時間
     chatBasedEntryDedup.set(userId, now);
 
-    // 6. 使用儲存的資訊觸發進場
+    // 5. 使用儲存的資訊觸發進場
     const entryNickname = nickname || userInfo?.nickname || '';
     const entryUniqueId = uniqueId || userInfo?.uniqueId || '';
 
     const reason = hasSpecificEntry ? '專屬進場' : `Lv${level}`;
-    console.log(`[ChatBasedEntry] 透過聊天回推進場: userId=${userId} ${reason} nickname="${entryNickname}"`);
-    addLog(`💬➡️👋 透過聊天回推 ${entryNickname || entryUniqueId} ${reason} 進場`);
+    console.log(`[ChatBasedEntry] 透過互動回推進場: userId=${userId} ${reason} nickname="${entryNickname}"`);
+    addLog(`💬➡️👋 透過互動回推 ${entryNickname || entryUniqueId} ${reason} 進場`);
 
     // 6. 呼叫 processEntry 觸發進場效果
     processEntry({
@@ -1497,6 +1804,9 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                     }
                 }
 
+                // 保底計數器變更後儲存
+                saveDuckState();
+
                 // 日誌 - 顯示兩層保底進度
                 let pityInfo = '';
                 if (pityEnabled) {
@@ -1517,14 +1827,15 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                 if (selectedVideo && fs.existsSync(selectedVideo.path)) {
                     const duckAmount = caught ? (selectedVideo.amount || 1) : 0;
 
-                    // 更新排行榜（抓到鴨子時）
+                    // 更新排行榜並取得排行榜資料和里程碑資料（抓到鴨子時）
+                    let leaderboardResult = null;
                     if (caught && duckAmount > 0 && userInfo) {
-                        updateLeaderboard(userInfo, duckAmount, isPityTrigger);
+                        leaderboardResult = updateLeaderboard(userInfo, duckAmount, isPityTrigger);
                     }
 
                     addLog(`🎬 播放鴨子影片: ${path.basename(selectedVideo.path)} (數量: ${duckAmount})${isPityTrigger ? ' ⭐保底' : ''}`);
 
-                    // 播放影片（鴨子計數和保底計數都在影片播完後更新）
+                    // 播放影片（鴨子計數、保底計數、排行榜、里程碑都在影片播完後更新）
                     sendToGreenScreen('triggerDuckVideo', {
                         username,
                         path: selectedVideo.path,
@@ -1539,7 +1850,11 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                         pityEnabled: pityEnabled,
                         pityCounter: state.duckPityCounter,
                         pityThreshold: pityThreshold,
-                        pityThresholdJackpot: pityThresholdJackpot
+                        pityThresholdJackpot: pityThresholdJackpot,
+                        // 傳遞排行榜資料，影片播完後更新
+                        leaderboardData: leaderboardResult ? leaderboardResult.leaderboard : null,
+                        // 傳遞里程碑資料，影片播完後觸發
+                        milestoneData: leaderboardResult ? leaderboardResult.milestone : null
                     });
                 } else if (selectedVideo) {
                     addLog(`❌ 影片檔案不存在: ${selectedVideo?.path}`);
@@ -1822,7 +2137,7 @@ function createMainWindow() {
             nodeIntegration: false
         },
         icon: path.join(__dirname, '../assets/icon.png'),
-        title: 'TikTok 直播互動系統'
+        title: 'LiveGift Pro - 直播互動系統'
     });
 
     // 隱藏選單
@@ -1921,6 +2236,58 @@ function setupIPC() {
     // 配置
     ipcMain.handle('get-config', () => state.config);
     ipcMain.handle('update-config', (_, updates) => updateConfig(updates));
+
+    // 禮物圖生成器
+    ipcMain.handle('get-gift-image-config', () => state.config.giftImageConfig || { items: [], settings: {} });
+    ipcMain.handle('save-gift-image-config', (_, config) => {
+        state.config.giftImageConfig = config;
+        saveConfig();
+        return { success: true };
+    });
+    ipcMain.handle('send-gift-image-to-greenscreen', (_, data) => {
+        sendToGreenScreen('showGiftImage', data);
+        return { success: true };
+    });
+    ipcMain.handle('hide-gift-image-on-greenscreen', () => {
+        sendToGreenScreen('hideGiftImage', {});
+        return { success: true };
+    });
+    ipcMain.handle('export-gift-image', async (_, data) => {
+        try {
+            const { dialog } = require('electron');
+            const result = await dialog.showSaveDialog(state.mainWindow, {
+                title: '匯出禮物圖',
+                defaultPath: 'gift_display.png',
+                filters: [
+                    { name: 'PNG 圖片', extensions: ['png'] },
+                    { name: 'JPEG 圖片', extensions: ['jpg', 'jpeg'] }
+                ]
+            });
+
+            if (result.canceled || !result.filePath) {
+                return { success: false, error: '已取消' };
+            }
+
+            // 發送到綠幕進行截圖並保存
+            sendToGreenScreen('exportGiftImage', {
+                ...data,
+                savePath: result.filePath
+            });
+
+            return { success: true, path: result.filePath };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    });
+    ipcMain.handle('save-exported-image', async (_, filePath, base64Data) => {
+        try {
+            const buffer = Buffer.from(base64Data, 'base64');
+            fs.writeFileSync(filePath, buffer);
+            return { success: true };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    });
 
     // 場景管理
     ipcMain.handle('get-scenes', () => ({
@@ -2055,6 +2422,7 @@ function setupIPC() {
     ipcMain.handle('set-duck-count', (_, count) => {
         state.duckCount = Math.max(0, count);
         sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        saveDuckState();
         if (state.mainWindow) {
             state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
         }
@@ -2074,15 +2442,25 @@ function setupIPC() {
 
         // 如果有指定用戶，更新排行榜
         if (uniqueId && uniqueId.trim()) {
+            const trimmedId = uniqueId.trim();
             const userInfo = {
-                uniqueId: uniqueId.trim(),
-                nickname: uniqueId.trim(),
+                uniqueId: trimmedId,
+                nickname: trimmedId,
                 avatar: ''
             };
-            // 嘗試從快取取得用戶資訊
-            if (state.userCache && state.userCache[uniqueId]) {
-                userInfo.nickname = state.userCache[uniqueId].nickname || uniqueId;
-                userInfo.avatar = state.userCache[uniqueId].avatar || '';
+            // 優先從 allTimeStats（永久資料庫）查找用戶資訊
+            const existingUser = state.duckLeaderboard.allTimeStats.find(e => e.uniqueId === trimmedId);
+            if (existingUser) {
+                userInfo.nickname = existingUser.nickname || trimmedId;
+                userInfo.avatar = existingUser.avatar || '';
+            }
+            // 如果 allTimeStats 沒有，再從 userNicknameCache 取得
+            else {
+                const cached = state.userNicknameCache.get(trimmedId);
+                if (cached) {
+                    userInfo.nickname = cached.nickname || trimmedId;
+                    userInfo.avatar = cached.avatar || '';
+                }
             }
             updateLeaderboard(userInfo, amount, false);
             addLog(`🦆 補鴨子: 為 ${userInfo.nickname} 補 ${amount} 隻（總計: ${state.duckCount}）`);
@@ -2094,6 +2472,7 @@ function setupIPC() {
             state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
         }
 
+        saveDuckState();
         return { success: true, totalDucks: state.duckCount };
     });
 
@@ -2131,6 +2510,7 @@ function setupIPC() {
             if (state.mainWindow) {
                 state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
             }
+            saveDuckState();
         }
 
         addLog(`🦆 模擬抓鴨子: ${userInfo.nickname} ${caught ? `抓到 ${duckAmount} 隻！` : '沒抓到'} -> ${path.basename(selectedVideo.path)}`);
@@ -2177,17 +2557,28 @@ function setupIPC() {
         times = Math.max(1, parseInt(times) || 1);
 
         // 準備用戶資訊
-        const username = uniqueId ? uniqueId.trim() : '模擬用戶';
+        const trimmedId = uniqueId ? uniqueId.trim() : '';
         const userInfo = {
-            uniqueId: uniqueId ? uniqueId.trim() : '',
-            nickname: username,
+            uniqueId: trimmedId,
+            nickname: trimmedId || '模擬用戶',
             avatar: ''
         };
 
-        // 嘗試從快取取得用戶資訊
-        if (uniqueId && state.userCache && state.userCache[uniqueId]) {
-            userInfo.nickname = state.userCache[uniqueId].nickname || uniqueId;
-            userInfo.avatar = state.userCache[uniqueId].avatar || '';
+        // 優先從 allTimeStats（永久資料庫）查找用戶資訊
+        if (trimmedId) {
+            const existingUser = state.duckLeaderboard.allTimeStats.find(e => e.uniqueId === trimmedId);
+            if (existingUser) {
+                userInfo.nickname = existingUser.nickname || trimmedId;
+                userInfo.avatar = existingUser.avatar || '';
+            }
+            // 如果 allTimeStats 沒有，再從 userNicknameCache 取得
+            else {
+                const cached = state.userNicknameCache.get(trimmedId);
+                if (cached) {
+                    userInfo.nickname = cached.nickname || trimmedId;
+                    userInfo.avatar = cached.avatar || '';
+                }
+            }
         }
 
         // 將指定次數的抓鴨子加入隊列
@@ -2210,6 +2601,7 @@ function setupIPC() {
         state.duckCount += amount;
         addLog(`🦆 抓到 ${amount} 隻鴨子！目前總數: ${state.duckCount}`);
         sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        saveDuckState();
         if (state.mainWindow && !state.mainWindow.isDestroyed()) {
             state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
         }
@@ -2221,6 +2613,7 @@ function setupIPC() {
         state.duckCount = Math.max(0, state.duckCount - amount);
         addLog(`🦆 減少 ${amount} 隻鴨子，目前總數: ${state.duckCount}`);
         sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        saveDuckState();
         if (state.mainWindow) {
             state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
         }
@@ -2231,6 +2624,14 @@ function setupIPC() {
     ipcMain.handle('reset-pity-counter', () => {
         state.duckPityCounter = 0;
         addLog('🎯 已重置保底計數器');
+        // 通知綠幕更新
+        const cfg = state.config.duck_catch_config || {};
+        sendToGreenScreen('updatePityCounter', {
+            current: 0,
+            threshold: cfg.pity_threshold || 1000,
+            thresholdJackpot: cfg.pity_threshold_jackpot || 2000
+        });
+        saveDuckState();
         return { success: true };
     });
 
@@ -2238,6 +2639,14 @@ function setupIPC() {
     ipcMain.handle('set-pity-counter', (event, value) => {
         state.duckPityCounter = Math.max(0, parseInt(value) || 0);
         addLog(`🎯 保底計數器已設為 ${state.duckPityCounter}`);
+        // 通知綠幕更新
+        const cfg = state.config.duck_catch_config || {};
+        sendToGreenScreen('updatePityCounter', {
+            current: state.duckPityCounter,
+            threshold: cfg.pity_threshold || 1000,
+            thresholdJackpot: cfg.pity_threshold_jackpot || 2000
+        });
+        saveDuckState();
         return { success: true, value: state.duckPityCounter };
     });
 
@@ -2269,15 +2678,82 @@ function setupIPC() {
         return state.duckLeaderboard;
     });
 
-    // 清除排行榜
+    // 清除排行榜（保留總體資料庫）
     ipcMain.handle('clear-leaderboard', () => {
-        state.duckLeaderboard = {
-            totalRanking: [],
-            singleHighest: []
-        };
+        state.duckLeaderboard.totalRanking = [];
+        state.duckLeaderboard.singleHighest = [];
+        state.duckLeaderboard.lastWeeklyReset = new Date().toISOString().split('T')[0];
+        state.duckLeaderboard.lastDailyReset = new Date().toISOString().split('T')[0];
         saveLeaderboard();
-        addLog('🏆 已清除排行榜');
+        addLog('🏆 已清除排行榜（累計和單次最高）');
         return { success: true };
+    });
+
+    // 取得總體資料庫
+    ipcMain.handle('get-alltime-stats', () => {
+        return state.duckLeaderboard.allTimeStats || [];
+    });
+
+    // 調整用戶鴨子數量（總體資料庫）
+    ipcMain.handle('adjust-user-ducks', (_, uniqueId, adjustment) => {
+        if (!uniqueId) return { success: false, error: '無效的用戶ID' };
+
+        let entry = state.duckLeaderboard.allTimeStats.find(e => e.uniqueId === uniqueId);
+        if (entry) {
+            entry.totalDucks = Math.max(0, entry.totalDucks + adjustment);
+        } else if (adjustment > 0) {
+            // 新增用戶
+            state.duckLeaderboard.allTimeStats.push({
+                uniqueId,
+                nickname: uniqueId,
+                avatar: '',
+                totalDucks: adjustment
+            });
+        } else {
+            return { success: false, error: '找不到該用戶' };
+        }
+
+        // 重新排序
+        state.duckLeaderboard.allTimeStats.sort((a, b) => b.totalDucks - a.totalDucks);
+        saveLeaderboard();
+        addLog(`🦆 已調整 ${uniqueId} 的鴨子數量: ${adjustment > 0 ? '+' : ''}${adjustment}`);
+        return { success: true, newTotal: entry ? entry.totalDucks : adjustment };
+    });
+
+    // 設定用戶鴨子數量（總體資料庫）
+    ipcMain.handle('set-user-ducks', (_, uniqueId, amount, nickname) => {
+        if (!uniqueId) return { success: false, error: '無效的用戶ID' };
+        if (amount < 0) return { success: false, error: '數量不能為負數' };
+
+        let entry = state.duckLeaderboard.allTimeStats.find(e => e.uniqueId === uniqueId);
+        if (entry) {
+            entry.totalDucks = amount;
+            if (nickname) entry.nickname = nickname;
+        } else {
+            state.duckLeaderboard.allTimeStats.push({
+                uniqueId,
+                nickname: nickname || uniqueId,
+                avatar: '',
+                totalDucks: amount
+            });
+        }
+
+        state.duckLeaderboard.allTimeStats.sort((a, b) => b.totalDucks - a.totalDucks);
+        saveLeaderboard();
+        addLog(`🦆 已設定 ${nickname || uniqueId} 的鴨子數量為 ${amount}`);
+        return { success: true };
+    });
+
+    // 刪除用戶（從總體資料庫）
+    ipcMain.handle('delete-user-from-alltime', (_, uniqueId) => {
+        const idx = state.duckLeaderboard.allTimeStats.findIndex(e => e.uniqueId === uniqueId);
+        if (idx >= 0) {
+            const removed = state.duckLeaderboard.allTimeStats.splice(idx, 1)[0];
+            saveLeaderboard();
+            addLog(`🦆 已從總體資料庫刪除 ${removed.nickname || uniqueId}`);
+            return { success: true };
+        }
+        return { success: false, error: '找不到該用戶' };
     });
 
     // 測試抓鴨子
@@ -2300,6 +2776,7 @@ function setupIPC() {
         if (caught && actualAmount > 0) {
             state.duckCount += actualAmount;
             sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+            saveDuckState();
             if (state.mainWindow) {
                 state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
             }
@@ -2330,6 +2807,7 @@ function setupIPC() {
 
         // 通知綠幕更新數量
         sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        saveDuckState();
 
         // 播放影片
         sendToGreenScreen('triggerDuckVideo', {
@@ -2489,6 +2967,8 @@ app.whenReady().then(() => {
     loadEntryHistory();
     loadUserCache();  // 載入用戶快取
     loadLeaderboard();  // 載入排行榜
+    loadDuckState();    // 載入鴨子計數和保底
+    setupLeaderboardResetTimer();  // 設定排行榜自動重置
     startMediaServer();
     setupIPC();
     setupAutoUpdater();
@@ -2520,6 +3000,7 @@ function registerGlobalShortcuts() {
             state.duckCount--;
             addLog(`🦆 快捷鍵減少鴨子，目前總數: ${state.duckCount}`);
             sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+            saveDuckState();
             if (state.mainWindow) {
                 state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
                 state.mainWindow.webContents.send('play-quack-sound');
@@ -2533,6 +3014,7 @@ function registerGlobalShortcuts() {
         state.duckCount = Math.max(0, state.duckCount - 5);
         addLog(`🦆 快捷鍵減少5隻鴨子，目前總數: ${state.duckCount}`);
         sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        saveDuckState();
         if (state.mainWindow) {
             state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
             if (oldCount > 0) {
@@ -2546,6 +3028,7 @@ function registerGlobalShortcuts() {
         state.duckCount = 0;
         addLog(`🦆 快捷鍵重置鴨子數量為 0`);
         sendToGreenScreen('updateDuckCount', { count: state.duckCount });
+        saveDuckState();
         if (state.mainWindow) {
             state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
         }
@@ -2564,6 +3047,84 @@ function registerGlobalShortcuts() {
     });
 
     console.log('[Shortcuts] 已註冊全域快捷鍵: F8(模擬送禮), F9(減1), F10(減5), F11(重置)');
+
+    // 註冊影片快捷鍵
+    registerVideoShortcuts();
+}
+
+// 影片快捷鍵註冊
+let registeredVideoShortcuts = [];
+
+function registerVideoShortcuts() {
+    // 先取消已註冊的影片快捷鍵
+    for (const shortcut of registeredVideoShortcuts) {
+        try {
+            globalShortcut.unregister(shortcut);
+        } catch (e) {
+            // 忽略取消失敗
+        }
+    }
+    registeredVideoShortcuts = [];
+
+    // 取得當前場景的影片設定
+    const videoGifts = getActiveSceneVideoGifts();
+    if (!videoGifts || videoGifts.length === 0) return;
+
+    for (const gift of videoGifts) {
+        // 只註冊觸發方式為快捷鍵的影片
+        if (gift.trigger_type !== 'shortcut' || !gift.shortcut || gift.enabled === false) continue;
+
+        try {
+            const success = globalShortcut.register(gift.shortcut, () => {
+                console.log(`[Shortcut] 觸發影片: ${gift.display_name || gift.name}`);
+                triggerVideoByShortcut(gift);
+            });
+
+            if (success) {
+                registeredVideoShortcuts.push(gift.shortcut);
+                console.log(`[Shortcut] 已註冊影片快捷鍵: ${gift.shortcut} -> ${gift.display_name || gift.name}`);
+            } else {
+                console.log(`[Shortcut] 註冊失敗 (可能已被佔用): ${gift.shortcut}`);
+            }
+        } catch (e) {
+            console.error(`[Shortcut] 註冊快捷鍵失敗: ${gift.shortcut}`, e);
+        }
+    }
+
+    if (registeredVideoShortcuts.length > 0) {
+        console.log(`[Shortcuts] 已註冊 ${registeredVideoShortcuts.length} 個影片快捷鍵`);
+    }
+}
+
+// 通過快捷鍵觸發影片
+function triggerVideoByShortcut(gift) {
+    if (!gift.video_path) return;
+
+    // 確保綠幕視窗開啟
+    if (!state.greenWindow || state.greenWindow.isDestroyed()) {
+        createGreenScreen();
+        // 等待視窗載入完成
+        setTimeout(() => {
+            sendVideoToGreenScreen(gift);
+        }, 1000);
+    } else {
+        sendVideoToGreenScreen(gift);
+    }
+}
+
+function sendVideoToGreenScreen(gift) {
+    sendToGreenScreen('triggerVideo', {
+        username: '快捷鍵',
+        path: gift.video_path,
+        speed: gift.video_speed || 1,
+        volume: gift.video_volume || 100,
+        seconds: gift.video_seconds || 0,
+        repeat: gift.video_repeat || 1,
+        count: 1,
+        priority: gift.video_priority || 1,
+        force_interrupt: gift.force_interrupt || false
+    });
+    addLog(`🎬 快捷鍵觸發影片: ${gift.display_name || gift.name}`);
 }
 
 // ============ 自動更新 ============
