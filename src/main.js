@@ -60,6 +60,9 @@ const state = {
     duckCount: 0,             // 抓鴨子計數
     lastDuckVideo: null,      // 上次播放的鴨子影片
     duckPityCounter: 0,       // 保底計數器
+    chainBattleActive: false, // 鎖鏈對抗是否進行中
+    chainLockWindow: null,    // 鎖鏈對抗專用全螢幕視窗
+    chainCount: 0,            // 目前鎖鏈數（主進程管理）
     duckLeaderboard: {        // 抓鴨子排行榜
         totalRanking: [],     // 累計排行（每週重置）[{uniqueId, nickname, avatar, totalDucks}]
         singleHighest: [],    // 單次最高（每天重置）[{uniqueId, nickname, avatar, amount, date}]
@@ -1864,6 +1867,45 @@ function triggerEffects(type, username, value, count, userInfo = null) {
             }
         }
     }
+
+    // 鎖鏈對抗觸發
+    if (state.config.chain_battle_enabled && type === 'gift') {
+        const cfg = state.config.chain_battle_config || {};
+        const triggerGift = cfg.trigger_gift || '';
+        const triggerAmount = cfg.trigger_amount || 10;
+        const addGifts = cfg.add_gifts || [];
+
+        // 檢查是否為啟動禮物
+        const isTriggerGift = triggerGift && triggerGift.toLowerCase() === value.toLowerCase();
+
+        // 檢查是否為增加禮物
+        const matchedAddGift = addGifts.find(g =>
+            g.name && g.name.toLowerCase() === value.toLowerCase()
+        );
+
+        if (isTriggerGift && !state.chainBattleActive) {
+            // 啟動禮物：啟動鎖鏈對抗
+            state.chainBattleActive = true;
+            state.chainCount = triggerAmount * count;
+            addLog(`⛓️ ${username} 啟動鎖鏈對抗！初始: ${state.chainCount} (${value})`);
+
+            // 創建鎖定視窗
+            lockScreenForChainBattle();
+
+            // 發送開始事件
+            sendToGreenScreen('startChainBattle', {
+                baseCount: state.chainCount,
+                amount: state.chainCount
+            });
+        } else if (state.chainBattleActive && matchedAddGift) {
+            // 增加禮物：對抗進行中增加數量
+            const addAmount = (matchedAddGift.amount || 1) * count;
+            state.chainCount += addAmount;
+            addLog(`⛓️ ${username} 增加鎖鏈 +${addAmount} (${value})，目前: ${state.chainCount}`);
+            sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: addAmount });
+        }
+        // 其他禮物不影響鎖鏈對抗
+    }
 }
 
 // 從資料夾隨機選擇影片（簡單版本，用於抓鴨子等模組）
@@ -2121,6 +2163,10 @@ function sendToGreenScreen(event, data) {
         state.greenWindow.webContents.send('green-screen-event', { event, data });
     } else {
         addLog(`⚠️ 綠幕視窗未開啟，無法發送事件: ${event}`);
+    }
+    // 同步發送到鎖鏈對抗視窗
+    if (state.chainLockWindow && !state.chainLockWindow.isDestroyed()) {
+        state.chainLockWindow.webContents.send('green-screen-event', { event, data });
     }
 }
 
@@ -2511,6 +2557,15 @@ function setupIPC() {
                 state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
             }
             saveDuckState();
+
+            // 如果鎖鏈對抗進行中，抓到鴨子也增加鎖鏈數
+            if (state.chainBattleActive) {
+                const chainCfg = state.config.chain_battle_config || {};
+                const duckChainAmount = chainCfg.duck_chain_amount || duckAmount;
+                state.chainCount += duckChainAmount;
+                addLog(`⛓️ ${userInfo.nickname} 抓到鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
+                sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: duckChainAmount });
+            }
         }
 
         addLog(`🦆 模擬抓鴨子: ${userInfo.nickname} ${caught ? `抓到 ${duckAmount} 隻！` : '沒抓到'} -> ${path.basename(selectedVideo.path)}`);
@@ -2605,6 +2660,16 @@ function setupIPC() {
         if (state.mainWindow && !state.mainWindow.isDestroyed()) {
             state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
         }
+
+        // 如果鎖鏈對抗進行中，抓到鴨子也增加鎖鏈數
+        if (state.chainBattleActive && amount > 0) {
+            const chainCfg = state.config.chain_battle_config || {};
+            const duckChainAmount = chainCfg.duck_chain_amount || amount;
+            state.chainCount += duckChainAmount;
+            addLog(`⛓️ 抓到鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
+            sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: duckChainAmount });
+        }
+
         return state.duckCount;
     });
 
@@ -2669,6 +2734,143 @@ function setupIPC() {
                 threshold: cfg.pity_threshold || 1000,
                 thresholdJackpot: cfg.pity_threshold_jackpot || 2000
             });
+        }
+        return { success: true };
+    });
+
+    // ========== 鎖鏈對抗 ==========
+
+    // 創建全螢幕鎖定視窗（同步顯示鎖鏈對抗）
+    function lockScreenForChainBattle() {
+        // 如果已經有鎖定視窗，先關閉
+        if (state.chainLockWindow && !state.chainLockWindow.isDestroyed()) {
+            state.chainLockWindow.close();
+        }
+
+        // 創建全螢幕鎖定視窗
+        state.chainLockWindow = new BrowserWindow({
+            fullscreen: true,
+            alwaysOnTop: true,
+            frame: false,
+            transparent: true,
+            skipTaskbar: true,
+            resizable: false,
+            focusable: true,
+            webPreferences: {
+                preload: path.join(__dirname, 'preload.js'),
+                contextIsolation: true,
+                nodeIntegration: false
+            }
+        });
+
+        // 設定最高層級
+        state.chainLockWindow.setAlwaysOnTop(true, 'screen-saver');
+
+        // 載入專用鎖定頁面（空白背景，只有鎖鏈對抗）
+        const chainLockPath = path.join(__dirname, '../web/chainlock.html');
+        state.chainLockWindow.loadFile(chainLockPath);
+
+        // 等待載入完成後啟動鎖鏈對抗
+        state.chainLockWindow.webContents.once('did-finish-load', () => {
+            // 鎖定視窗載入完成，發送鎖鏈對抗開始事件
+            state.chainLockWindow.webContents.send('green-screen-event', {
+                event: 'startChainBattle',
+                data: { baseCount: state.chainCount, amount: state.chainCount }
+            });
+        });
+
+        state.chainLockWindow.show();
+        state.chainLockWindow.focus();
+
+        addLog('🔒 已開啟全螢幕鎖定視窗');
+    }
+
+    // 關閉全螢幕鎖定視窗
+    function unlockScreenFromChainBattle() {
+        if (state.chainLockWindow && !state.chainLockWindow.isDestroyed()) {
+            state.chainLockWindow.close();
+            state.chainLockWindow = null;
+            addLog('🔓 已關閉全螢幕鎖定視窗');
+        }
+    }
+
+    // 手動啟動鎖鏈對抗
+    ipcMain.handle('start-chain-battle', (_, data = {}) => {
+        const cfg = state.config.chain_battle_config || {};
+        const baseCount = data.baseCount || cfg.base_count || 20;
+        state.chainBattleActive = true;
+        state.chainCount = baseCount;  // 初始化計數
+
+        // 鎖定螢幕（創建全螢幕鎖定視窗）
+        lockScreenForChainBattle();
+
+        addLog(`⛓️ 手動啟動鎖鏈對抗！基礎: ${baseCount}`);
+        sendToGreenScreen('startChainBattle', {
+            baseCount: baseCount,
+            amount: baseCount
+        });
+        return { success: true };
+    });
+
+    // 停止鎖鏈對抗
+    ipcMain.handle('stop-chain-battle', () => {
+        state.chainBattleActive = false;
+
+        // 解鎖螢幕
+        unlockScreenFromChainBattle();
+
+        addLog('⛓️ 已停止鎖鏈對抗');
+        sendToGreenScreen('stopChainBattle', {});
+        return { success: true };
+    });
+
+    // 增加鎖鏈數（觀眾送禮）
+    ipcMain.handle('add-chain-count', (_, amount = 1) => {
+        if (!state.chainBattleActive) {
+            return { success: false, error: '鎖鏈對抗未啟動' };
+        }
+        state.chainCount += amount;
+        // 廣播新的計數到所有視窗
+        sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount });
+        return { success: true, count: state.chainCount };
+    });
+
+    // 減少鎖鏈數（主播按空白鍵）
+    ipcMain.handle('remove-chain-count', (_, amount = 1) => {
+        if (!state.chainBattleActive) {
+            return { success: false, error: '鎖鏈對抗未啟動' };
+        }
+        state.chainCount = Math.max(0, state.chainCount - amount);
+        // 廣播新的計數到所有視窗
+        sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'remove', amount });
+
+        // 檢查是否掙脫成功
+        if (state.chainCount <= 0) {
+            // 通知所有視窗播放勝利動畫
+            sendToGreenScreen('chainVictory', {});
+        }
+        return { success: true, count: state.chainCount };
+    });
+
+    // 取得鎖鏈對抗狀態
+    ipcMain.handle('get-chain-battle-status', () => {
+        return {
+            active: state.chainBattleActive,
+            count: state.chainCount,
+            config: state.config.chain_battle_config || {}
+        };
+    });
+
+    // 鎖鏈對抗結束通知（由綠幕呼叫）
+    ipcMain.handle('chain-battle-ended', (_, won) => {
+        state.chainBattleActive = false;
+        state.chainCount = 0;
+
+        // 解鎖螢幕
+        unlockScreenFromChainBattle();
+
+        if (won) {
+            addLog('⛓️ 主播掙脫成功！');
         }
         return { success: true };
     });
@@ -2780,6 +2982,15 @@ function setupIPC() {
             if (state.mainWindow) {
                 state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
             }
+
+            // 如果鎖鏈對抗進行中，抓到鴨子也增加鎖鏈數
+            if (state.chainBattleActive) {
+                const chainCfg = state.config.chain_battle_config || {};
+                const duckChainAmount = chainCfg.duck_chain_amount || actualAmount;
+                state.chainCount += duckChainAmount;
+                addLog(`⛓️ 測試抓鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
+                sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: duckChainAmount });
+            }
         }
 
         addLog(`🦆 測試抓鴨子: ${caught ? `抓到 ${actualAmount} 隻！` : '沒抓到'} -> ${path.basename(selectedVideo.path)}`);
@@ -2804,6 +3015,15 @@ function setupIPC() {
         // 增加鴨子數量
         state.duckCount += duckAmount;
         addLog(`🦆 ${username} 抓到 ${duckAmount} 隻鴨子！目前總數: ${state.duckCount}`);
+
+        // 如果鎖鏈對抗進行中，抓到鴨子也增加鎖鏈數
+        if (state.chainBattleActive && duckAmount > 0) {
+            const chainCfg = state.config.chain_battle_config || {};
+            const duckChainAmount = chainCfg.duck_chain_amount || duckAmount;  // 預設用抓到的鴨子數
+            state.chainCount += duckChainAmount;
+            addLog(`⛓️ ${username} 抓到鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
+            sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: duckChainAmount });
+        }
 
         // 通知綠幕更新數量
         sendToGreenScreen('updateDuckCount', { count: state.duckCount });

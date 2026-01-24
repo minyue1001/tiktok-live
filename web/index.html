@@ -85,6 +85,14 @@
                         <span class="switch-slider"></span>
                     </label>
                 </a>
+                <a class="menu-item" data-panel="chainbattle">
+                    <span class="menu-icon">⛓️</span>
+                    <span class="menu-text">鎖鏈對抗</span>
+                    <label class="switch" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="chainBattleEnabled">
+                        <span class="switch-slider"></span>
+                    </label>
+                </a>
                 <a class="menu-item" data-panel="giftimage">
                     <span class="menu-icon">🖼️</span>
                     <span class="menu-text">禮物圖生成</span>
@@ -624,6 +632,78 @@
                     </div>
                     <div class="panel-footer">
                         <button class="btn btn-outline" onclick="testEntryEffect()">▶️ 測試效果</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 鎖鏈對抗面板 -->
+            <section class="panel" id="panel-chainbattle">
+                <header class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon" style="background: linear-gradient(135deg, #6b7280, #374151);">⛓️</span>
+                        <div>
+                            <h1>鎖鏈對抗</h1>
+                            <p>觀眾送禮鎖住畫面，主播按空白鍵掙脫</p>
+                        </div>
+                    </div>
+                </header>
+                <div class="panel-content">
+                    <!-- 啟動禮物 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🔓 啟動禮物</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-grid">
+                                <div class="form-group half">
+                                    <label>禮物名稱（英文）</label>
+                                    <input type="text" id="chainTriggerGift" class="input" placeholder="例如 Rose" onchange="saveChainBattleConfig()">
+                                </div>
+                                <div class="form-group half">
+                                    <label>初始鎖鏈數</label>
+                                    <input type="number" id="chainTriggerAmount" class="input" value="10" min="1" onchange="saveChainBattleConfig()">
+                                </div>
+                            </div>
+                            <p style="color: #9ca3af; font-size: 12px; margin-top: 8px;">
+                                💡 只有這個禮物可以啟動鎖鏈對抗
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 增加禮物 -->
+                    <div class="card" style="margin-top: 16px;">
+                        <div class="card-header">
+                            <h3>➕ 增加禮物</h3>
+                        </div>
+                        <div class="card-content">
+                            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                                <input type="text" id="chainAddGiftName" class="input" placeholder="禮物名稱（英文）" style="flex: 1;">
+                                <input type="number" id="chainAddGiftAmount" class="input" placeholder="增加數" value="1" min="1" style="width: 80px;">
+                                <button class="btn btn-primary" onclick="addChainAddGift()">新增</button>
+                            </div>
+                            <div id="chainAddGiftList" class="gift-list">
+                                <!-- 動態生成 -->
+                            </div>
+                            <p style="color: #9ca3af; font-size: 12px; margin-top: 8px;">
+                                💡 對抗進行中，送這些禮物會增加鎖鏈數
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 手動控制 -->
+                    <div class="card" style="margin-top: 16px;">
+                        <div class="card-header">
+                            <h3>手動控制</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="button-group">
+                                <button class="btn btn-primary" onclick="startChainBattleManual()">⛓️ 啟動對抗</button>
+                                <button class="btn btn-danger" onclick="stopChainBattleManual()">🛑 停止對抗</button>
+                            </div>
+                            <p style="color: #9ca3af; font-size: 12px; margin-top: 12px;">
+                                💡 主播按 <kbd style="background: #374151; padding: 2px 6px; border-radius: 4px;">空白鍵</kbd> 減少鎖鏈數
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>

@@ -512,6 +512,7 @@ async function loadConfig() {
         document.getElementById('duckCatchEnabled').checked = config.duck_catch_enabled || false;
         document.getElementById('entryEnabled').checked = config.entry_enabled || false;
         document.getElementById('giftboxEnabled').checked = config.giftbox_enabled || false;
+        document.getElementById('chainBattleEnabled').checked = config.chain_battle_enabled || false;
         document.getElementById('portInput').value = config.port || 10010;
 
         // 更新子面板狀態顯示
@@ -524,6 +525,9 @@ async function loadConfig() {
         // 載入抓鴨子設定
         loadDuckCatchConfig();
         initDuckCatchEvents();
+
+        // 載入鎖鏈對抗設定
+        loadChainBattleSettings();
 
         // 設定語言
         currentLang = config.language || 'zh-TW';
@@ -3122,6 +3126,24 @@ document.getElementById('duckCatchEnabled')?.addEventListener('change', async (e
     addLogLocal(`🦆 抓鴨子模組已${e.target.checked ? '啟用' : '禁用'}`);
 });
 
+// 啟用/禁用鎖鏈對抗模組
+document.getElementById('chainBattleEnabled')?.addEventListener('change', async (e) => {
+    config.chain_battle_enabled = e.target.checked;
+    // 同時更新設定
+    const chainConfig = getChainBattleConfig();
+    config.chain_battle_config = chainConfig;
+    await pywebview.api.update_config({
+        chain_battle_enabled: e.target.checked,
+        chain_battle_config: chainConfig
+    });
+    addLogLocal(`⛓️ 鎖鏈對抗模組已${e.target.checked ? '啟用' : '禁用'}`);
+});
+
+// 基礎鎖鏈數變更時自動儲存
+document.getElementById('chainBaseCount')?.addEventListener('change', async () => {
+    await saveChainBattleConfig();
+});
+
 // === 對話框控制 ===
 function openDialog(dialogId) {
     document.getElementById('dialogOverlay').classList.add('active');
@@ -3530,6 +3552,119 @@ async function testEntryEffect() {
             console.error('測試進場效果失敗:', e);
         }
     }, 800);
+}
+
+// === 鎖鏈對抗 ===
+
+let chainAddGifts = [];  // 增加禮物列表
+
+// 載入鎖鏈對抗設定
+function loadChainBattleSettings() {
+    const cfg = config.chain_battle_config || {};
+
+    // 載入啟動禮物
+    const triggerGiftInput = document.getElementById('chainTriggerGift');
+    const triggerAmountInput = document.getElementById('chainTriggerAmount');
+    if (triggerGiftInput) triggerGiftInput.value = cfg.trigger_gift || '';
+    if (triggerAmountInput) triggerAmountInput.value = cfg.trigger_amount || 10;
+
+    // 載入增加禮物
+    chainAddGifts = cfg.add_gifts || [];
+    renderChainAddGiftList();
+}
+
+// 渲染增加禮物列表
+function renderChainAddGiftList() {
+    const container = document.getElementById('chainAddGiftList');
+    if (!container) return;
+
+    if (chainAddGifts.length === 0) {
+        container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 20px;">尚未設定增加禮物</p>';
+        return;
+    }
+
+    container.innerHTML = chainAddGifts.map((gift, index) => `
+        <div class="gift-item" style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 8px;">
+            <span style="font-size: 20px;">🎁</span>
+            <div style="flex: 1;">
+                <div style="font-weight: bold; color: #fff;">${gift.name}</div>
+                <div style="font-size: 12px; color: #9ca3af;">每次 +${gift.amount} 鎖鏈</div>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="deleteChainAddGift(${index})">刪除</button>
+        </div>
+    `).join('');
+}
+
+// 新增增加禮物
+function addChainAddGift() {
+    const nameInput = document.getElementById('chainAddGiftName');
+    const amountInput = document.getElementById('chainAddGiftAmount');
+
+    const name = nameInput.value.trim();
+    const amount = parseInt(amountInput.value) || 1;
+
+    if (!name) {
+        alert('請輸入禮物名稱');
+        nameInput.focus();
+        return;
+    }
+
+    chainAddGifts.push({ name, amount });
+    renderChainAddGiftList();
+    saveChainBattleConfig();
+
+    // 清空輸入框
+    nameInput.value = '';
+    amountInput.value = '1';
+    nameInput.focus();
+}
+
+// 刪除增加禮物
+function deleteChainAddGift(index) {
+    chainAddGifts.splice(index, 1);
+    renderChainAddGiftList();
+    saveChainBattleConfig();
+}
+
+// 取得鎖鏈對抗設定
+function getChainBattleConfig() {
+    return {
+        trigger_gift: document.getElementById('chainTriggerGift')?.value.trim() || '',
+        trigger_amount: parseInt(document.getElementById('chainTriggerAmount')?.value) || 10,
+        add_gifts: chainAddGifts
+    };
+}
+
+// 儲存鎖鏈對抗設定
+async function saveChainBattleConfig() {
+    const cfg = getChainBattleConfig();
+    config.chain_battle_config = cfg;
+    await pywebview.api.update_config({ chain_battle_config: cfg });
+}
+
+// 手動啟動鎖鏈對抗
+async function startChainBattleManual() {
+    try {
+        await openGreenScreen();
+        setTimeout(async () => {
+            const cfg = getChainBattleConfig();
+            const baseCount = cfg.trigger_amount || 10;
+            await pywebview.api.start_chain_battle({ baseCount });
+            addLogLocal('⛓️ 手動啟動鎖鏈對抗');
+        }, 500);
+    } catch (e) {
+        console.error('啟動鎖鏈對抗失敗:', e);
+    }
+}
+
+// 手動停止鎖鏈對抗
+async function stopChainBattleManual() {
+    try {
+        await pywebview.api.stop_chain_battle();
+        addLogLocal('⛓️ 手動停止鎖鏈對抗');
+    } catch (e) {
+        console.error('停止鎖鏈對抗失敗:', e);
+    }
 }
 
 // === 高等級用戶查詢 ===

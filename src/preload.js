@@ -111,7 +111,15 @@ contextBridge.exposeInMainWorld('pywebview', {
         save_gift_image_config: (config) => ipcRenderer.invoke('save-gift-image-config', config),
         send_gift_image_to_greenscreen: (data) => ipcRenderer.invoke('send-gift-image-to-greenscreen', data),
         hide_gift_image_on_greenscreen: () => ipcRenderer.invoke('hide-gift-image-on-greenscreen'),
-        export_gift_image: (data) => ipcRenderer.invoke('export-gift-image', data)
+        export_gift_image: (data) => ipcRenderer.invoke('export-gift-image', data),
+
+        // 鎖鏈對抗
+        start_chain_battle: (data) => ipcRenderer.invoke('start-chain-battle', data),
+        stop_chain_battle: () => ipcRenderer.invoke('stop-chain-battle'),
+        add_chain_count: (amount) => ipcRenderer.invoke('add-chain-count', amount),
+        remove_chain_count: (amount) => ipcRenderer.invoke('remove-chain-count', amount),
+        get_chain_battle_status: () => ipcRenderer.invoke('get-chain-battle-status'),
+        chain_battle_ended: (won) => ipcRenderer.invoke('chain-battle-ended', won)
     }
 });
 

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>鎖鏈對抗</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: rgba(0, 0, 0, 0.8);
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            cursor: none;
+        }
+
+        /* 鎖鏈對抗覆蓋層 */
+        .chain-battle-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        /* 鎖鏈邊框動畫 */
+        .chain-border {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 8px solid #ff6b35;
+            animation: chainPulse 0.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes chainPulse {
+            0%, 100% { border-color: #ff6b35; box-shadow: inset 0 0 50px rgba(255, 107, 53, 0.3); }
+            50% { border-color: #ff4500; box-shadow: inset 0 0 80px rgba(255, 69, 0, 0.5); }
+        }
+
+        /* 四角鎖鏈圖示 */
+        .chain-corner {
+            position: absolute;
+            font-size: 60px;
+            animation: chainShake 0.3s ease-in-out infinite;
+            filter: drop-shadow(0 0 10px rgba(255, 107, 53, 0.8));
+        }
+
+        .chain-corner.tl { top: 20px; left: 20px; }
+        .chain-corner.tr { top: 20px; right: 20px; }
+        .chain-corner.bl { bottom: 20px; left: 20px; }
+        .chain-corner.br { bottom: 20px; right: 20px; }
+
+        @keyframes chainShake {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        /* 計數器容器 */
+        .chain-counter-container {
+            text-align: center;
+            padding: 40px 80px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            border: 4px solid #ff6b35;
+            box-shadow: 0 0 40px rgba(255, 107, 53, 0.5);
+        }
+
+        .chain-title {
+            font-size: 36px;
+            color: #ff6b35;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 107, 53, 0.8);
+            font-family: "Microsoft YaHei", sans-serif;
+            white-space: nowrap;
+        }
+
+        .chain-counter {
+            font-size: 120px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            transition: transform 0.1s, color 0.1s;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .chain-counter.adding {
+            transform: scale(1.2);
+            color: #ff4500;
+        }
+
+        .chain-counter.removing {
+            transform: scale(0.9);
+            color: #4ade80;
+        }
+
+        .chain-hint {
+            font-size: 24px;
+            color: #aaa;
+            margin-top: 20px;
+            font-family: "Microsoft YaHei", sans-serif;
+            white-space: nowrap;
+        }
+
+        .chain-hint .key {
+            display: inline-block;
+            background: #333;
+            padding: 5px 20px;
+            border-radius: 8px;
+            border: 2px solid #555;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        /* 掙脫動畫 */
+        .chain-battle-overlay.breaking .chain-border {
+            animation: chainBreak 0.5s ease-out forwards;
+        }
+
+        .chain-battle-overlay.breaking .chain-corner {
+            animation: chainFlyAway 0.5s ease-out forwards;
+        }
+
+        @keyframes chainBreak {
+            0% { opacity: 1; }
+            100% { opacity: 0; border-width: 0; }
+        }
+
+        @keyframes chainFlyAway {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(2) rotate(180deg); }
+        }
+
+        /* 勝利效果 */
+        .chain-battle-overlay.victory .chain-counter-container {
+            border-color: #4ade80;
+            box-shadow: 0 0 60px rgba(74, 222, 128, 0.8);
+        }
+
+        .chain-victory {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #4ade80;
+            text-shadow: 0 0 30px rgba(74, 222, 128, 0.8);
+            animation: victoryPop 0.5s ease-out;
+            font-family: "Microsoft YaHei", sans-serif;
+            white-space: nowrap;
+        }
+
+        .chain-battle-overlay.victory .chain-victory {
+            display: block;
+        }
+
+        .chain-battle-overlay.victory .chain-counter-container {
+            display: none;
+        }
+
+        @keyframes victoryPop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        /* 飄動數字容器 */
+        .floating-numbers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        /* 飄動數字 */
+        .floating-number {
+            position: absolute;
+            font-size: 48px;
+            font-weight: bold;
+            font-family: "Microsoft YaHei", sans-serif;
+            text-shadow: 0 0 20px currentColor, 0 2px 4px rgba(0,0,0,0.5);
+            animation: floatUp 1.5s ease-out forwards;
+            white-space: nowrap;
+        }
+
+        .floating-number.add {
+            color: #ff4500;
+        }
+
+        .floating-number.remove {
+            color: #4ade80;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(-60px) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-120px) scale(0.8);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 音效 -->
+    <audio id="soundLock" src="sounds/chain_lock.mp3" preload="auto"></audio>
+    <audio id="soundRattle" src="sounds/chain_rattle.mp3" preload="auto"></audio>
+    <audio id="soundVictory" src="sounds/chain_victory.mp3" preload="auto"></audio>
+
+    <div class="chain-battle-overlay" id="chainBattleOverlay">
+        <div class="chain-border"></div>
+        <div class="chain-corner tl">⛓️</div>
+        <div class="chain-corner tr">⛓️</div>
+        <div class="chain-corner bl">⛓️</div>
+        <div class="chain-corner br">⛓️</div>
+        <div class="chain-counter-container">
+            <div class="chain-title">⛓️ 鎖鏈對抗 ⛓️</div>
+            <div class="chain-counter" id="chainCounter">0</div>
+            <div class="chain-hint">主播按 <span class="key">空白鍵</span> 掙脫！</div>
+        </div>
+        <div class="chain-victory">🎉 掙脫成功！</div>
+        <div class="floating-numbers" id="floatingNumbers"></div>
+    </div>
+
+    <script>
+        let chainCount = 0;
+        let chainBattleActive = false;
+
+        // 播放音效
+        function playSound(id) {
+            const sound = document.getElementById(id);
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(() => {});  // 忽略播放錯誤
+            }
+        }
+
+        // 啟動鎖鏈對抗
+        function startChainBattle(data = {}) {
+            chainCount = data.amount || data.baseCount || 20;
+            document.getElementById('chainCounter').textContent = chainCount;
+            chainBattleActive = true;
+            playSound('soundLock');  // 播放鎖起來音效
+            console.log('[鎖定視窗] 鎖鏈對抗啟動，數量:', chainCount);
+        }
+
+        // 創建飄動數字
+        function createFloatingNumber(amount, isAdd) {
+            const container = document.getElementById('floatingNumbers');
+            const num = document.createElement('div');
+            num.className = `floating-number ${isAdd ? 'add' : 'remove'}`;
+            num.textContent = isAdd ? `+${amount}` : `-${amount}`;
+
+            // 隨機位置（在計數器周圍）
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const offsetX = (Math.random() - 0.5) * 200;  // -100 到 +100
+            const offsetY = (Math.random() - 0.5) * 100;  // -50 到 +50
+
+            num.style.left = `${centerX + offsetX}px`;
+            num.style.top = `${centerY + offsetY + 50}px`;  // 稍微偏下
+
+            container.appendChild(num);
+
+            // 動畫結束後移除元素
+            setTimeout(() => {
+                num.remove();
+            }, 1500);
+        }
+
+        // 同步計數
+        function syncChainCount(data) {
+            if (!chainBattleActive) return;
+
+            chainCount = data.count;
+            const counter = document.getElementById('chainCounter');
+            counter.textContent = chainCount;
+
+            if (data.action === 'add') {
+                counter.classList.remove('removing');
+                counter.classList.add('adding');
+                setTimeout(() => counter.classList.remove('adding'), 300);
+                // 顯示飄動數字
+                if (data.amount) {
+                    createFloatingNumber(data.amount, true);
+                }
+            } else if (data.action === 'remove') {
+                counter.classList.remove('adding');
+                counter.classList.add('removing');
+                setTimeout(() => counter.classList.remove('removing'), 100);
+                // 顯示飄動數字
+                if (data.amount) {
+                    createFloatingNumber(data.amount, false);
+                }
+            }
+        }
+
+        // 勝利動畫
+        function chainVictory() {
+            if (!chainBattleActive) return;
+
+            const overlay = document.getElementById('chainBattleOverlay');
+            overlay.classList.add('breaking');
+            playSound('soundVictory');  // 播放勝利音效
+
+            setTimeout(() => {
+                overlay.classList.remove('breaking');
+                overlay.classList.add('victory');
+                chainBattleActive = false;
+            }, 500);
+        }
+
+        // 監聽空白鍵
+        document.addEventListener('keydown', (e) => {
+            // 阻擋所有按鍵
+            e.preventDefault();
+            e.stopPropagation();
+
+            // 只處理空白鍵且非長按
+            if (e.code === 'Space' && chainBattleActive && !e.repeat) {
+                playSound('soundRattle');  // 播放鎖鏈動音效
+                if (window.pywebview && window.pywebview.api) {
+                    pywebview.api.remove_chain_count(1);
+                }
+            }
+        }, true);
+
+        // 阻擋所有滑鼠事件
+        ['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'wheel'].forEach(event => {
+            document.addEventListener(event, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
+        });
+
+        // 監聽來自主進程的事件
+        if (window.electronAPI) {
+            window.electronAPI.onGreenScreenEvent((event, data) => {
+                console.log('[鎖定視窗] 收到事件:', event, data);
+                switch (event) {
+                    case 'startChainBattle':
+                        startChainBattle(data);
+                        break;
+                    case 'syncChainCount':
+                        syncChainCount(data);
+                        break;
+                    case 'chainVictory':
+                        chainVictory();
+                        break;
+                }
+            });
+        }
+
+        // 暴露函數給外部
+        window.startChainBattle = startChainBattle;
+        window.syncChainCount = syncChainCount;
+        window.chainVictory = chainVictory;
+    </script>
+</body>
+</html>
