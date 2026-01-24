@@ -927,6 +927,29 @@ function showSimulateDialog() {
         });
     }
 
+    // 鎖鏈對抗禮物 - 檢查是否啟用
+    if (config.chain_battle_enabled) {
+        const chainCfg = config.chain_battle_config || {};
+        // 啟動禮物
+        if (chainCfg.trigger_gift && !addedGifts.has(chainCfg.trigger_gift)) {
+            addedGifts.add(chainCfg.trigger_gift);
+            giftOptions.push({
+                value: chainCfg.trigger_gift,
+                text: `${chainCfg.trigger_gift} [鎖鏈-啟動]`
+            });
+        }
+        // 增加禮物
+        (chainCfg.add_gifts || []).forEach(g => {
+            if (g.name && !addedGifts.has(g.name)) {
+                addedGifts.add(g.name);
+                giftOptions.push({
+                    value: g.name,
+                    text: `${g.name} [鎖鏈+${g.amount || 1}]`
+                });
+            }
+        });
+    }
+
     if (giftOptions.length === 0) {
         const option = document.createElement('option');
         option.textContent = '(無禮物設定)';
@@ -3640,6 +3663,17 @@ async function saveChainBattleConfig() {
     const cfg = getChainBattleConfig();
     config.chain_battle_config = cfg;
     await pywebview.api.update_config({ chain_battle_config: cfg });
+}
+
+// 儲存鎖鏈對抗設定並顯示通知
+async function saveChainBattleConfigAndNotify() {
+    try {
+        await saveChainBattleConfig();
+        showToast('✅ 鎖鏈對抗設定已儲存');
+    } catch (e) {
+        console.error('儲存失敗:', e);
+        showToast('❌ 儲存失敗');
+    }
 }
 
 // 手動啟動鎖鏈對抗

@@ -4,3 +4,16 @@ dist/
 .DS_Store
 Thumbs.db
 gh_token.txt
+
+# 敏感檔案
+push_git.bat
+release.bat
+release.sh
+
+# 用戶資料
+duck_state.json
+duck_leaderboard.json
+entry_history.json
+high_level_users.json
+user_cache.json
+tiktok_config.json

@@ -95,27 +95,46 @@ const DUCK_STATE_PATH = path.join(DATA_DIR, 'duck_state.json');
 
 // 遷移舊設定檔到新位置
 function migrateOldConfig() {
-    if (!OLD_DATA_DIR || isDev) return;
+    if (isDev) return;
 
     const filesToMigrate = [
         'tiktok_config.json',
         'high_level_users.json',
         'user_cache.json',
         'duck_leaderboard.json',
-        'duck_state.json'
+        'duck_state.json',
+        'entry_history.json'
     ];
 
+    // 可能的舊 userData 目錄（如果 app name 曾經改變過）
+    const appDataPath = process.env.APPDATA || path.join(require('os').homedir(), 'AppData', 'Roaming');
+    const possibleOldUserDataDirs = [
+        path.join(appDataPath, 'tiktok-live'),
+        path.join(appDataPath, 'TikTok-Live'),
+        path.join(appDataPath, 'tiktok-live-electron'),
+        path.join(appDataPath, 'TikTokLive-Electron'),
+        path.join(appDataPath, 'LiveGift Pro'),
+        OLD_DATA_DIR  // exe 目錄
+    ].filter(Boolean);
+
     for (const file of filesToMigrate) {
-        const oldPath = path.join(OLD_DATA_DIR, file);
         const newPath = path.join(DATA_DIR, file);
 
-        // 如果舊檔案存在且新檔案不存在，則遷移
-        if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
-            try {
-                fs.copyFileSync(oldPath, newPath);
-                console.log(`已遷移設定檔: ${file}`);
-            } catch (e) {
-                console.error(`遷移 ${file} 失敗:`, e);
+        // 如果新檔案已存在，跳過
+        if (fs.existsSync(newPath)) continue;
+
+        // 從各個可能的舊位置尋找並遷移
+        for (const oldDir of possibleOldUserDataDirs) {
+            if (!oldDir) continue;
+            const oldPath = path.join(oldDir, file);
+            if (fs.existsSync(oldPath)) {
+                try {
+                    fs.copyFileSync(oldPath, newPath);
+                    console.log(`已從 ${oldDir} 遷移設定檔: ${file}`);
+                    break;  // 找到就停止
+                } catch (e) {
+                    console.error(`遷移 ${file} 失敗:`, e);
+                }
             }
         }
     }
