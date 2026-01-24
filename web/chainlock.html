@@ -246,6 +246,7 @@
     <script>
         let chainCount = 0;
         let chainBattleActive = false;
+        let chainPaused = false;  // 抓鴨子影片播放中暫停
 
         // 播放音效
         function playSound(id) {
@@ -337,8 +338,8 @@
             e.preventDefault();
             e.stopPropagation();
 
-            // 只處理空白鍵且非長按
-            if (e.code === 'Space' && chainBattleActive && !e.repeat) {
+            // 只處理空白鍵且非長按，暫停中不處理
+            if (e.code === 'Space' && chainBattleActive && !e.repeat && !chainPaused) {
                 playSound('soundRattle');  // 播放鎖鏈動音效
                 if (window.pywebview && window.pywebview.api) {
                     pywebview.api.remove_chain_count(1);
@@ -367,6 +368,14 @@
                         break;
                     case 'chainVictory':
                         chainVictory();
+                        break;
+                    case 'chainPause':
+                        chainPaused = true;
+                        console.log('[鎖定視窗] 鎖鏈暫停（抓鴨子中）');
+                        break;
+                    case 'chainResume':
+                        chainPaused = false;
+                        console.log('[鎖定視窗] 鎖鏈恢復');
                         break;
                 }
             });

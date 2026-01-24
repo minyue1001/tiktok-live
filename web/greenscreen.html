@@ -5703,7 +5703,6 @@
 
                 // 設定影片
                 video.src = videoUrl;
-                video.playbackRate = videoData.speed || 1;
                 video.volume = (videoData.volume || 100) / 100;
                 video.muted = false;
 
@@ -5725,6 +5724,10 @@
                     // 超時保護
                     setTimeout(resolve, 5000);
                 });
+
+                // 載入完成後設定播放速度（避免被 load() 重置）
+                video.playbackRate = videoData.speed || 1;
+                console.log('[鴨子影片] 設定播放速度:', videoData.speed || 1);
 
                 // 使用 requestAnimationFrame 確保在下一幀顯示
                 await new Promise(r => requestAnimationFrame(r));

@@ -972,10 +972,12 @@ async function doSimulate() {
     const count = parseInt(document.getElementById('simCount').value) || 1;
 
     if (giftName && giftName !== '(無禮物設定)') {
-        // simulate_gift 內部已經呼叫 trigger_effects()，會自動觸發轉盤和影片
-        // 這裡只需要確保綠幕視窗已開啟
+        // 確保綠幕視窗已開啟並等待準備好
         await openGreenScreen();
-        await pywebview.api.simulate_gift(username, giftName, count);
+        // 等待綠幕視窗準備好後再觸發
+        setTimeout(async () => {
+            await pywebview.api.simulate_gift(username, giftName, count);
+        }, 500);
     }
 
     closeDialog('simulateDialog');
