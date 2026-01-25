@@ -3596,6 +3596,10 @@ function loadChainBattleSettings() {
     // 載入增加禮物
     chainAddGifts = cfg.add_gifts || [];
     renderChainAddGiftList();
+
+    // 載入抓鴨子增加鎖鏈設定（預設開啟）
+    const duckAddsChainInput = document.getElementById('chainDuckAddsChain');
+    if (duckAddsChainInput) duckAddsChainInput.checked = cfg.duck_adds_chain !== false;
 }
 
 // 渲染增加禮物列表
@@ -3656,7 +3660,8 @@ function getChainBattleConfig() {
     return {
         trigger_gift: document.getElementById('chainTriggerGift')?.value.trim() || '',
         trigger_amount: parseInt(document.getElementById('chainTriggerAmount')?.value) || 10,
-        add_gifts: chainAddGifts
+        add_gifts: chainAddGifts,
+        duck_adds_chain: document.getElementById('chainDuckAddsChain')?.checked !== false
     };
 }
 

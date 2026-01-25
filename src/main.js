@@ -2641,9 +2641,9 @@ function setupIPC() {
             }
             saveDuckState();
 
-            // 如果鎖鏈對抗進行中，抓到鴨子也增加鎖鏈數
-            if (state.chainBattleActive) {
-                const chainCfg = state.config.chain_battle_config || {};
+            // 如果鎖鏈對抗進行中且開啟抓鴨子增加鎖鏈，抓到鴨子也增加鎖鏈數
+            const chainCfg = state.config.chain_battle_config || {};
+            if (state.chainBattleActive && chainCfg.duck_adds_chain !== false) {
                 const duckChainAmount = chainCfg.duck_chain_amount || duckAmount;
                 state.chainCount += duckChainAmount;
                 addLog(`⛓️ ${userInfo.nickname} 抓到鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
@@ -2753,9 +2753,9 @@ function setupIPC() {
             state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
         }
 
-        // 如果鎖鏈對抗進行中，抓到鴨子也增加鎖鏈數
-        if (state.chainBattleActive && amount > 0) {
-            const chainCfg = state.config.chain_battle_config || {};
+        // 如果鎖鏈對抗進行中且開啟抓鴨子增加鎖鏈，抓到鴨子也增加鎖鏈數
+        const chainCfg = state.config.chain_battle_config || {};
+        if (state.chainBattleActive && amount > 0 && chainCfg.duck_adds_chain !== false) {
             const duckChainAmount = chainCfg.duck_chain_amount || amount;
             state.chainCount += duckChainAmount;
             addLog(`⛓️ 抓到鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
@@ -3021,9 +3021,9 @@ function setupIPC() {
                 state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
             }
 
-            // 如果鎖鏈對抗進行中，抓到鴨子也增加鎖鏈數
-            if (state.chainBattleActive) {
-                const chainCfg = state.config.chain_battle_config || {};
+            // 如果鎖鏈對抗進行中且開啟抓鴨子增加鎖鏈，抓到鴨子也增加鎖鏈數
+            const chainCfg = state.config.chain_battle_config || {};
+            if (state.chainBattleActive && chainCfg.duck_adds_chain !== false) {
                 const duckChainAmount = chainCfg.duck_chain_amount || actualAmount;
                 state.chainCount += duckChainAmount;
                 addLog(`⛓️ 測試抓鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
@@ -3059,9 +3059,9 @@ function setupIPC() {
         state.duckCount += duckAmount;
         addLog(`🦆 ${username} 抓到 ${duckAmount} 隻鴨子！目前總數: ${state.duckCount}`);
 
-        // 如果鎖鏈對抗進行中，抓到鴨子也增加鎖鏈數
-        if (state.chainBattleActive && duckAmount > 0) {
-            const chainCfg = state.config.chain_battle_config || {};
+        // 如果鎖鏈對抗進行中且開啟抓鴨子增加鎖鏈，抓到鴨子也增加鎖鏈數
+        const chainCfg = state.config.chain_battle_config || {};
+        if (state.chainBattleActive && duckAmount > 0 && chainCfg.duck_adds_chain !== false) {
             const duckChainAmount = chainCfg.duck_chain_amount || duckAmount;  // 預設用抓到的鴨子數
             state.chainCount += duckChainAmount;
             addLog(`⛓️ ${username} 抓到鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
