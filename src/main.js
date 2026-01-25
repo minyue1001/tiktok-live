@@ -1916,7 +1916,8 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                 // 發送開始事件
                 sendToGreenScreen('startChainBattle', {
                     baseCount: state.chainCount,
-                    amount: state.chainCount
+                    amount: state.chainCount,
+                    click_cooldown: cfg.click_cooldown ?? 100
                 });
             } else {
                 // 對抗進行中再送啟動禮物：增加（初始鎖鏈數 × 禮物數量）
@@ -2845,7 +2846,8 @@ function setupIPC() {
         addLog(`⛓️ 手動啟動鎖鏈對抗！基礎: ${baseCount}`);
         sendToGreenScreen('startChainBattle', {
             baseCount: baseCount,
-            amount: baseCount
+            amount: baseCount,
+            click_cooldown: cfg.click_cooldown ?? 100
         });
         return { success: true };
     });

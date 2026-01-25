@@ -696,7 +696,7 @@
                             <h3>⚙️ 進階設定</h3>
                         </div>
                         <div class="card-content">
-                            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
                                 <div>
                                     <label style="font-weight: 500;">🦆 抓鴨子增加鎖鏈</label>
                                     <p style="color: #9ca3af; font-size: 12px; margin-top: 4px;">開啟時，抓到鴨子會增加鎖鏈數</p>
@@ -705,6 +705,13 @@
                                     <input type="checkbox" id="chainDuckAddsChain" checked onchange="saveChainBattleConfig()">
                                     <span class="switch-slider"></span>
                                 </label>
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <label style="font-weight: 500;">⏱️ 點擊冷卻時間</label>
+                                    <p style="color: #9ca3af; font-size: 12px; margin-top: 4px;">每次按空白鍵的間隔時間（毫秒）</p>
+                                </div>
+                                <input type="number" id="chainClickCooldown" class="input" value="100" min="0" max="1000" style="width: 100px; text-align: center;" onchange="saveChainBattleConfig()">
                             </div>
                         </div>
                     </div>

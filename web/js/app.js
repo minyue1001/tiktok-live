@@ -3600,6 +3600,10 @@ function loadChainBattleSettings() {
     // 載入抓鴨子增加鎖鏈設定（預設開啟）
     const duckAddsChainInput = document.getElementById('chainDuckAddsChain');
     if (duckAddsChainInput) duckAddsChainInput.checked = cfg.duck_adds_chain !== false;
+
+    // 載入點擊冷卻時間（預設 100ms）
+    const clickCooldownInput = document.getElementById('chainClickCooldown');
+    if (clickCooldownInput) clickCooldownInput.value = cfg.click_cooldown ?? 100;
 }
 
 // 渲染增加禮物列表
@@ -3661,7 +3665,8 @@ function getChainBattleConfig() {
         trigger_gift: document.getElementById('chainTriggerGift')?.value.trim() || '',
         trigger_amount: parseInt(document.getElementById('chainTriggerAmount')?.value) || 10,
         add_gifts: chainAddGifts,
-        duck_adds_chain: document.getElementById('chainDuckAddsChain')?.checked !== false
+        duck_adds_chain: document.getElementById('chainDuckAddsChain')?.checked !== false,
+        click_cooldown: parseInt(document.getElementById('chainClickCooldown')?.value) || 100
     };
 }
 

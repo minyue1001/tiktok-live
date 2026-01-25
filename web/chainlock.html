@@ -12,7 +12,7 @@
         }
 
         body {
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.1);
             width: 100vw;
             height: 100vh;
             overflow: hidden;
@@ -102,7 +102,7 @@
 
         .chain-counter.removing {
             transform: scale(0.9);
-            color: #00bfff;
+            color: #3b82f6;
         }
 
         .chain-hint {
@@ -144,8 +144,8 @@
 
         /* 勝利效果 */
         .chain-battle-overlay.victory .chain-counter-container {
-            border-color: #4ade80;
-            box-shadow: 0 0 60px rgba(74, 222, 128, 0.8);
+            border-color: #ef4444;
+            box-shadow: 0 0 60px rgba(239, 68, 68, 0.8);
         }
 
         .chain-victory {
@@ -155,8 +155,8 @@
             left: 50%;
             transform: translate(-50%, -50%);
             font-size: 48px;
-            color: #4ade80;
-            text-shadow: 0 0 30px rgba(74, 222, 128, 0.8);
+            color: #ef4444;
+            text-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
             animation: victoryPop 0.5s ease-out;
             font-family: "Microsoft YaHei", sans-serif;
             white-space: nowrap;
@@ -203,7 +203,7 @@
         }
 
         .floating-number.remove {
-            color: #00bfff;
+            color: #3b82f6;
         }
 
         @keyframes floatUp {
@@ -247,6 +247,8 @@
         let chainCount = 0;
         let chainBattleActive = false;
         let chainPaused = false;  // 抓鴨子影片播放中暫停
+        let lastClickTime = 0;    // 上次點擊時間
+        let clickCooldown = 100;  // 點擊冷卻時間（毫秒），可從設定更新
 
         // 播放音效
         function playSound(id) {
@@ -260,10 +262,11 @@
         // 啟動鎖鏈對抗
         function startChainBattle(data = {}) {
             chainCount = data.amount || data.baseCount || 20;
+            clickCooldown = data.click_cooldown ?? 100;  // 更新冷卻時間
             document.getElementById('chainCounter').textContent = chainCount;
             chainBattleActive = true;
             playSound('soundLock');  // 播放鎖起來音效
-            console.log('[鎖定視窗] 鎖鏈對抗啟動，數量:', chainCount);
+            console.log('[鎖定視窗] 鎖鏈對抗啟動，數量:', chainCount, '冷卻:', clickCooldown, 'ms');
         }
 
         // 創建飄動數字
@@ -332,7 +335,7 @@
             }, 500);
         }
 
-        // 監聽空白鍵
+        // 監聯空白鍵
         document.addEventListener('keydown', (e) => {
             // 阻擋所有按鍵
             e.preventDefault();
@@ -340,6 +343,13 @@
 
             // 只處理空白鍵且非長按，暫停中不處理
             if (e.code === 'Space' && chainBattleActive && !e.repeat && !chainPaused) {
+                // 檢查冷卻時間
+                const now = Date.now();
+                if (now - lastClickTime < clickCooldown) {
+                    return;  // 還在冷卻中
+                }
+                lastClickTime = now;
+
                 playSound('soundRattle');  // 播放鎖鏈動音效
                 if (window.pywebview && window.pywebview.api) {
                     pywebview.api.remove_chain_count(1);
