@@ -10,6 +10,7 @@ const WebSocket = require('ws');
 const { spawn } = require('child_process');
 const express = require('express');
 const http = require('http');
+const firebase = require('./firebase');  // 世界榜 Firebase 服務
 
 // ============ 調試設定 ============
 const DEBUG_MODE = false;
@@ -67,8 +68,10 @@ const state = {
         totalRanking: [],     // 累計排行（每週重置）[{uniqueId, nickname, avatar, totalDucks}]
         singleHighest: [],    // 單次最高（每天重置）[{uniqueId, nickname, avatar, amount, date}]
         allTimeStats: [],     // 總體資料庫（永久）[{uniqueId, nickname, avatar, totalDucks}]
+        worldRanking: [],     // 世界榜專用（每月重置）[{uniqueId, nickname, avatar, totalCaught}] - 只加不減
         lastWeeklyReset: null, // 上次週重置時間
-        lastDailyReset: null   // 上次日重置時間
+        lastDailyReset: null,  // 上次日重置時間
+        lastMonthlyReset: null // 上次月重置時間（世界榜）
     },
     duckCatchQueue: [],       // 抓鴨子隊列
     duckCatchProcessing: false, // 是否正在處理隊列
@@ -78,7 +81,11 @@ const state = {
     reconnectMaxAttempts: 5,   // 最大重連嘗試次數
     reconnectDelay: 5000,      // 重連間隔（毫秒）
     reconnectTimer: null,      // 重連計時器
-    manualDisconnect: false    // 是否為手動斷線（手動斷線不重連）
+    manualDisconnect: false,    // 是否為手動斷線（手動斷線不重連）
+    worldChampion: null,        // 當前世界冠軍（緩存）
+    pendingWorldChampionCrown: null,  // 待播放的世界冠軍登頂特效
+    entryEffectQueue: [],       // 進場特效隊列
+    entryEffectPlaying: false   // 是否正在播放進場特效
 };
 
 // ============ 路徑設定 ============
@@ -230,6 +237,7 @@ function getDefaultConfig() {
             pity_jackpot_amount: 10000     // 第二層保底鴨子數（大獎）
         },
         milestone_firework_video: '',  // 里程碑慶祝煙火影片路徑
+        world_champion_gift_video: '', // 世界冠軍送禮特效影片路徑
         wheel_options: [],
         giftbox_gifts: [],
         giftbox_options: [],
@@ -793,10 +801,12 @@ function loadLeaderboard() {
                 totalRanking: data.totalRanking || [],
                 singleHighest: data.singleHighest || [],
                 allTimeStats: data.allTimeStats || [],
+                worldRanking: data.worldRanking || [],  // 世界榜專用
                 lastWeeklyReset: data.lastWeeklyReset || null,
-                lastDailyReset: data.lastDailyReset || null
+                lastDailyReset: data.lastDailyReset || null,
+                lastMonthlyReset: data.lastMonthlyReset || null  // 世界榜月重置
             };
-            console.log(`[Leaderboard] 已載入排行榜: 累計${state.duckLeaderboard.totalRanking.length}人, 單次${state.duckLeaderboard.singleHighest.length}人, 總體${state.duckLeaderboard.allTimeStats.length}人`);
+            console.log(`[Leaderboard] 已載入排行榜: 累計${state.duckLeaderboard.totalRanking.length}人, 單次${state.duckLeaderboard.singleHighest.length}人, 總體${state.duckLeaderboard.allTimeStats.length}人, 世界榜${state.duckLeaderboard.worldRanking.length}人`);
 
             // 檢查是否需要自動重置
             checkLeaderboardReset();
@@ -826,15 +836,29 @@ function checkLeaderboardReset() {
         addLog('🔄 單次最高排行榜已自動重置（每日）');
     }
 
-    // 檢查每週重置（累計排行）- 週日 00:00 後重置
+    // 檢查每週重置（累計排行）- 週一 00:00 後重置
     const lastWeeklyReset = state.duckLeaderboard.lastWeeklyReset;
-    if (dayOfWeek === 0) { // 今天是週日
+    if (dayOfWeek === 1) { // 今天是週一
         if (!lastWeeklyReset || lastWeeklyReset !== today) {
             console.log('[Leaderboard] 執行每週重置（累計排行）');
             state.duckLeaderboard.totalRanking = [];
             state.duckLeaderboard.lastWeeklyReset = today;
             saveLeaderboard();
-            addLog('🔄 累計排行榜已自動重置（每週日）');
+            addLog('🔄 累計排行榜已自動重置（每週一）');
+        }
+    }
+
+    // 檢查每月重置（世界榜）- 每月 1 日 00:00 後重置
+    const dayOfMonth = now.getDate();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; // 格式: 2024-01
+    const lastMonthlyReset = state.duckLeaderboard.lastMonthlyReset;
+    if (dayOfMonth === 1) { // 今天是月初
+        if (!lastMonthlyReset || lastMonthlyReset !== currentMonth) {
+            console.log('[Leaderboard] 執行每月重置（世界榜）');
+            state.duckLeaderboard.worldRanking = [];
+            state.duckLeaderboard.lastMonthlyReset = currentMonth;
+            saveLeaderboard();
+            addLog('🔄 世界榜專用排行已自動重置（每月初）');
         }
     }
 }
@@ -950,7 +974,24 @@ function updateLeaderboard(userInfo, duckAmount, isPity = false) {
     // 排序（不限制數量，保留所有人）
     state.duckLeaderboard.allTimeStats.sort((a, b) => b.totalDucks - a.totalDucks);
 
-    // 3. 更新單次最高排行（每天重置）
+    // 3. 更新世界榜專用排行（每月重置，只加不減）
+    let worldEntry = state.duckLeaderboard.worldRanking.find(e => e.uniqueId === uniqueId);
+    if (worldEntry) {
+        worldEntry.totalCaught += duckAmount;
+        worldEntry.nickname = nickname || worldEntry.nickname;
+        worldEntry.avatar = avatar || worldEntry.avatar;
+    } else {
+        state.duckLeaderboard.worldRanking.push({
+            uniqueId,
+            nickname,
+            avatar,
+            totalCaught: duckAmount
+        });
+    }
+    // 排序（不限制數量，保留所有人）
+    state.duckLeaderboard.worldRanking.sort((a, b) => b.totalCaught - a.totalCaught);
+
+    // 4. 更新單次最高排行（每天重置）
     let singleEntry = state.duckLeaderboard.singleHighest.find(e => e.uniqueId === uniqueId);
     let newSingleRecord = false;
     if (singleEntry) {
@@ -985,6 +1026,42 @@ function updateLeaderboard(userInfo, duckAmount, isPity = false) {
 
     // 不直接通知綠幕 - 改為在 triggerDuckVideo 中傳遞排行榜資料
     // sendToGreenScreen('updateLeaderboard', state.duckLeaderboard);
+
+    // === 同步到 Firebase 世界榜（使用 worldRanking，只加不減，每月重置）===
+    const userWorldStats = state.duckLeaderboard.worldRanking.find(u => u.uniqueId === uniqueId);
+    const WORLD_MILESTONE = 10000;
+
+    if (userWorldStats && firebase.isConfigured()) {
+        // 同步判斷：達到 1 萬且超越現任冠軍 → 立即設定登頂資料（不等 Firebase 回應）
+        const currentChampionDucks = state.worldChampion?.totalDucks || 0;
+        const isNewChampion = userWorldStats.totalCaught >= WORLD_MILESTONE &&
+            userWorldStats.totalCaught > currentChampionDucks &&
+            uniqueId !== state.worldChampion?.uniqueId;
+
+        if (isNewChampion) {
+            state.worldChampion = { uniqueId, nickname: userWorldStats.nickname, totalDucks: userWorldStats.totalCaught };
+            addLog(`🏆 世界榜！${userWorldStats.nickname} 成為新的世界第一名！(${userWorldStats.totalCaught}🦆)`, 'success');
+            // 立即設定，讓當下影片結束後播放（使用里程碑煙火影片）
+            const crownVideo = state.config.milestone_firework_video || '';
+            if (crownVideo && fs.existsSync(crownVideo)) {
+                state.pendingWorldChampionCrown = {
+                    nickname: userWorldStats.nickname,
+                    totalDucks: userWorldStats.totalCaught,
+                    videoPath: crownVideo
+                };
+            }
+        }
+
+        // Firebase 同步（背景執行）
+        firebase.updateWorldLeaderboard(
+            uniqueId,
+            userWorldStats.nickname,
+            userWorldStats.avatar,
+            userWorldStats.totalCaught
+        ).catch(err => {
+            console.error('[世界榜] 同步失敗:', err);
+        });
+    }
 
     // === 里程碑檢測（返回里程碑資料，不直接觸發）===
     const newTotalFirst = state.duckLeaderboard.totalRanking[0] || null;
@@ -1185,6 +1262,23 @@ function handleTikTokMessage(msg) {
         // 傳遞用戶資訊用於排行榜
         const userInfo = { nickname: username, uniqueId, userId, avatar: profilePictureUrl };
         triggerEffects('gift', username, giftName, count, userInfo);
+
+        // 檢查是否為世界榜第一名送禮 → 觸發進場特效
+        if (firebase.isConfigured()) {
+            firebase.getWorldChampion().then(champion => {
+                if (champion && (champion.uniqueId === uniqueId || champion.uniqueId === userId)) {
+                    addLog(`👑 世界第一 ${username} 送禮！`, 'success');
+                    const giftVideo = state.config.world_champion_gift_video || '';
+                    sendToGreenScreen('worldChampionEntry', {
+                        nickname: username,
+                        totalDucks: champion.totalDucks,
+                        videoPath: giftVideo && fs.existsSync(giftVideo) ? giftVideo : ''
+                    });
+                }
+            }).catch(err => {
+                console.error('[世界榜] 獲取冠軍失敗:', err);
+            });
+        }
 
         // 透過送禮回推進場
         if (userId) {
@@ -2109,11 +2203,13 @@ function triggerEntryEffect(nickname, uniqueId, userId, level = 0) {
     const entryConfig = state.config.entry_config || {};
     const displayName = nickname || uniqueId || '';
 
-    // 1. 先檢查是否有特定用戶的進場效果
+    // 1. 先檢查是否有特定用戶的進場效果，同時記錄優先順序
     let specificEntry = null;
+    let entryPriority = 9999;  // 全局效果優先順序最低
     const cleanedNick = cleanNickname(nickname).toLowerCase();
 
-    for (const entry of entryList) {
+    for (let i = 0; i < entryList.length; i++) {
+        const entry = entryList[i];
         if (entry.enabled === false) continue;
 
         const entryUsername = (entry.username || '').toLowerCase().trim();
@@ -2133,7 +2229,8 @@ function triggerEntryEffect(nickname, uniqueId, userId, level = 0) {
 
         if (matched) {
             specificEntry = entry;
-            console.log(`[Entry Match] 匹配到專屬進場: ${entry.username} -> userId=${userId} nickname="${nickname}"`);
+            entryPriority = i;  // 列表順序就是優先順序
+            console.log(`[Entry Match] 匹配到專屬進場: ${entry.username} -> userId=${userId} nickname="${nickname}" 優先順序=${i + 1}`);
             break;
         }
     }
@@ -2164,13 +2261,11 @@ function triggerEntryEffect(nickname, uniqueId, userId, level = 0) {
     }
     state.entryCooldowns[cooldownKey] = now;
 
-    // 4. 觸發效果
+    // 4. 準備效果數據並加入隊列
     const logPrefix = specificEntry ? '🎯 專屬進場' : '👋 進場效果';
-    addLog(`${logPrefix}: ${displayName}${level > 0 ? ` Lv${level}` : ''}`);
-
     const isAudio = /\.(mp3|wav|ogg|m4a|aac)$/i.test(effectConfig.media_path);
-    console.log(`[Entry Effect] 觸發進場效果: ${displayName} 媒體=${effectConfig.media_path} isAudio=${isAudio}`);
-    sendToGreenScreen('triggerEntry', {
+
+    const effectData = {
         username: displayName,
         level: level,
         path: effectConfig.media_path,
@@ -2182,8 +2277,44 @@ function triggerEntryEffect(nickname, uniqueId, userId, level = 0) {
         text_size: effectConfig.text_size || 48,
         text_color: effectConfig.text_color || '#ffffff',
         text_duration: effectConfig.text_duration || 5,
-        is_specific: !!specificEntry
-    });
+        is_specific: !!specificEntry,
+        priority: entryPriority,
+        logPrefix: logPrefix
+    };
+
+    // 加入隊列並按優先順序排序
+    state.entryEffectQueue.push(effectData);
+    state.entryEffectQueue.sort((a, b) => a.priority - b.priority);
+
+    console.log(`[Entry Queue] 加入隊列: ${displayName} 優先順序=${entryPriority + 1} 隊列長度=${state.entryEffectQueue.length}`);
+
+    // 如果沒有正在播放的效果，開始處理隊列
+    if (!state.entryEffectPlaying) {
+        processEntryQueue();
+    }
+}
+
+// 處理進場特效隊列
+function processEntryQueue() {
+    if (state.entryEffectQueue.length === 0) {
+        state.entryEffectPlaying = false;
+        console.log('[Entry Queue] 隊列已清空');
+        return;
+    }
+
+    state.entryEffectPlaying = true;
+    const effectData = state.entryEffectQueue.shift();
+
+    addLog(`${effectData.logPrefix}: ${effectData.username}${effectData.level > 0 ? ` Lv${effectData.level}` : ''}`);
+    console.log(`[Entry Queue] 播放效果: ${effectData.username} 優先順序=${effectData.priority + 1} 剩餘=${state.entryEffectQueue.length}`);
+
+    sendToGreenScreen('triggerEntry', effectData);
+}
+
+// 進場特效播放完成回調
+function onEntryEffectComplete() {
+    console.log('[Entry Queue] 效果播放完成，處理下一個');
+    processEntryQueue();
 }
 
 function sendToGreenScreen(event, data) {
@@ -2689,6 +2820,12 @@ function setupIPC() {
 
     // 鴨子影片播放完成通知
     ipcMain.handle('notify-duck-video-finished', () => {
+        // 檢查是否有待播放的世界冠軍登頂特效
+        if (state.pendingWorldChampionCrown) {
+            sendToGreenScreen('worldChampionCrown', state.pendingWorldChampionCrown);
+            state.pendingWorldChampionCrown = null;  // 清除，避免重複播放
+        }
+
         // 延遲一下再處理下一個，避免影片切換太快
         setTimeout(() => {
             // 如果沒有更多鴨子隊列且鎖鏈對抗進行中，恢復鎖鏈
@@ -2697,6 +2834,12 @@ function setupIPC() {
             }
             processNextDuckCatch();
         }, 300);
+        return { success: true };
+    });
+
+    // 進場特效播放完成通知
+    ipcMain.handle('notify-entry-effect-finished', () => {
+        onEntryEffectComplete();
         return { success: true };
     });
 
@@ -2934,6 +3077,33 @@ function setupIPC() {
     // 取得總體資料庫
     ipcMain.handle('get-alltime-stats', () => {
         return state.duckLeaderboard.allTimeStats || [];
+    });
+
+    // === 世界榜 API ===
+    // 獲取世界榜
+    ipcMain.handle('get-world-leaderboard', async () => {
+        try {
+            if (!firebase.isConfigured()) {
+                return [];
+            }
+            return await firebase.getWorldLeaderboard(100);
+        } catch (error) {
+            console.error('[世界榜] 獲取失敗:', error);
+            return [];
+        }
+    });
+
+    // 獲取世界冠軍
+    ipcMain.handle('get-world-champion', async () => {
+        try {
+            if (!firebase.isConfigured()) {
+                return null;
+            }
+            return await firebase.getWorldChampion();
+        } catch (error) {
+            console.error('[世界榜] 獲取冠軍失敗:', error);
+            return null;
+        }
     });
 
     // 調整用戶鴨子數量（總體資料庫）
@@ -3239,6 +3409,19 @@ app.whenReady().then(() => {
     loadLeaderboard();  // 載入排行榜
     loadDuckState();    // 載入鴨子計數和保底
     setupLeaderboardResetTimer();  // 設定排行榜自動重置
+
+    // 載入世界冠軍（背景）
+    if (firebase.isConfigured()) {
+        firebase.getWorldChampion().then(champion => {
+            if (champion) {
+                state.worldChampion = champion;
+                console.log(`[世界榜] 已載入世界冠軍: ${champion.nickname} (${champion.totalDucks}🦆)`);
+            }
+        }).catch(err => {
+            console.error('[世界榜] 載入冠軍失敗:', err);
+        });
+    }
+
     startMediaServer();
     setupIPC();
     setupAutoUpdater();

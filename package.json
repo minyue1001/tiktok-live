@@ -17,9 +17,10 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "ws": "^8.14.2",
+    "electron-updater": "^6.1.7",
     "express": "^4.18.2",
-    "electron-updater": "^6.1.7"
+    "firebase": "^12.8.0",
+    "ws": "^8.14.2"
   },
   "build": {
     "appId": "com.livegift.pro",
@@ -36,7 +37,10 @@
       {
         "from": "tiktok-server",
         "to": "tiktok-server",
-        "filter": ["**/*", "!node_modules/.bin/**"]
+        "filter": [
+          "**/*",
+          "!node_modules/.bin/**"
+        ]
       }
     ],
     "asar": true,
@@ -47,7 +51,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "signAndEditExecutable": false
@@ -58,7 +64,11 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "LiveGift Pro",
-      "installerLanguages": ["zh_TW", "zh_CN", "en_US"],
+      "installerLanguages": [
+        "zh_TW",
+        "zh_CN",
+        "en_US"
+      ],
       "language": "2052"
     },
     "publish": {

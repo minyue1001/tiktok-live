@@ -126,7 +126,7 @@
                 </button>
             </div>
             <div class="sidebar-footer">
-                <span class="version-info">LiveGift Pro v2.0.0</span>
+                <span class="version-info" id="appVersion">LiveGift Pro</span>
                 <span class="copyright">© 2024 LiveGift</span>
             </div>
         </aside>
@@ -505,7 +505,7 @@
                     <!-- 排行榜 -->
                     <div class="card">
                         <div class="card-header">
-                            <h3>🏆 排行榜</h3>
+                            <h3>🏆 排行榜 <span id="firebaseIndicator" class="firebase-indicator offline" title="Firebase 未連接">●</span></h3>
                             <div class="header-buttons">
                                 <button class="btn btn-sm btn-outline" onclick="refreshLeaderboard()">🔄 刷新</button>
                                 <button class="btn btn-sm btn-danger" onclick="clearLeaderboard()">🗑️ 清除</button>
@@ -513,12 +513,13 @@
                         </div>
                         <div class="card-content">
                             <div class="leaderboard-info" style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                                累計排行每週日 00:00 重置 | 單次最高每天 00:00 重置
+                                累計排行每週一 00:00 重置 | 單次最高每天 00:00 重置
                             </div>
                             <div class="leaderboard-tabs">
                                 <button class="leaderboard-tab active" data-tab="total" onclick="switchLeaderboardTab('total')">📊 累計排行</button>
                                 <button class="leaderboard-tab" data-tab="single" onclick="switchLeaderboardTab('single')">🎯 單次最高</button>
                                 <button class="leaderboard-tab" data-tab="alltime" onclick="switchLeaderboardTab('alltime')">📚 總體資料庫</button>
+                                <button class="leaderboard-tab" data-tab="world" onclick="switchLeaderboardTab('world')">🌍 世界榜</button>
                             </div>
                             <div class="leaderboard-content" id="leaderboardTotal">
                                 <div class="leaderboard-list" id="totalRankingList">
@@ -538,6 +539,19 @@
                                 <div class="leaderboard-list" id="alltimeStatsList">
                                     <div class="empty-state">暫無資料</div>
                                 </div>
+                            </div>
+                            <div class="leaderboard-content hidden" id="leaderboardWorld">
+                                <div class="world-champion-banner" id="worldChampionBanner" style="background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%); padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+                                    <span style="font-size: 32px;">👑</span>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold; color: #1a1a2e;" id="worldChampionName">載入中...</div>
+                                        <div style="color: #333;" id="worldChampionDucks">0 🦆</div>
+                                    </div>
+                                </div>
+                                <div class="leaderboard-list" id="worldLeaderboardList">
+                                    <div class="empty-state">載入中...</div>
+                                </div>
+                                <button class="btn btn-sm btn-secondary" onclick="refreshWorldLeaderboard()" style="margin-top: 8px;">🔄 刷新</button>
                             </div>
                         </div>
                     </div>
@@ -566,6 +580,22 @@
                                 </div>
                             </div>
                             <button class="btn btn-outline btn-sm" onclick="testMilestoneCelebration()">🎇 測試慶祝效果</button>
+                        </div>
+
+                        <!-- 世界榜特效設定 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🌍 世界榜特效</h3>
+                            </div>
+                            <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">當世界榜第一名送禮時播放的特效影片</p>
+                            <div class="form-group">
+                                <label>送禮特效影片</label>
+                                <div class="input-with-button">
+                                    <input type="text" id="worldChampionGiftVideo" placeholder="選擇世界冠軍送禮特效影片..." readonly>
+                                    <button class="btn btn-outline" onclick="selectWorldChampionGiftVideo()">選擇</button>
+                                </div>
+                            </div>
+                            <button class="btn btn-outline btn-sm" onclick="testWorldChampionGiftEffect()">👑 測試送禮特效</button>
                         </div>
                     </div>
 

@@ -13,6 +13,19 @@ function handleError(error, userMessage = '操作失敗') {
     showToast(userMessage, 'error');
 }
 
+// ============ 載入應用版本號 ============
+async function loadAppVersion() {
+    try {
+        const version = await pywebview.api.get_app_version();
+        const versionElement = document.getElementById('appVersion');
+        if (versionElement && version) {
+            versionElement.textContent = `LiveGift Pro v${version}`;
+        }
+    } catch (error) {
+        console.log('[版本] 無法載入版本號:', error);
+    }
+}
+
 // ============ Toast 通知系統 ============
 function showToast(message, type = 'info', duration = 3000) {
     // 移除現有的 toast
@@ -262,6 +275,7 @@ let chatDisplayEnabled = false;  // 彈幕顯示狀態
 // === 初始化 ===
 document.addEventListener('DOMContentLoaded', async () => {
     await waitForPywebview();
+    await loadAppVersion();  // 載入應用版本號
     await loadConfig();
     await loadScenes();  // 載入場景列表
     initVolumeSlider();
@@ -275,6 +289,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await updateChatDisplayStatus();  // 初始化彈幕顯示狀態
     await updateLogs();  // 初始載入日誌
     setInterval(updateStatus, 2000);
+
+    // 檢查 Firebase 連接狀態
+    checkFirebaseConnection();
 
     // 隱藏啟動畫面
     const splashScreen = document.getElementById('splashScreen');
@@ -2150,6 +2167,8 @@ function loadDuckCatchConfig() {
     updatePityDisplay();
     // 里程碑煙火影片
     document.getElementById('milestoneFireworkVideo').value = config.milestone_firework_video || '';
+    // 世界冠軍送禮特效影片
+    document.getElementById('worldChampionGiftVideo').value = config.world_champion_gift_video || '';
     toggleDuckTriggerOptions();
     renderDuckCaughtVideoList();
     renderDuckMissedVideoList();
@@ -2542,9 +2561,14 @@ async function saveDuckCatchConfig() {
     const milestoneVideo = document.getElementById('milestoneFireworkVideo').value || '';
     config.milestone_firework_video = milestoneVideo;
 
+    // 世界冠軍送禮特效影片
+    const worldChampionGiftVideo = document.getElementById('worldChampionGiftVideo').value || '';
+    config.world_champion_gift_video = worldChampionGiftVideo;
+
     await pywebview.api.update_config({
         duck_catch_config: cfg,
-        milestone_firework_video: milestoneVideo
+        milestone_firework_video: milestoneVideo,
+        world_champion_gift_video: worldChampionGiftVideo
     });
     addLogLocal('🦆 已儲存抓鴨子設定');
 }
@@ -2608,6 +2632,43 @@ async function testMilestoneCelebration() {
         } catch (e) {
             console.error('測試失敗:', e);
             addLogLocal('❌ 測試里程碑失敗');
+        }
+    }, 500);
+}
+
+// 選擇世界冠軍送禮特效影片
+async function selectWorldChampionGiftVideo() {
+    try {
+        const result = await pywebview.api.select_file('video');
+        if (result) {
+            document.getElementById('worldChampionGiftVideo').value = result;
+            addLogLocal('👑 已選擇世界冠軍送禮特效影片');
+        }
+    } catch (e) {
+        console.error('選擇影片失敗:', e);
+    }
+}
+
+// 測試世界冠軍送禮特效
+async function testWorldChampionGiftEffect() {
+    const videoPath = document.getElementById('worldChampionGiftVideo').value;
+    if (!videoPath) {
+        alert('請先選擇世界冠軍送禮特效影片');
+        return;
+    }
+
+    await openGreenScreen();
+    setTimeout(async () => {
+        try {
+            await pywebview.api.trigger_green_screen('worldChampionEntry', {
+                nickname: '世界第一測試',
+                totalDucks: 99999,
+                videoPath: videoPath
+            });
+            addLogLocal('👑 測試世界冠軍送禮特效');
+        } catch (e) {
+            console.error('測試失敗:', e);
+            addLogLocal('❌ 測試世界冠軍特效失敗');
         }
     }, 500);
 }
@@ -2933,10 +2994,15 @@ function switchLeaderboardTab(tab) {
     document.getElementById('leaderboardTotal').classList.toggle('hidden', tab !== 'total');
     document.getElementById('leaderboardSingle').classList.toggle('hidden', tab !== 'single');
     document.getElementById('leaderboardAlltime')?.classList.toggle('hidden', tab !== 'alltime');
+    document.getElementById('leaderboardWorld')?.classList.toggle('hidden', tab !== 'world');
 
     // 如果切換到總體資料庫，刷新資料
     if (tab === 'alltime') {
         refreshAlltimeStats();
+    }
+    // 如果切換到世界榜，刷新資料
+    if (tab === 'world') {
+        refreshWorldLeaderboard();
     }
 }
 
@@ -3016,6 +3082,96 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text || '';
     return div.innerHTML;
+}
+
+// ============ 世界榜 ============
+// 更新 Firebase 連接指示燈
+function updateFirebaseIndicator(status) {
+    const indicator = document.getElementById('firebaseIndicator');
+    if (!indicator) return;
+
+    indicator.classList.remove('offline', 'online', 'connecting');
+    if (status === 'online') {
+        indicator.classList.add('online');
+        indicator.title = 'Firebase 已連接';
+    } else if (status === 'connecting') {
+        indicator.classList.add('connecting');
+        indicator.title = 'Firebase 連接中...';
+    } else {
+        indicator.classList.add('offline');
+        indicator.title = 'Firebase 未連接';
+    }
+}
+
+// 檢查 Firebase 連接狀態（啟動時呼叫）
+async function checkFirebaseConnection() {
+    updateFirebaseIndicator('connecting');
+    try {
+        await pywebview.api.get_world_champion();
+        updateFirebaseIndicator('online');
+    } catch (error) {
+        console.warn('Firebase 連接檢查失敗:', error);
+        updateFirebaseIndicator('offline');
+    }
+}
+
+// 刷新世界榜
+async function refreshWorldLeaderboard() {
+    updateFirebaseIndicator('connecting');
+    try {
+        const [leaderboard, champion] = await Promise.all([
+            pywebview.api.get_world_leaderboard(),
+            pywebview.api.get_world_champion()
+        ]);
+        renderWorldLeaderboard(leaderboard, champion);
+        updateFirebaseIndicator('online');
+    } catch (error) {
+        console.error('刷新世界榜失敗:', error);
+        updateFirebaseIndicator('offline');
+        // 可能是 Firebase 未配置
+        const list = document.getElementById('worldLeaderboardList');
+        if (list) {
+            list.innerHTML = '<div class="empty-state">世界榜未啟用（需配置 Firebase）</div>';
+        }
+    }
+}
+
+// 渲染世界榜
+function renderWorldLeaderboard(leaderboard, champion) {
+    // 更新冠軍橫幅
+    const championName = document.getElementById('worldChampionName');
+    const championDucks = document.getElementById('worldChampionDucks');
+    if (championName && championDucks) {
+        if (champion) {
+            championName.textContent = champion.nickname || '未知';
+            championDucks.textContent = `${(champion.totalDucks || 0).toLocaleString()} 🦆`;
+        } else {
+            championName.textContent = '虛位以待';
+            championDucks.textContent = '成為第一個世界冠軍！';
+        }
+    }
+
+    // 渲染排行榜
+    const list = document.getElementById('worldLeaderboardList');
+    if (list) {
+        if (leaderboard && leaderboard.length > 0) {
+            list.innerHTML = leaderboard.slice(0, 100).map((user, index) => `
+                <div class="leaderboard-item ${index === 0 ? 'top-1' : index < 3 ? 'top-' + (index + 1) : ''}">
+                    <div class="leaderboard-rank">${index === 0 ? '👑' : index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</div>
+                    ${user.avatar
+                        ? `<img class="leaderboard-avatar" src="${user.avatar}" onerror="this.outerHTML='<div class=\\'leaderboard-avatar placeholder\\'>🦆</div>'">`
+                        : '<div class="leaderboard-avatar placeholder">🦆</div>'
+                    }
+                    <div class="leaderboard-info">
+                        <div class="leaderboard-name">${escapeHtml(user.nickname || user.uniqueId)}</div>
+                    </div>
+                    <div class="leaderboard-score">${(user.totalDucks || 0).toLocaleString()} <span class="duck-icon">🦆</span></div>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = '<div class="empty-state">暫無資料</div>';
+        }
+    }
 }
 
 // ============ 總體資料庫管理 ============
@@ -3354,10 +3510,17 @@ function renderEntryList() {
         const isEnabled = entry.enabled !== false;
         const mediaType = isAudioFile(entry.media_path) ? '音效' : '影片';
         const fileName = entry.media_path ? entry.media_path.split(/[/\\]/).pop() : '未設定';
+        const isFirst = index === 0;
+        const isLast = index === entryList.length - 1;
 
         return `
             <div class="list-item">
                 <div class="list-item-content">
+                    <span class="priority-badge" title="優先順序 (數字越小越先播放)">${index + 1}</span>
+                    <div class="priority-controls">
+                        <button class="btn-priority" onclick="moveEntryUp(${index})" ${isFirst ? 'disabled' : ''} title="提高優先順序">▲</button>
+                        <button class="btn-priority" onclick="moveEntryDown(${index})" ${isLast ? 'disabled' : ''} title="降低優先順序">▼</button>
+                    </div>
                     <label class="trigger-switch-sm" onclick="event.stopPropagation()">
                         <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleEntry(${index}, this.checked)">
                         <span class="trigger-slider-sm"></span>
@@ -3374,6 +3537,28 @@ function renderEntryList() {
             </div>
         `;
     }).join('');
+}
+
+// 向上移動進場項目（提高優先順序）
+async function moveEntryUp(index) {
+    if (index <= 0) return;
+    const entryList = config.entry_list || [];
+    [entryList[index - 1], entryList[index]] = [entryList[index], entryList[index - 1]];
+    config.entry_list = entryList;
+    await pywebview.api.update_config({ entry_list: entryList });
+    renderEntryList();
+    addLogLocal(`🔼 已調整進場優先順序`);
+}
+
+// 向下移動進場項目（降低優先順序）
+async function moveEntryDown(index) {
+    const entryList = config.entry_list || [];
+    if (index >= entryList.length - 1) return;
+    [entryList[index], entryList[index + 1]] = [entryList[index + 1], entryList[index]];
+    config.entry_list = entryList;
+    await pywebview.api.update_config({ entry_list: entryList });
+    renderEntryList();
+    addLogLocal(`🔽 已調整進場優先順序`);
 }
 
 function showAddEntryDialog() {

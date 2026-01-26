@@ -66,6 +66,7 @@ contextBridge.exposeInMainWorld('pywebview', {
         get_pity_counter: () => ipcRenderer.invoke('get-pity-counter'),
         notify_pity_update: () => ipcRenderer.invoke('notify-pity-update'),
         notify_duck_video_finished: () => ipcRenderer.invoke('notify-duck-video-finished'),
+        notify_entry_effect_finished: () => ipcRenderer.invoke('notify-entry-effect-finished'),
 
         // 排行榜
         get_leaderboard: () => ipcRenderer.invoke('get-leaderboard'),
@@ -73,6 +74,10 @@ contextBridge.exposeInMainWorld('pywebview', {
         get_alltime_stats: () => ipcRenderer.invoke('get-alltime-stats'),
         set_user_ducks: (uniqueId, amount, nickname) => ipcRenderer.invoke('set-user-ducks', uniqueId, amount, nickname),
         delete_user_from_alltime: (uniqueId) => ipcRenderer.invoke('delete-user-from-alltime', uniqueId),
+
+        // 世界榜
+        get_world_leaderboard: () => ipcRenderer.invoke('get-world-leaderboard'),
+        get_world_champion: () => ipcRenderer.invoke('get-world-champion'),
 
         // 高等級用戶管理
         get_all_accounts: () => ipcRenderer.invoke('get-all-accounts'),
