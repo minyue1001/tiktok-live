@@ -5,6 +5,8 @@
 
 const { WebcastPushConnection, SignConfig } = require('tiktok-live-connector');
 const WebSocket = require('ws');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+const { SocksProxyAgent } = require('socks-proxy-agent');
 
 // 設定 Eulerstream API Key（從環境變數或命令行參數讀取）
 // https://www.eulerstream.com
@@ -105,7 +107,24 @@ async function connectToTikTok(username) {
     CONFIG.tiktokUsername = username;
     console.log(`[TikTok] 正在連接: @${username}`);
 
-    tiktokConnection = new WebcastPushConnection(username, {
+    // 建立代理 agent（如果有設定代理）
+    const proxyUrl = process.env.TIKTOK_PROXY || '';
+    let proxyAgent = null;
+    if (proxyUrl) {
+        try {
+            if (proxyUrl.startsWith('socks://') || proxyUrl.startsWith('socks5://') || proxyUrl.startsWith('socks4://')) {
+                proxyAgent = new SocksProxyAgent(proxyUrl);
+                console.log(`[Proxy] 使用 SOCKS 代理: ${proxyUrl}`);
+            } else {
+                proxyAgent = new HttpsProxyAgent(proxyUrl);
+                console.log(`[Proxy] 使用 HTTP 代理: ${proxyUrl}`);
+            }
+        } catch (e) {
+            console.error(`[Proxy] 建立代理失敗:`, e.message);
+        }
+    }
+
+    const connectionOptions = {
         processInitialData: false,
         enableExtendedGiftInfo: true,
         enableWebsocketUpgrade: true,
@@ -123,7 +142,28 @@ async function connectToTikTok(username) {
         requestHeaders: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
-    });
+    };
+
+    // 注入代理到所有連接（HTTP、WebSocket、Sign Server）
+    if (proxyAgent) {
+        connectionOptions.webClientOptions = {
+            httpsAgent: proxyAgent,
+            proxy: false  // 關閉 axios 內建代理，使用 agent
+        };
+        connectionOptions.wsClientOptions = {
+            agent: proxyAgent
+        };
+        // 注入代理到 Sign Server（Eulerstream）的 axios 請求
+        if (SignConfig.baseOptions) {
+            SignConfig.baseOptions.httpsAgent = proxyAgent;
+            SignConfig.baseOptions.proxy = false;
+        } else {
+            SignConfig.baseOptions = { httpsAgent: proxyAgent, proxy: false };
+        }
+        console.log('[Proxy] 已注入代理到 HTTP、WebSocket 和 Sign Server 連接');
+    }
+
+    tiktokConnection = new WebcastPushConnection(username, connectionOptions);
 
     // 連接成功
     tiktokConnection.on('connected', (state) => {
@@ -140,7 +180,14 @@ async function connectToTikTok(username) {
         console.log('[TikTok] WebSocket 已連接');
     });
 
-    // 監聽原始數據 - 只解析高等級進場的等級資訊
+    // Debug: 監聽所有原始訊息類型
+    tiktokConnection.on('rawData', (messageTypeName, binary) => {
+        if (messageTypeName.toLowerCase().includes('gift')) {
+            console.log(`[DEBUG] 收到禮物相關原始訊息: ${messageTypeName}`);
+        }
+    });
+
+    // 監聯原始數據 - 只解析高等級進場的等級資訊
     // 暱稱資訊完全依賴 member 事件，rawBarrage 只補充等級
     tiktokConnection.on('rawData', (messageTypeName, binary) => {
         if (messageTypeName === 'WebcastBarrageMessage') {
@@ -370,33 +417,15 @@ async function connectToTikTok(username) {
         }
         const giftCount = msg.repeatCount || 1;
 
-        // 只在禮物結束時觸發（repeatEnd=true），或者非連續禮物（giftType !== 1）
-        // giftType 1 = 連續禮物（需要等 repeatEnd）
-        // giftType 2 = 一次性禮物（直接觸發）
+        // giftType 1 = 連續禮物，需要等 repeatEnd=true 才是最終結算
+        // giftType 2 = 一次性禮物，直接處理
         if (msg.giftType === 1 && !msg.repeatEnd) {
-            // 連續禮物但還沒結束，先不觸發
-            console.log(`[Gift] ${msg.nickname} 正在連送 ${msg.giftName}... (${giftCount})`);
+            // 連送中，等待結算
+            console.log(`[Gift] 連送中: ${msg.nickname} ${msg.giftName} x${giftCount}`);
             return;
         }
 
-        // 防重複：同用戶同禮物 2 秒內只觸發一次
-        const dedupKey = `${msg.userId}_${msg.giftId}_${giftCount}`;
-        const now = Date.now();
-        const lastTime = giftDedup.get(dedupKey) || 0;
-        if (now - lastTime < 2000) {
-            console.log(`[Gift] 重複禮物已忽略: ${dedupKey}`);
-            return;
-        }
-        giftDedup.set(dedupKey, now);
-
-        // 清理舊記錄（超過 10 秒的）
-        for (const [key, time] of giftDedup.entries()) {
-            if (now - time > 10000) {
-                giftDedup.delete(key);
-            }
-        }
-
-        console.log(`[Gift] ${msg.nickname} 送了 ${giftCount}x ${msg.giftName} (repeatEnd: ${msg.repeatEnd})`);
+        console.log(`[Gift] ${msg.nickname} 送了 ${giftCount}x ${msg.giftName} (結算)`);
         broadcast({
             type: 'GiftMessage',
             nickname: msg.nickname,

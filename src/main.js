@@ -48,6 +48,8 @@ const state = {
     mediaServerPort: 18888,
     connected: false,
     entryCooldowns: {},
+    worldChampionGiftReady: {},  // 進場後送禮才觸發世界冠軍特效
+    lastLeaderboardUpdate: 0,    // 排行榜最後更新時間（用於查詢冷卻）
     giftDedup: {},
     entryDedup: {},           // 進場去重 (userId -> {time, logged})
     pendingEntries: {},       // 待處理進場 (userId -> {nickname, uniqueId, level, time})
@@ -64,6 +66,7 @@ const state = {
     chainBattleActive: false, // 鎖鏈對抗是否進行中
     chainLockWindow: null,    // 鎖鏈對抗專用全螢幕視窗
     chainCount: 0,            // 目前鎖鏈數（主進程管理）
+    chokingActive: false,     // 窒息挑戰是否進行中
     duckLeaderboard: {        // 抓鴨子排行榜
         totalRanking: [],     // 累計排行（每週重置）[{uniqueId, nickname, avatar, totalDucks}]
         singleHighest: [],    // 單次最高（每天重置）[{uniqueId, nickname, avatar, amount, date}]
@@ -85,7 +88,12 @@ const state = {
     worldChampion: null,        // 當前世界冠軍（緩存）
     pendingWorldChampionCrown: null,  // 待播放的世界冠軍登頂特效
     entryEffectQueue: [],       // 進場特效隊列
-    entryEffectPlaying: false   // 是否正在播放進場特效
+    entryEffectPlaying: false,  // 是否正在播放進場特效
+    // 自動備份
+    autoBackupTimer: null,
+    lastBackupTime: null,
+    // 連擊 Combo
+    duckComboState: {}          // { uniqueId: { count, lastTime } }
 };
 
 // ============ 路徑設定 ============
@@ -234,7 +242,12 @@ function getDefaultConfig() {
             pity_threshold: 1000,     // 第一層保底次數
             pity_min_amount: 5000,    // 第一層保底最低鴨子數
             pity_threshold_jackpot: 2000,  // 第二層保底次數（終極保底）
-            pity_jackpot_amount: 10000     // 第二層保底鴨子數（大獎）
+            pity_jackpot_amount: 10000,    // 第二層保底鴨子數（大獎）
+            soft_pity_enabled: false,      // 軟保底（漸進提升機率）
+            soft_pity_start: 70,           // 軟保底起始百分比
+            combo_enabled: false,          // 連擊機制
+            combo_window: 30,              // 連擊時間窗口（秒）
+            combo_multipliers: [1, 1.5, 2, 3]  // 連擊倍率
         },
         milestone_firework_video: '',  // 里程碑慶祝煙火影片路徑
         world_champion_gift_video: '', // 世界冠軍送禮特效影片路徑
@@ -246,6 +259,12 @@ function getDefaultConfig() {
         tiktok_username: '',
         auto_open_green_screen: false,
         language: 'zh-TW',
+        auto_backup_enabled: true,
+        auto_backup_interval: 30,        // 自動備份間隔（分鐘）
+        auto_backup_max_count: 5,        // 保留最近 N 組備份
+        greenscreen_leaderboard_count: 5,
+        greenscreen_leaderboard_rotate: true,
+        greenscreen_leaderboard_rotate_interval: 5,  // 秒
         greenscreen_positions: {
             wheel: { width: 350, height: 350, left: 0, top: 150, visible: false },
             giftbox: { width: 200, height: 200, left: 465, top: 245, visible: false, autoHide: true },
@@ -446,8 +465,8 @@ function addLog(message) {
     const timestamp = new Date().toLocaleTimeString('zh-TW', { hour12: false });
     const logEntry = `[${timestamp}] ${message}`;
     state.logs.push(logEntry);
-    if (state.logs.length > 500) {
-        state.logs = state.logs.slice(-500);
+    if (state.logs.length > 5000) {
+        state.logs = state.logs.slice(-5000);
     }
 
     // 通知主視窗
@@ -534,6 +553,13 @@ function startNodeServer() {
             EULER_API_KEY: state.config.api_key || '',
             WS_PORT: String(state.config.port || 10010)
         };
+
+        // 代理設定 - 只傳代理 URL 給 server.js，不設全域 HTTP_PROXY（會干擾 Sign Server）
+        if (state.config.proxy_enabled && state.config.proxy_url) {
+            env.TIKTOK_PROXY = state.config.proxy_url;
+            console.log(`[Proxy] 使用代理: ${state.config.proxy_url}`);
+            addLog(`🌐 使用代理: ${state.config.proxy_url}`);
+        }
 
         // 打包後使用內建的 node.exe，開發模式用系統 node
         const nodePath = isDev
@@ -793,9 +819,15 @@ function saveUserCache() {
 }
 
 // ============ 排行榜管理 ============
+let leaderboardLoadFailed = false;  // 標記載入是否失敗，防止覆蓋損壞的檔案
+
 function loadLeaderboard() {
     try {
         if (fs.existsSync(LEADERBOARD_PATH)) {
+            // 先備份原檔案
+            const backupPath = LEADERBOARD_PATH + '.bak';
+            fs.copyFileSync(LEADERBOARD_PATH, backupPath);
+
             const data = JSON.parse(fs.readFileSync(LEADERBOARD_PATH, 'utf8'));
             state.duckLeaderboard = {
                 totalRanking: data.totalRanking || [],
@@ -806,13 +838,16 @@ function loadLeaderboard() {
                 lastDailyReset: data.lastDailyReset || null,
                 lastMonthlyReset: data.lastMonthlyReset || null  // 世界榜月重置
             };
+            leaderboardLoadFailed = false;
             console.log(`[Leaderboard] 已載入排行榜: 累計${state.duckLeaderboard.totalRanking.length}人, 單次${state.duckLeaderboard.singleHighest.length}人, 總體${state.duckLeaderboard.allTimeStats.length}人, 世界榜${state.duckLeaderboard.worldRanking.length}人`);
 
             // 檢查是否需要自動重置
             checkLeaderboardReset();
         }
     } catch (e) {
-        console.error('[Leaderboard] 載入失敗:', e.message);
+        leaderboardLoadFailed = true;
+        console.error('[Leaderboard] 載入失敗，已保留備份檔案 (.bak):', e.message);
+        addLog(`⚠️ 排行榜載入失敗: ${e.message}，原檔案已備份為 .bak`);
     }
 }
 
@@ -888,6 +923,11 @@ function setupLeaderboardResetTimer() {
 }
 
 function saveLeaderboard() {
+    // 如果載入時失敗，不要覆蓋原檔案（防止資料遺失）
+    if (leaderboardLoadFailed) {
+        console.log('[Leaderboard] 跳過儲存（載入時失敗，保護原檔案）');
+        return;
+    }
     try {
         fs.writeFileSync(LEADERBOARD_PATH, JSON.stringify(state.duckLeaderboard, null, 2), 'utf8');
         console.log('[Leaderboard] 已儲存排行榜');
@@ -921,6 +961,57 @@ function saveDuckState() {
         console.log(`[DuckState] 已儲存: 鴨子數=${state.duckCount}, 保底=${state.duckPityCounter}`);
     } catch (e) {
         console.error('[DuckState] 儲存失敗:', e.message);
+    }
+}
+
+// ============ 自動備份 ============
+function performBackup() {
+    try {
+        const backupDir = path.join(DATA_DIR, 'backups');
+        if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+        if (fs.existsSync(LEADERBOARD_PATH)) {
+            fs.copyFileSync(LEADERBOARD_PATH, path.join(backupDir, `duck_leaderboard_${timestamp}.json`));
+        }
+        if (fs.existsSync(DUCK_STATE_PATH)) {
+            fs.copyFileSync(DUCK_STATE_PATH, path.join(backupDir, `duck_state_${timestamp}.json`));
+        }
+
+        state.lastBackupTime = new Date().toISOString();
+        cleanOldBackups(backupDir);
+        console.log(`[Backup] 備份完成: ${timestamp}`);
+        addLog(`💾 自動備份完成`);
+
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('backup-completed', state.lastBackupTime);
+        }
+    } catch (e) {
+        console.error('[Backup] 備份失敗:', e.message);
+    }
+}
+
+function cleanOldBackups(backupDir) {
+    try {
+        const maxCount = state.config.auto_backup_max_count || 5;
+        const files = fs.readdirSync(backupDir).filter(f => f.startsWith('duck_leaderboard_')).sort();
+        while (files.length > maxCount) {
+            const oldest = files.shift();
+            const stateFile = oldest.replace('duck_leaderboard_', 'duck_state_');
+            try { fs.unlinkSync(path.join(backupDir, oldest)); } catch (e) { /* ignore */ }
+            try { fs.unlinkSync(path.join(backupDir, stateFile)); } catch (e) { /* ignore */ }
+        }
+    } catch (e) {
+        console.error('[Backup] 清理舊備份失敗:', e.message);
+    }
+}
+
+function setupAutoBackup() {
+    if (state.autoBackupTimer) clearInterval(state.autoBackupTimer);
+    const interval = (state.config.auto_backup_interval || 30) * 60 * 1000;
+    if (state.config.auto_backup_enabled !== false) {
+        state.autoBackupTimer = setInterval(performBackup, interval);
     }
 }
 
@@ -1018,6 +1109,7 @@ function updateLeaderboard(userInfo, duckAmount, isPity = false) {
 
     // 儲存
     saveLeaderboard();
+    state.lastLeaderboardUpdate = Date.now();
 
     // 通知前端更新
     if (state.mainWindow && !state.mainWindow.isDestroyed()) {
@@ -1046,6 +1138,7 @@ function updateLeaderboard(userInfo, duckAmount, isPity = false) {
             if (crownVideo && fs.existsSync(crownVideo)) {
                 state.pendingWorldChampionCrown = {
                     nickname: userWorldStats.nickname,
+                    avatar: userWorldStats.avatar || '',
                     totalDucks: userWorldStats.totalCaught,
                     videoPath: crownVideo
                 };
@@ -1251,11 +1344,7 @@ function handleTikTokMessage(msg) {
 
         checkFirstInteraction(username, uniqueId, userId);
 
-        // 防重複
-        const giftKey = `${username}_${giftName}_${count}`;
-        const now = Date.now();
-        if (now - (state.giftDedup[giftKey] || 0) < 2000) return;
-        state.giftDedup[giftKey] = now;
+        // TikTok API 每個禮物都是獨立訊息（repeatCount=1），不需要去重
 
         addLog(`🎁 ${username} 送出 ${giftName} x${count}`);
 
@@ -1263,21 +1352,26 @@ function handleTikTokMessage(msg) {
         const userInfo = { nickname: username, uniqueId, userId, avatar: profilePictureUrl };
         triggerEffects('gift', username, giftName, count, userInfo);
 
-        // 檢查是否為世界榜第一名送禮 → 觸發進場特效
+        // 檢查是否為世界榜第一名送禮 → 進場後首次送禮才觸發特效
         if (firebase.isConfigured()) {
-            firebase.getWorldChampion().then(champion => {
-                if (champion && (champion.uniqueId === uniqueId || champion.uniqueId === userId)) {
-                    addLog(`👑 世界第一 ${username} 送禮！`, 'success');
-                    const giftVideo = state.config.world_champion_gift_video || '';
-                    sendToGreenScreen('worldChampionEntry', {
-                        nickname: username,
-                        totalDucks: champion.totalDucks,
-                        videoPath: giftVideo && fs.existsSync(giftVideo) ? giftVideo : ''
-                    });
-                }
-            }).catch(err => {
-                console.error('[世界榜] 獲取冠軍失敗:', err);
-            });
+            const championKey = userId || uniqueId;
+            if (championKey && state.worldChampionGiftReady[championKey]) {
+                firebase.getWorldChampion().then(champion => {
+                    if (champion && (champion.uniqueId === uniqueId || champion.uniqueId === userId)) {
+                        state.worldChampionGiftReady[championKey] = false;
+                        addLog(`👑 世界第一 ${username} 送禮！`, 'success');
+                        const giftVideo = state.config.world_champion_gift_video || '';
+                        sendToGreenScreen('worldChampionEntry', {
+                            nickname: username,
+                            avatar: profilePictureUrl || '',
+                            totalDucks: champion.totalDucks,
+                            videoPath: giftVideo && fs.existsSync(giftVideo) ? giftVideo : ''
+                        });
+                    }
+                }).catch(err => {
+                    console.error('[世界榜] 獲取冠軍失敗:', err);
+                });
+            }
         }
 
         // 透過送禮回推進場
@@ -1306,6 +1400,27 @@ function handleTikTokMessage(msg) {
         addLog(`💬 ${username}: ${comment}`);
         checkFirstInteraction(username, uniqueId, userId);
         triggerEffects('chat', username, comment, 1);
+
+        // 觀眾打查詢關鍵字查詢自己的鴨子數量（排行榜動畫期間不回應）
+        const queryKeyword = state.config.duck_query_keyword || '查看';
+        if (queryKeyword && comment.trim() === queryKeyword) {
+            const timeSinceUpdate = Date.now() - state.lastLeaderboardUpdate;
+            if (timeSinceUpdate < 5000) {
+                addLog(`🔍 ${username} 查詢鴨子 - 排行榜更新中，暫不回應`);
+            } else {
+                const userStats = state.duckLeaderboard.allTimeStats.find(
+                    u => u.uniqueId === uniqueId || u.uniqueId === userId
+                );
+                const duckCount = userStats ? userStats.totalDucks : 0;
+                sendToGreenScreen('showDuckQuery', {
+                    nickname: username,
+                    avatar: profilePictureUrl || '',
+                    totalDucks: duckCount,
+                    config: state.config.duck_query_config || {}
+                });
+                addLog(`🔍 ${username} 查詢鴨子數量: ${duckCount}`);
+            }
+        }
 
         // 透過聊天回推進場：如果用戶是高等級且最近沒有進場記錄，觸發進場
         if (userId) {
@@ -1550,6 +1665,12 @@ function finalizeEntry(entryKey) {
             saveHighLevelUsers();
             console.log(`[HighLevelUser] 更新暱稱: userId=${userId} -> ${nickname}`);
         }
+    }
+
+    // 進場時重置世界冠軍送禮旗標（允許下一次送禮觸發特效）
+    const championKey = userId || uniqueId;
+    if (championKey) {
+        state.worldChampionGiftReady[championKey] = true;
     }
 
     // 觸發進場效果
@@ -1836,8 +1957,14 @@ function triggerEffects(type, username, value, count, userInfo = null) {
         const cfg = state.config.duck_catch_config || {};
         let matched = false;
 
+        // Debug: 記錄觸發條件
+        if (type === 'gift') {
+            console.log(`[DEBUG 抓鴨子] 收到禮物: "${value}", 設定觸發: "${cfg.trigger_gift}", 觸發類型: ${cfg.trigger_type}`);
+        }
+
         if (cfg.trigger_type === 'gift' && type === 'gift') {
             matched = cfg.trigger_gift && cfg.trigger_gift.toLowerCase() === value.toLowerCase();
+            console.log(`[DEBUG 抓鴨子] 比對結果: ${matched} (${cfg.trigger_gift?.toLowerCase()} vs ${value.toLowerCase()})`);
         } else if (cfg.trigger_type === 'chat' && type === 'chat') {
             matched = cfg.trigger_keyword && value.includes(cfg.trigger_keyword);
         } else if (cfg.trigger_type === 'like' && type === 'like') {
@@ -1854,9 +1981,29 @@ function triggerEffects(type, username, value, count, userInfo = null) {
             const pityThresholdJackpot = cfg.pity_threshold_jackpot || 2000;  // 第二層保底（終極）
             const pityJackpotAmount = cfg.pity_jackpot_amount || 10000;       // 第二層保底金額
 
+            // 軟保底設定
+            const softPityEnabled = pityEnabled && (cfg.soft_pity_enabled || false);
+            const softPityStart = cfg.soft_pity_start || 70;
+            // 連擊設定
+            const comboEnabled = cfg.combo_enabled || false;
+            const comboWindow = (cfg.combo_window || 30) * 1000;
+            const comboMultipliers = cfg.combo_multipliers || [1, 1.5, 2, 3];
+
             for (let i = 0; i < triggerCount; i++) {
+                // 軟保底：漸進提升機率
+                let effectiveCatchRate = catchRate;
+                if (softPityEnabled && state.duckPityCounter > 0) {
+                    const inSecondTierSP = state.duckPityCounter >= pityThreshold;
+                    const currentTarget = inSecondTierSP ? pityThresholdJackpot : pityThreshold;
+                    const softStart = Math.floor(currentTarget * softPityStart / 100);
+                    if (state.duckPityCounter >= softStart) {
+                        const progress = Math.min((state.duckPityCounter - softStart) / (currentTarget - softStart), 1);
+                        effectiveCatchRate = catchRate + (100 - catchRate) * progress;
+                    }
+                }
+
                 // 每次獨立計算是否抓到
-                const caught = Math.random() * 100 < catchRate;
+                const caught = Math.random() * 100 < effectiveCatchRate;
                 let videos = caught ? (cfg.caught_videos || []) : (cfg.missed_videos || []);
                 let selectedVideo = null;
                 let isPityTrigger = false;
@@ -1894,21 +2041,28 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                     // 更新保底計數器
                     if (selectedVideo) {
                         const duckAmount = selectedVideo.amount || 1;
-                        if (duckAmount >= pityJackpotAmount) {
-                            // 中終極大獎（10000+），完全重置
-                            if (pityEnabled && state.duckPityCounter > 0) {
-                                addLog(`🏆 終極大獎！重置保底計數器 (${state.duckPityCounter} -> 0)`);
+                        const inSecondTier = state.duckPityCounter >= pityThreshold;
+
+                        if (pityEnabled) {
+                            if (inSecondTier) {
+                                // 已在第二層：抽到 5000+ 就重置
+                                if (duckAmount >= pityMinAmount) {
+                                    addLog(`🎊 第二層大獎！重置保底計數器 (${state.duckPityCounter} -> 0)`);
+                                    state.duckPityCounter = 0;
+                                } else {
+                                    state.duckPityCounter++;
+                                }
+                            } else {
+                                // 還在第一層
+                                if (duckAmount >= 8888) {
+                                    // 抽到 8888+ → 重置歸零（留在第一層）
+                                    addLog(`🏆 大獎！重置保底計數器 (${state.duckPityCounter} -> 0)`);
+                                    state.duckPityCounter = 0;
+                                } else {
+                                    // 低於 8888 → 繼續累加（可能進入第二層）
+                                    state.duckPityCounter++;
+                                }
                             }
-                            state.duckPityCounter = 0;
-                        } else if (duckAmount >= pityMinAmount) {
-                            // 中大獎（5000+），重置但還沒到終極
-                            if (pityEnabled && state.duckPityCounter > 0) {
-                                addLog(`🎊 大獎重置保底計數器 (${state.duckPityCounter} -> 0)`);
-                            }
-                            state.duckPityCounter = 0;
-                        } else if (pityEnabled) {
-                            // 沒中大獎，增加保底計數器
-                            state.duckPityCounter++;
                         }
                     }
                 } else if (!caught && videos.length > 0) {
@@ -1932,16 +2086,44 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                         pityInfo = ` [保底: ${state.duckPityCounter}/${pityThreshold}]`;
                     }
                 }
+                const rateDisplay = (effectiveCatchRate !== catchRate)
+                    ? `${catchRate}%→${Math.round(effectiveCatchRate)}%`
+                    : `${catchRate}%`;
                 if (triggerCount > 1) {
-                    addLog(`🦆 ${username} 觸發抓鴨子 (${i + 1}/${triggerCount}) - 機率${catchRate}% - ${caught ? '抓到了！' : '沒抓到'}${pityInfo}`);
+                    addLog(`🦆 ${username} 觸發抓鴨子 (${i + 1}/${triggerCount}) - 機率${rateDisplay} - ${caught ? '抓到了！' : '沒抓到'}${pityInfo}`);
                 } else {
-                    addLog(`🦆 ${username} 觸發抓鴨子 - 機率${catchRate}% - ${caught ? '抓到了！' : '沒抓到'}${pityInfo}`);
+                    addLog(`🦆 ${username} 觸發抓鴨子 - 機率${rateDisplay} - ${caught ? '抓到了！' : '沒抓到'}${pityInfo}`);
                 }
 
                 // 保底 UI 更新會在影片播完後一起發送
 
                 if (selectedVideo && fs.existsSync(selectedVideo.path)) {
-                    const duckAmount = caught ? (selectedVideo.amount || 1) : 0;
+                    let duckAmount = caught ? (selectedVideo.amount || 1) : 0;
+
+                    // 連擊 Combo 倍率
+                    let comboCount = 0;
+                    let comboMultiplier = 1;
+                    if (comboEnabled && userInfo) {
+                        const uid = userInfo.uniqueId || userInfo.userId || '';
+                        const now = Date.now();
+                        const prev = state.duckComboState[uid];
+                        if (caught) {
+                            if (prev && (now - prev.lastTime) <= comboWindow) {
+                                comboCount = prev.count + 1;
+                            } else {
+                                comboCount = 1;
+                            }
+                            state.duckComboState[uid] = { count: comboCount, lastTime: now };
+                            const mIdx = Math.min(comboCount - 1, comboMultipliers.length - 1);
+                            comboMultiplier = comboMultipliers[mIdx] || 1;
+                            if (comboMultiplier > 1) {
+                                duckAmount = Math.round(duckAmount * comboMultiplier);
+                                addLog(`🔥 ${username} COMBO x${comboCount}! 鴨子倍率 x${comboMultiplier} = ${duckAmount}`);
+                            }
+                        } else {
+                            delete state.duckComboState[uid];
+                        }
+                    }
 
                     // 更新排行榜並取得排行榜資料和里程碑資料（抓到鴨子時）
                     let leaderboardResult = null;
@@ -1949,7 +2131,7 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                         leaderboardResult = updateLeaderboard(userInfo, duckAmount, isPityTrigger);
                     }
 
-                    addLog(`🎬 播放鴨子影片: ${path.basename(selectedVideo.path)} (數量: ${duckAmount})${isPityTrigger ? ' ⭐保底' : ''}`);
+                    addLog(`🎬 播放鴨子影片: ${path.basename(selectedVideo.path)} (數量: ${duckAmount})${isPityTrigger ? ' ⭐保底' : ''}${comboCount > 1 ? ` COMBO x${comboCount}` : ''}`);
 
                     // 播放影片（鴨子計數、保底計數、排行榜、里程碑都在影片播完後更新）
                     sendToGreenScreen('triggerDuckVideo', {
@@ -1967,6 +2149,12 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                         pityCounter: state.duckPityCounter,
                         pityThreshold: pityThreshold,
                         pityThresholdJackpot: pityThresholdJackpot,
+                        // 軟保底資訊
+                        effectiveCatchRate: Math.round(effectiveCatchRate),
+                        softPityActive: effectiveCatchRate !== catchRate,
+                        // 連擊資訊
+                        comboCount: comboCount,
+                        comboMultiplier: comboMultiplier,
                         // 傳遞排行榜資料，影片播完後更新
                         leaderboardData: leaderboardResult ? leaderboardResult.leaderboard : null,
                         // 傳遞里程碑資料，影片播完後觸發
@@ -1976,6 +2164,8 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                     addLog(`❌ 影片檔案不存在: ${selectedVideo?.path}`);
                 } else if (videos.length === 0) {
                     addLog(`❌ 沒有設定${caught ? '抓到' : '沒抓到'}影片`);
+                } else {
+                    addLog(`❌ 所有${caught ? '抓到' : '沒抓到'}影片檔案都不存在，請檢查路徑設定`);
                 }
             }
         }
@@ -2021,13 +2211,57 @@ function triggerEffects(type, username, value, count, userInfo = null) {
                 sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: addAmount });
             }
         } else if (state.chainBattleActive && matchedAddGift) {
-            // 增加禮物：對抗進行中增加數量
+            // 增減禮物：對抗進行中增加或減少數量
             const addAmount = (matchedAddGift.amount || 1) * count;
-            state.chainCount += addAmount;
-            addLog(`⛓️ ${username} 增加鎖鏈 +${addAmount} (${value})，目前: ${state.chainCount}`);
-            sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: addAmount });
+            state.chainCount = Math.max(0, state.chainCount + addAmount);
+            const sign = addAmount >= 0 ? '+' : '';
+            addLog(`⛓️ ${username} ${addAmount >= 0 ? '增加' : '減少'}鎖鏈 ${sign}${addAmount} (${value})，目前: ${state.chainCount}`);
+            sendToGreenScreen('syncChainCount', { count: state.chainCount, action: addAmount >= 0 ? 'add' : 'subtract', amount: Math.abs(addAmount) });
         }
         // 其他禮物不影響鎖鏈對抗
+    }
+
+    // 窒息挑戰
+    if (type === 'gift' && state.config.choking_enabled && !state.chainBattleActive) {
+        const chokingCfg = state.config.choking_config || {};
+        const triggerGift = chokingCfg.trigger_gift || '';
+        const silentGift = chokingCfg.silent_gift || '';
+
+        // 觸發禮物
+        if (triggerGift && triggerGift.toLowerCase() === value.toLowerCase()) {
+            if (!state.chokingActive) {
+                // 首次觸發 - 啟動挑戰（秒數 * 數量）
+                state.chokingActive = true;
+                const baseSeconds = chokingCfg.initial_seconds || 30;
+                const totalSeconds = baseSeconds * count;
+                addLog(`🫁 ${username} 觸發窒息挑戰 x${count}！(${totalSeconds}秒)`);
+                sendToGreenScreen('startChoking', {
+                    initialSeconds: totalSeconds,
+                    silentSeconds: chokingCfg.silent_seconds || 5,
+                    drainRate: chokingCfg.drain_rate || 5,
+                    recoverRate: chokingCfg.recover_rate || 8,
+                    volumeThreshold: chokingCfg.volume_threshold || 30,
+                    punishmentVideo: chokingCfg.punishment_video || '',
+                    punishmentVolume: chokingCfg.punishment_volume ?? 100
+                });
+            } else {
+                // 挑戰進行中 - 增加秒數
+                const addSeconds = (chokingCfg.add_seconds || 5) * count;
+                addLog(`🫁 ${username} 補送 ${value} x${count}，+${addSeconds} 秒！`);
+                sendToGreenScreen('addChokingTime', { seconds: addSeconds });
+            }
+        }
+
+        // 禁言禮物
+        if (state.chokingActive && silentGift && silentGift.toLowerCase() === value.toLowerCase()) {
+            const addSilent = (chokingCfg.silent_add_seconds || 3) * count;
+            addLog(`🤫 ${username} 送出禁言禮物 x${count}，+${addSilent} 秒禁言！`);
+            sendToGreenScreen('addChokingSilent', {
+                seconds: addSilent,
+                video: chokingCfg.silent_video || '',
+                volume: chokingCfg.silent_volume ?? 100
+            });
+        }
     }
 }
 
@@ -2470,6 +2704,13 @@ function createGreenScreen(orientation = 'landscape') {
         }
     });
 
+    // 轉發綠幕視窗的錯誤/警告到主進程（方便偵錯）
+    state.greenWindow.webContents.on('console-message', (_, level, message) => {
+        if (level >= 2) {
+            console.log(`[GreenScreen ${level >= 3 ? 'ERROR' : 'WARN'}] ${message}`);
+        }
+    });
+
     // 當綠幕視窗失去焦點時，確保它仍然在最上層
     state.greenWindow.on('blur', () => {
         if (state.greenWindow && !state.greenWindow.isDestroyed()) {
@@ -2497,58 +2738,6 @@ function setupIPC() {
     // 配置
     ipcMain.handle('get-config', () => state.config);
     ipcMain.handle('update-config', (_, updates) => updateConfig(updates));
-
-    // 禮物圖生成器
-    ipcMain.handle('get-gift-image-config', () => state.config.giftImageConfig || { items: [], settings: {} });
-    ipcMain.handle('save-gift-image-config', (_, config) => {
-        state.config.giftImageConfig = config;
-        saveConfig();
-        return { success: true };
-    });
-    ipcMain.handle('send-gift-image-to-greenscreen', (_, data) => {
-        sendToGreenScreen('showGiftImage', data);
-        return { success: true };
-    });
-    ipcMain.handle('hide-gift-image-on-greenscreen', () => {
-        sendToGreenScreen('hideGiftImage', {});
-        return { success: true };
-    });
-    ipcMain.handle('export-gift-image', async (_, data) => {
-        try {
-            const { dialog } = require('electron');
-            const result = await dialog.showSaveDialog(state.mainWindow, {
-                title: '匯出禮物圖',
-                defaultPath: 'gift_display.png',
-                filters: [
-                    { name: 'PNG 圖片', extensions: ['png'] },
-                    { name: 'JPEG 圖片', extensions: ['jpg', 'jpeg'] }
-                ]
-            });
-
-            if (result.canceled || !result.filePath) {
-                return { success: false, error: '已取消' };
-            }
-
-            // 發送到綠幕進行截圖並保存
-            sendToGreenScreen('exportGiftImage', {
-                ...data,
-                savePath: result.filePath
-            });
-
-            return { success: true, path: result.filePath };
-        } catch (e) {
-            return { success: false, error: e.message };
-        }
-    });
-    ipcMain.handle('save-exported-image', async (_, filePath, base64Data) => {
-        try {
-            const buffer = Buffer.from(base64Data, 'base64');
-            fs.writeFileSync(filePath, buffer);
-            return { success: true };
-        } catch (e) {
-            return { success: false, error: e.message };
-        }
-    });
 
     // 場景管理
     ipcMain.handle('get-scenes', () => ({
@@ -2647,8 +2836,45 @@ function setupIPC() {
 
     // 模擬送禮
     ipcMain.handle('simulate-gift', (_, username, giftName, count) => {
-        addLog(`🎮 模擬: ${username} 送出 ${giftName} x${count}`);
-        triggerEffects('gift', username, giftName, count);
+        // 模擬完整的禮物訊息流程（跟真實送禮一樣）
+        handleTikTokMessage({
+            type: 'GiftMessage',
+            nickname: username,
+            uniqueId: username,
+            userId: `simulate_${Date.now()}`,
+            giftName: giftName,
+            repeatCount: count,
+            profilePictureUrl: ''
+        });
+    });
+
+    // 模擬聊天訊息（測試用）
+    ipcMain.handle('simulate-chat', (_, uniqueId, comment) => {
+        handleTikTokMessage({
+            type: 'chat',
+            nickname: uniqueId,
+            uniqueId: uniqueId,
+            userId: uniqueId,
+            comment: comment,
+            profilePictureUrl: ''
+        });
+    });
+
+    // 快捷補鴨子 (F6)
+    ipcMain.handle('quick-add-gift', (_, type, userId, count) => {
+        const duckCfg = state.config.duck_catch_config || {};
+        const duckCount = (duckCfg.duck_count || 1) * count;
+        state.duckCount += duckCount;
+        addLog(`🦆 [F6] ${userId} 補鴨子 +${duckCount}，目前總數: ${state.duckCount}`);
+        sendToGreenScreen('spawnDucks', {
+            count: duckCount,
+            username: userId,
+            userId: userId
+        });
+        saveDuckState();
+        if (state.mainWindow) {
+            state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
+        }
     });
 
     // 測試隨機影片
@@ -2747,40 +2973,24 @@ function setupIPC() {
 
         const videos = caught ? (cfg.caught_videos || []) : (cfg.missed_videos || []);
         if (videos.length === 0) {
+            addLog(`❌ 模擬抓鴨子失敗: 尚未設定${caught ? '抓到' : '沒抓到'}影片`);
             return { success: false, error: `尚未設定${caught ? '抓到' : '沒抓到'}影片` };
         }
 
         // 根據權重隨機選擇影片
         const selectedVideo = selectWeightedVideo(videos);
         if (!selectedVideo || !fs.existsSync(selectedVideo.path)) {
+            addLog(`❌ 模擬抓鴨子失敗: ${caught ? '抓到' : '沒抓到'}影片檔案不存在，請檢查路徑`);
             return { success: false, error: '影片檔案不存在' };
         }
 
         // 計算抓到數量
         const duckAmount = caught ? (selectedVideo.amount || 1) : 0;
 
-        if (caught && duckAmount > 0) {
-            state.duckCount += duckAmount;
-            sendToGreenScreen('updateDuckCount', { count: state.duckCount });
-
-            // 更新排行榜
-            if (userInfo.uniqueId) {
-                updateLeaderboard(userInfo, duckAmount, false);
-            }
-
-            if (state.mainWindow) {
-                state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
-            }
-            saveDuckState();
-
-            // 如果鎖鏈對抗進行中且開啟抓鴨子增加鎖鏈，抓到鴨子也增加鎖鏈數
-            const chainCfg = state.config.chain_battle_config || {};
-            if (state.chainBattleActive && chainCfg.duck_adds_chain !== false) {
-                const duckChainAmount = chainCfg.duck_chain_amount || duckAmount;
-                state.chainCount += duckChainAmount;
-                addLog(`⛓️ ${userInfo.nickname} 抓到鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
-                sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: duckChainAmount });
-            }
+        // duckCount 由綠幕播完後 add_duck 統一處理，這裡不加
+        // 排行榜也在 add_duck 裡更新，避免重複
+        if (caught && duckAmount > 0 && userInfo.uniqueId) {
+            updateLeaderboard(userInfo, duckAmount, false);
         }
 
         addLog(`🦆 模擬抓鴨子: ${userInfo.nickname} ${caught ? `抓到 ${duckAmount} 隻！` : '沒抓到'} -> ${path.basename(selectedVideo.path)} (速度: ${cfg.video_speed || 1}x)`);
@@ -2815,7 +3025,13 @@ function setupIPC() {
 
         state.duckCatchProcessing = true;
         const item = state.duckCatchQueue.shift();
-        processSingleDuckCatch(item.userInfo);
+        const result = processSingleDuckCatch(item.userInfo);
+
+        // 如果影片沒有成功發送到綠幕（影片不存在等），直接處理下一個
+        // 避免隊列卡死（正常情況下由 notify-duck-video-finished 觸發下一個）
+        if (!result || !result.success) {
+            setTimeout(() => processNextDuckCatch(), 100);
+        }
     }
 
     // 鴨子影片播放完成通知
@@ -3058,6 +3274,13 @@ function setupIPC() {
         return { success: true };
     });
 
+    // 窒息挑戰結束通知
+    ipcMain.handle('choking-ended', (_, survived) => {
+        state.chokingActive = false;
+        addLog(`🫁 窒息挑戰結束 - ${survived ? '存活！' : '失敗，播放懲罰影片'}`);
+        return { success: true };
+    });
+
     // 取得排行榜
     ipcMain.handle('get-leaderboard', () => {
         return state.duckLeaderboard;
@@ -3079,6 +3302,115 @@ function setupIPC() {
         return state.duckLeaderboard.allTimeStats || [];
     });
 
+    // === 備份 / 匯出匯入 ===
+    ipcMain.handle('get-last-backup-time', () => state.lastBackupTime);
+
+    ipcMain.handle('trigger-backup', () => {
+        performBackup();
+        return { success: true };
+    });
+
+    ipcMain.handle('export-leaderboard', async () => {
+        const result = await dialog.showSaveDialog(state.mainWindow, {
+            defaultPath: `duck_data_export_${new Date().toISOString().split('T')[0]}.json`,
+            filters: [{ name: 'JSON 檔案', extensions: ['json'] }]
+        });
+        if (result.canceled || !result.filePath) return { success: false };
+
+        try {
+            const exportData = {
+                version: 1,
+                exportDate: new Date().toISOString(),
+                leaderboard: state.duckLeaderboard,
+                duckState: { duckCount: state.duckCount, duckPityCounter: state.duckPityCounter }
+            };
+            fs.writeFileSync(result.filePath, JSON.stringify(exportData, null, 2), 'utf8');
+            addLog(`📤 排行榜已匯出到: ${result.filePath}`);
+            return { success: true, path: result.filePath };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    });
+
+    ipcMain.handle('import-leaderboard', async (_, mode) => {
+        const result = await dialog.showOpenDialog(state.mainWindow, {
+            properties: ['openFile'],
+            filters: [{ name: 'JSON 檔案', extensions: ['json'] }]
+        });
+        if (result.canceled || !result.filePaths[0]) return { success: false };
+
+        try {
+            const raw = fs.readFileSync(result.filePaths[0], 'utf8');
+            const importData = JSON.parse(raw);
+
+            if (!importData.leaderboard || !importData.version) {
+                return { success: false, error: '檔案格式不正確' };
+            }
+
+            performBackup(); // 匯入前先備份
+
+            if (mode === 'overwrite') {
+                state.duckLeaderboard = {
+                    totalRanking: importData.leaderboard.totalRanking || [],
+                    singleHighest: importData.leaderboard.singleHighest || [],
+                    allTimeStats: importData.leaderboard.allTimeStats || [],
+                    worldRanking: importData.leaderboard.worldRanking || [],
+                    lastWeeklyReset: importData.leaderboard.lastWeeklyReset || null,
+                    lastDailyReset: importData.leaderboard.lastDailyReset || null,
+                    lastMonthlyReset: importData.leaderboard.lastMonthlyReset || null
+                };
+                if (importData.duckState) {
+                    state.duckCount = importData.duckState.duckCount || 0;
+                    state.duckPityCounter = importData.duckState.duckPityCounter || 0;
+                    saveDuckState();
+                }
+            } else {
+                // 合併模式
+                const imported = importData.leaderboard;
+                ['totalRanking', 'allTimeStats', 'worldRanking'].forEach(key => {
+                    const valKey = key === 'worldRanking' ? 'totalCaught' : 'totalDucks';
+                    (imported[key] || []).forEach(item => {
+                        const existing = state.duckLeaderboard[key].find(e => e.uniqueId === item.uniqueId);
+                        if (existing) {
+                            if ((item[valKey] || 0) > (existing[valKey] || 0)) {
+                                existing[valKey] = item[valKey];
+                                existing.nickname = item.nickname || existing.nickname;
+                                existing.avatar = item.avatar || existing.avatar;
+                            }
+                        } else {
+                            state.duckLeaderboard[key].push({ ...item });
+                        }
+                    });
+                    state.duckLeaderboard[key].sort((a, b) => (b[valKey] || 0) - (a[valKey] || 0));
+                });
+                // 單次最高
+                (imported.singleHighest || []).forEach(item => {
+                    const existing = state.duckLeaderboard.singleHighest.find(e => e.uniqueId === item.uniqueId);
+                    if (existing) {
+                        if ((item.amount || 0) > (existing.amount || 0)) {
+                            existing.amount = item.amount;
+                            existing.nickname = item.nickname || existing.nickname;
+                            existing.avatar = item.avatar || existing.avatar;
+                        }
+                    } else {
+                        state.duckLeaderboard.singleHighest.push({ ...item });
+                    }
+                });
+                state.duckLeaderboard.singleHighest.sort((a, b) => (b.amount || 0) - (a.amount || 0));
+            }
+
+            saveLeaderboard();
+            if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+                state.mainWindow.webContents.send('leaderboard-updated', state.duckLeaderboard);
+            }
+            sendToGreenScreen('updateLeaderboard', state.duckLeaderboard);
+            addLog(`📥 排行榜已匯入 (${mode === 'overwrite' ? '覆蓋' : '合併'})`);
+            return { success: true };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    });
+
     // === 世界榜 API ===
     // 獲取世界榜
     ipcMain.handle('get-world-leaderboard', async () => {
@@ -3093,16 +3425,64 @@ function setupIPC() {
         }
     });
 
-    // 獲取世界冠軍
+    // 獲取世界冠軍（包含頭像）
     ipcMain.handle('get-world-champion', async () => {
         try {
             if (!firebase.isConfigured()) {
                 return null;
             }
-            return await firebase.getWorldChampion();
+            const champion = await firebase.getWorldChampion();
+            // 如果冠軍沒有頭像，嘗試從世界榜列表中獲取
+            if (champion && !champion.avatar) {
+                const leaderboard = await firebase.getWorldLeaderboard(1);
+                if (leaderboard && leaderboard.length > 0 && leaderboard[0].uniqueId === champion.uniqueId) {
+                    champion.avatar = leaderboard[0].avatar || '';
+                }
+            }
+            return champion;
         } catch (error) {
             console.error('[世界榜] 獲取冠軍失敗:', error);
             return null;
+        }
+    });
+
+    // 同步世界冠軍（刪除後自動補上第二名）
+    ipcMain.handle('sync-world-champion', async () => {
+        try {
+            if (!firebase.isConfigured()) {
+                return null;
+            }
+            const newChampion = await firebase.syncWorldChampion();
+            // 推送更新到綠幕
+            if (newChampion) {
+                sendToGreenScreen('updateWorldChampion', newChampion);
+            }
+            return newChampion;
+        } catch (error) {
+            console.error('[世界榜] 同步冠軍失敗:', error);
+            return null;
+        }
+    });
+
+    // 刷新綠幕世界榜顯示
+    ipcMain.handle('refresh-greenscreen-world', async () => {
+        try {
+            if (!firebase.isConfigured()) {
+                return false;
+            }
+            const champion = await firebase.getWorldChampion();
+            // 補充頭像
+            if (champion && !champion.avatar) {
+                const leaderboard = await firebase.getWorldLeaderboard(1);
+                if (leaderboard && leaderboard.length > 0 && leaderboard[0].uniqueId === champion.uniqueId) {
+                    champion.avatar = leaderboard[0].avatar || '';
+                }
+            }
+            sendToGreenScreen('updateWorldChampion', champion);
+            return true;
+        } catch (error) {
+            console.error('[世界榜] 刷新綠幕失敗:', error);
+            return false;
         }
     });
 
@@ -3185,23 +3565,7 @@ function setupIPC() {
 
         // 如果抓到，使用影片設定的數量（如果有指定duckAmount則優先使用）
         const actualAmount = caught ? (duckAmount || selectedVideo.amount || 1) : 0;
-        if (caught && actualAmount > 0) {
-            state.duckCount += actualAmount;
-            sendToGreenScreen('updateDuckCount', { count: state.duckCount });
-            saveDuckState();
-            if (state.mainWindow) {
-                state.mainWindow.webContents.send('duck-count-updated', state.duckCount);
-            }
-
-            // 如果鎖鏈對抗進行中且開啟抓鴨子增加鎖鏈，抓到鴨子也增加鎖鏈數
-            const chainCfg = state.config.chain_battle_config || {};
-            if (state.chainBattleActive && chainCfg.duck_adds_chain !== false) {
-                const duckChainAmount = chainCfg.duck_chain_amount || actualAmount;
-                state.chainCount += duckChainAmount;
-                addLog(`⛓️ 測試抓鴨子，鎖鏈 +${duckChainAmount}，目前: ${state.chainCount}`);
-                sendToGreenScreen('syncChainCount', { count: state.chainCount, action: 'add', amount: duckChainAmount });
-            }
-        }
+        // duckCount 由綠幕播完後 add_duck 統一處理，這裡不加
 
         addLog(`🦆 測試抓鴨子: ${caught ? `抓到 ${actualAmount} 隻！` : '沒抓到'} -> ${path.basename(selectedVideo.path)}`);
 
@@ -3401,6 +3765,16 @@ function setupIPC() {
 
 // ============ 應用啟動 ============
 app.whenReady().then(() => {
+    // 自動授權麥克風權限（窒息挑戰需要）
+    const { session } = require('electron');
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        if (permission === 'media') {
+            callback(true);
+        } else {
+            callback(true);
+        }
+    });
+
     migrateOldConfig();  // 遷移舊設定檔
     loadConfig();
     loadHighLevelUsers();
@@ -3409,8 +3783,21 @@ app.whenReady().then(() => {
     loadLeaderboard();  // 載入排行榜
     loadDuckState();    // 載入鴨子計數和保底
     setupLeaderboardResetTimer();  // 設定排行榜自動重置
+    performBackup();               // 啟動時備份
+    setupAutoBackup();             // 定時備份
 
-    // 載入世界冠軍（背景）
+    // 定期清理過期 combo
+    setInterval(() => {
+        const now = Date.now();
+        const window = ((state.config.duck_catch_config || {}).combo_window || 30) * 1000 * 2;
+        for (const uid of Object.keys(state.duckComboState)) {
+            if (now - state.duckComboState[uid].lastTime > window) {
+                delete state.duckComboState[uid];
+            }
+        }
+    }, 60000);
+
+    // 載入世界冠軍並監聽即時變化
     if (firebase.isConfigured()) {
         firebase.getWorldChampion().then(champion => {
             if (champion) {
@@ -3419,6 +3806,41 @@ app.whenReady().then(() => {
             }
         }).catch(err => {
             console.error('[世界榜] 載入冠軍失敗:', err);
+        });
+
+        // 即時監聽世界冠軍變化（跨實例同步）
+        firebase.onWorldChampionChange((champion) => {
+            const prev = state.worldChampion;
+            state.worldChampion = champion;
+            if (champion) {
+                console.log(`[世界榜] 冠軍更新: ${champion.nickname} (${champion.totalDucks}🦆)`);
+                // 推送到綠幕
+                sendToGreenScreen('updateWorldChampion', champion);
+                // 如果冠軍換人了，觸發登頂特效
+                if (prev && prev.uniqueId !== champion.uniqueId) {
+                    addLog(`👑 世界榜冠軍變更: ${champion.nickname} (${champion.totalDucks}🦆)`, 'success');
+                    const crownVideo = state.config.world_champion_crown_video || '';
+                    sendToGreenScreen('worldChampionCrown', {
+                        nickname: champion.nickname,
+                        avatar: champion.avatar || '',
+                        totalDucks: champion.totalDucks,
+                        videoPath: crownVideo && fs.existsSync(crownVideo) ? crownVideo : ''
+                    });
+                }
+            } else if (prev) {
+                // 冠軍被刪除，自動從排行榜替補第一名
+                console.log('[世界榜] 冠軍已被刪除，嘗試替補...');
+                firebase.syncWorldChampion().then(newChampion => {
+                    if (newChampion) {
+                        addLog(`👑 世界榜冠軍替補: ${newChampion.nickname} (${newChampion.totalDucks}🦆)`, 'success');
+                    } else {
+                        addLog('🌍 世界榜已無冠軍', 'warning');
+                        sendToGreenScreen('updateWorldChampion', null);
+                    }
+                }).catch(err => {
+                    console.error('[世界榜] 替補冠軍失敗:', err);
+                });
+            }
         });
     }
 
@@ -3499,7 +3921,45 @@ function registerGlobalShortcuts() {
         }
     });
 
-    console.log('[Shortcuts] 已註冊全域快捷鍵: F8(模擬送禮), F9(減1), F10(減5), F11(重置)');
+    // F6: 快捷補禮物（鎖鏈/鴨子）
+    globalShortcut.register('F6', () => {
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('open-quick-add');
+            if (state.mainWindow.isMinimized()) {
+                state.mainWindow.restore();
+            }
+            state.mainWindow.focus();
+        }
+    });
+
+    // Ctrl+Shift+P: 強制停止鎖鏈對抗
+    globalShortcut.register('CommandOrControl+Shift+P', () => {
+        if (state.chainBattleActive) {
+            state.chainBattleActive = false;
+            unlockScreenFromChainBattle();
+            addLog('⛓️ 快捷鍵強制停止鎖鏈對抗');
+            sendToGreenScreen('stopChainBattle', {});
+            if (state.mainWindow) {
+                state.mainWindow.webContents.send('chain-battle-stopped');
+            }
+        }
+    });
+
+    // F12: 開啟開發者工具（調試模式）
+    globalShortcut.register('F12', () => {
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.toggleDevTools();
+        }
+    });
+
+    // Ctrl+Shift+F12: 開啟綠幕視窗的開發者工具
+    globalShortcut.register('CommandOrControl+Shift+F12', () => {
+        if (state.greenWindow && !state.greenWindow.isDestroyed()) {
+            state.greenWindow.webContents.toggleDevTools();
+        }
+    });
+
+    console.log('[Shortcuts] 已註冊全域快捷鍵: F6(補禮物), F8(模擬送禮), F9(減1), F10(減5), F11(重置), F12(調試), Ctrl+Shift+P(停止鎖鏈)');
 
     // 註冊影片快捷鍵
     registerVideoShortcuts();

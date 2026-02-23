@@ -56,32 +56,16 @@
             </div>
 
             <nav class="sidebar-menu">
-                <div class="menu-label">模組</div>
+                <div class="menu-label">互動模組</div>
                 <a class="menu-item active" data-panel="wheel">
                     <span class="menu-icon">🎡</span>
                     <span class="menu-text">轉盤/盲盒</span>
-                </a>
-                <a class="menu-item" data-panel="video">
-                    <span class="menu-icon">🎬</span>
-                    <span class="menu-text">影片</span>
-                    <label class="switch" onclick="event.stopPropagation()">
-                        <input type="checkbox" id="videoEnabled" checked>
-                        <span class="switch-slider"></span>
-                    </label>
                 </a>
                 <a class="menu-item" data-panel="duckcatch">
                     <span class="menu-icon">🦆</span>
                     <span class="menu-text">抓鴨子</span>
                     <label class="switch" onclick="event.stopPropagation()">
                         <input type="checkbox" id="duckCatchEnabled">
-                        <span class="switch-slider"></span>
-                    </label>
-                </a>
-                <a class="menu-item" data-panel="entry">
-                    <span class="menu-icon">👋</span>
-                    <span class="menu-text">進場特效</span>
-                    <label class="switch" onclick="event.stopPropagation()">
-                        <input type="checkbox" id="entryEnabled">
                         <span class="switch-slider"></span>
                     </label>
                 </a>
@@ -93,9 +77,30 @@
                         <span class="switch-slider"></span>
                     </label>
                 </a>
-                <a class="menu-item" data-panel="giftimage">
-                    <span class="menu-icon">🖼️</span>
-                    <span class="menu-text">禮物圖生成</span>
+                <a class="menu-item" data-panel="choking">
+                    <span class="menu-icon">🫁</span>
+                    <span class="menu-text">窒息挑戰</span>
+                    <label class="switch" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="chokingEnabled">
+                        <span class="switch-slider"></span>
+                    </label>
+                </a>
+                <div class="menu-label">媒體</div>
+                <a class="menu-item" data-panel="video">
+                    <span class="menu-icon">🎬</span>
+                    <span class="menu-text">影片</span>
+                    <label class="switch" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="videoEnabled" checked>
+                        <span class="switch-slider"></span>
+                    </label>
+                </a>
+                <a class="menu-item" data-panel="entry">
+                    <span class="menu-icon">👋</span>
+                    <span class="menu-text">進場特效</span>
+                    <label class="switch" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="entryEnabled">
+                        <span class="switch-slider"></span>
+                    </label>
                 </a>
                 <div class="menu-label">系統</div>
                 <a class="menu-item" data-panel="logs">
@@ -137,7 +142,7 @@
             <section class="panel active" id="panel-wheel">
                 <header class="panel-header">
                     <div class="panel-title">
-                        <span class="title-icon" style="background: linear-gradient(135deg, #a855f7, #7c3aed);">🎡</span>
+                        <span class="title-icon icon-wheel">🎡</span>
                         <div>
                             <h1>轉盤/盲盒模組</h1>
                             <p>收到指定禮物時觸發抽獎</p>
@@ -256,7 +261,7 @@
             <section class="panel" id="panel-video">
                 <header class="panel-header">
                     <div class="panel-title">
-                        <span class="title-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">🎬</span>
+                        <span class="title-icon icon-video">🎬</span>
                         <div>
                             <h1>影片模組</h1>
                             <p>收到禮物/彈幕/點讚時播放影片</p>
@@ -306,6 +311,13 @@
                     </div>
 
                     <div class="tab-content" id="subtab-random">
+                        <div class="subtab-header">
+                            <label class="switch" onclick="event.stopPropagation()">
+                                <input type="checkbox" id="randomVideoEnabled">
+                                <span class="switch-slider"></span>
+                            </label>
+                            <span class="subtab-status" id="randomVideoStatus">已停用</span>
+                        </div>
                         <div class="card">
                             <div class="card-header">
                                 <h3>觸發設定</h3>
@@ -332,7 +344,7 @@
             <section class="panel" id="panel-duckcatch">
                 <header class="panel-header">
                     <div class="panel-title">
-                        <span class="title-icon" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">🦆</span>
+                        <span class="title-icon icon-duck">🦆</span>
                         <div>
                             <h1>抓鴨子模組</h1>
                             <p>隨機抓到或沒抓到鴨子，並統計數量</p>
@@ -340,6 +352,7 @@
                     </div>
                 </header>
                 <div class="panel-content">
+                    <!-- 鴨子統計 — 始終顯示 -->
                     <div class="duck-stats">
                         <div class="duck-count-box">
                             <span class="duck-icon">🦆</span>
@@ -357,229 +370,326 @@
                         <div class="shortcut-info">快捷鍵: F9 減1 / F10 減5 / F11 歸零</div>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>觸發設定</h3>
+                    <!-- 子標籤導航 -->
+                    <div class="duck-subtabs">
+                        <button class="duck-subtab active" data-ducktab="basic" onclick="switchDuckSubTab('basic')">⚙️ 基本</button>
+                        <button class="duck-subtab" data-ducktab="videos" onclick="switchDuckSubTab('videos')">🎬 影片</button>
+                        <button class="duck-subtab" data-ducktab="leaderboard" onclick="switchDuckSubTab('leaderboard')">🏆 排行</button>
+                        <button class="duck-subtab" data-ducktab="advanced" onclick="switchDuckSubTab('advanced')">🎯 進階</button>
+                    </div>
+
+                    <!-- ═══ 基本設定 ═══ -->
+                    <div class="duck-subtab-content active" id="ducktab-basic">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>觸發設定</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="form-grid">
+                                    <div class="form-group half">
+                                        <label>觸發方式</label>
+                                        <select id="duckTriggerType" class="input" onchange="toggleDuckTriggerOptions()">
+                                            <option value="gift">禮物</option>
+                                            <option value="chat">彈幕關鍵字</option>
+                                            <option value="like">點讚</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group half" id="duckGiftGroup">
+                                        <label>觸發禮物名稱</label>
+                                        <input type="text" id="duckTriggerGift" class="input" placeholder="例如: Rose">
+                                    </div>
+                                    <div class="form-group half" id="duckKeywordGroup" style="display:none">
+                                        <label>彈幕關鍵字</label>
+                                        <input type="text" id="duckTriggerKeyword" class="input" placeholder="觸發的關鍵字">
+                                    </div>
+                                    <div class="form-group full">
+                                        <label>抓到機率</label>
+                                        <div class="range-input">
+                                            <input type="range" id="duckCatchRate" value="50" min="0" max="100"
+                                                   oninput="document.getElementById('duckCatchRateValue').textContent = this.value + '%'">
+                                            <span id="duckCatchRateValue" class="range-value">50%</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>播放秒數 (0=完整)</label>
+                                        <input type="number" id="duckVideoSeconds" class="input" value="0" min="0" step="0.5">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>播放倍率</label>
+                                        <input type="number" id="duckVideoSpeed" class="input" value="1.0" min="0.1" max="4" step="0.1">
+                                    </div>
+                                    <div class="form-group full">
+                                        <label>音量</label>
+                                        <div class="range-input">
+                                            <input type="range" id="duckVideoVolume" value="100" min="0" max="100"
+                                                   oninput="document.getElementById('duckVolumeValue').textContent = this.value + '%'">
+                                            <span id="duckVolumeValue" class="range-value">100%</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group full">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="duckForceInterrupt">
+                                            <span class="checkbox-box"></span>
+                                            強制插隊 (中斷當前播放)
+                                        </label>
+                                    </div>
+                                    <div class="form-group full">
+                                        <label>🔊 嘎嘎音效（減少鴨子時播放）</label>
+                                        <div class="input-with-button">
+                                            <input type="text" id="duckQuackSound" class="input" placeholder="選擇音效檔案（可選）" readonly>
+                                            <button class="btn btn-outline" onclick="selectDuckQuackSound()">選擇</button>
+                                            <button class="btn btn-outline" onclick="clearDuckQuackSound()">清除</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-content">
-                            <div class="form-grid">
-                                <div class="form-group half">
-                                    <label>觸發方式</label>
-                                    <select id="duckTriggerType" class="input" onchange="toggleDuckTriggerOptions()">
-                                        <option value="gift">禮物</option>
-                                        <option value="chat">彈幕關鍵字</option>
-                                        <option value="like">點讚</option>
-                                    </select>
-                                </div>
-                                <div class="form-group half" id="duckGiftGroup">
-                                    <label>觸發禮物名稱</label>
-                                    <input type="text" id="duckTriggerGift" class="input" placeholder="例如: Rose">
-                                </div>
-                                <div class="form-group half" id="duckKeywordGroup" style="display:none">
-                                    <label>彈幕關鍵字</label>
-                                    <input type="text" id="duckTriggerKeyword" class="input" placeholder="觸發的關鍵字">
-                                </div>
-                                <div class="form-group full">
-                                    <label>抓到機率</label>
-                                    <div class="range-input">
-                                        <input type="range" id="duckCatchRate" value="50" min="0" max="100"
-                                               oninput="document.getElementById('duckCatchRateValue').textContent = this.value + '%'">
-                                        <span id="duckCatchRateValue" class="range-value">50%</span>
+                    </div>
+
+                    <!-- ═══ 影片設定 ═══ -->
+                    <div class="duck-subtab-content" id="ducktab-videos">
+                        <div class="grid-2">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>🎉 抓到影片</h3>
+                                    <div class="header-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="smartImportDuckVideos('caught')">🪄 智能匯入</button>
+                                        <button class="btn-add" onclick="showAddDuckVideoDialog('caught')" title="單個添加">
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                                <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="form-group half">
-                                    <label>播放秒數 (0=完整)</label>
-                                    <input type="number" id="duckVideoSeconds" class="input" value="0" min="0" step="0.5">
-                                </div>
-                                <div class="form-group half">
-                                    <label>播放倍率</label>
-                                    <input type="number" id="duckVideoSpeed" class="input" value="1.0" min="0.1" max="4" step="0.1">
-                                </div>
-                                <div class="form-group full">
-                                    <label>音量</label>
-                                    <div class="range-input">
-                                        <input type="range" id="duckVideoVolume" value="100" min="0" max="100"
-                                               oninput="document.getElementById('duckVolumeValue').textContent = this.value + '%'">
-                                        <span id="duckVolumeValue" class="range-value">100%</span>
+                                <div class="card-content">
+                                    <div class="list" id="duckCaughtVideoList">
+                                        <div class="empty-state">尚無設定</div>
+                                    </div>
+                                    <div class="hint">
+                                        <span class="hint-icon">💡</span>
+                                        智能匯入會從檔名解析鴨子數量並自動設定權重
                                     </div>
                                 </div>
-                                <div class="form-group full">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="duckForceInterrupt">
-                                        <span class="checkbox-box"></span>
-                                        強制插隊 (中斷當前播放)
-                                    </label>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>😢 沒抓到影片</h3>
+                                    <div class="header-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="smartImportDuckVideos('missed')">🪄 智能匯入</button>
+                                        <button class="btn-add" onclick="showAddDuckVideoDialog('missed')" title="單個添加">
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                                <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="form-group full">
-                                    <label>🔊 嘎嘎音效（減少鴨子時播放）</label>
+                                <div class="card-content">
+                                    <div class="list" id="duckMissedVideoList">
+                                        <div class="empty-state">尚無設定</div>
+                                    </div>
+                                    <div class="hint">
+                                        <span class="hint-icon">💡</span>
+                                        沒抓到影片權重統一設為 1（隨機播放）
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ═══ 排行榜 ═══ -->
+                    <div class="duck-subtab-content" id="ducktab-leaderboard">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🏆 排行榜 <span id="firebaseIndicator" class="firebase-indicator offline" title="Firebase 未連接">●</span></h3>
+                                <div class="header-buttons">
+                                    <span id="lastBackupTime" class="backup-info" title="上次備份時間" style="font-size:12px;color:#888;margin-right:8px;">💾 --:--</span>
+                                    <button class="btn btn-sm btn-outline" onclick="triggerManualBackup()">💾 備份</button>
+                                    <button class="btn btn-sm btn-outline" onclick="exportLeaderboard()">📤 匯出</button>
+                                    <button class="btn btn-sm btn-outline" onclick="importLeaderboard()">📥 匯入</button>
+                                    <button class="btn btn-sm btn-outline" onclick="refreshLeaderboard()">🔄 刷新</button>
+                                    <button class="btn btn-sm btn-danger" onclick="clearLeaderboard()">🗑️ 清除</button>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="card-hint">
+                                    累計排行每週一 00:00 重置 | 單次最高每天 00:00 重置
+                                </div>
+                                <div class="form-row compact" style="margin-bottom:12px;">
+                                    <div class="form-group" style="flex:1;">
+                                        <label style="font-size:12px;">綠幕顯示名次</label>
+                                        <input type="number" id="gsLeaderboardCount" class="input" value="5" min="1" max="10" style="width:60px;" onchange="saveLeaderboardDisplayConfig()">
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label class="checkbox-label" style="font-size:12px;">
+                                            <input type="checkbox" id="gsLeaderboardRotate" checked onchange="saveLeaderboardDisplayConfig()">
+                                            自動輪播
+                                        </label>
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label style="font-size:12px;">輪播間隔(秒)</label>
+                                        <input type="number" id="gsLeaderboardRotateInterval" class="input" value="5" min="2" max="30" style="width:60px;" onchange="saveLeaderboardDisplayConfig()">
+                                    </div>
+                                </div>
+                                <div class="leaderboard-tabs">
+                                    <button class="leaderboard-tab active" data-tab="total" onclick="switchLeaderboardTab('total')">📊 累計排行</button>
+                                    <button class="leaderboard-tab" data-tab="single" onclick="switchLeaderboardTab('single')">🎯 單次最高</button>
+                                    <button class="leaderboard-tab" data-tab="alltime" onclick="switchLeaderboardTab('alltime')">📚 總體資料庫</button>
+                                    <button class="leaderboard-tab" data-tab="world" onclick="switchLeaderboardTab('world')">🌍 世界榜</button>
+                                </div>
+                                <div class="leaderboard-content" id="leaderboardTotal">
+                                    <div class="leaderboard-list" id="totalRankingList">
+                                        <div class="empty-state">暫無資料</div>
+                                    </div>
+                                </div>
+                                <div class="leaderboard-content hidden" id="leaderboardSingle">
+                                    <div class="leaderboard-list" id="singleHighestList">
+                                        <div class="empty-state">暫無資料</div>
+                                    </div>
+                                </div>
+                                <div class="leaderboard-content hidden" id="leaderboardAlltime">
+                                    <div class="alltime-controls">
+                                        <input type="text" id="alltimeSearch" class="input" placeholder="搜尋用戶..." oninput="filterAlltimeStats()">
+                                        <button class="btn btn-sm btn-primary" onclick="openAddUserDialog()">➕ 新增用戶</button>
+                                    </div>
+                                    <div class="leaderboard-list" id="alltimeStatsList">
+                                        <div class="empty-state">暫無資料</div>
+                                    </div>
+                                </div>
+                                <div class="leaderboard-content hidden" id="leaderboardWorld">
+                                    <div class="world-champion-banner" id="worldChampionBanner">
+                                        <span class="champion-icon">👑</span>
+                                        <div class="champion-info">
+                                            <div class="champion-name" id="worldChampionName">載入中...</div>
+                                            <div class="champion-ducks" id="worldChampionDucks">0 🦆</div>
+                                        </div>
+                                    </div>
+                                    <div class="leaderboard-list" id="worldLeaderboardList">
+                                        <div class="empty-state">載入中...</div>
+                                    </div>
+                                    <button class="btn btn-sm btn-secondary" onclick="refreshWorldLeaderboard()">🔄 刷新</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ═══ 進階設定 ═══ -->
+                    <div class="duck-subtab-content" id="ducktab-advanced">
+                        <!-- 保底設定 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🎯 保底機制</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="form-grid">
+                                    <div class="form-group full">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="duckPityEnabled">
+                                            <span class="checkbox-box"></span>
+                                            啟用保底機制
+                                        </label>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>🎉 第一層保底次數</label>
+                                        <input type="number" id="duckPityThreshold" class="input" value="1000" min="100" max="10000">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>第一層最低鴨子數</label>
+                                        <input type="number" id="duckPityMinAmount" class="input" value="5000" min="100">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>🏆 終極保底次數</label>
+                                        <input type="number" id="duckPityThresholdJackpot" class="input" value="2000" min="200" max="20000">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>終極保底鴨子數</label>
+                                        <input type="number" id="duckPityJackpotAmount" class="input" value="10000" min="1000">
+                                    </div>
+                                    <div class="form-group full">
+                                        <div class="pity-display" id="pityDisplay" style="display: none;">
+                                            <span>保底進度：</span>
+                                            <span id="pityProgress" class="editable" onclick="showPityInput()" title="點擊輸入數字">0 / 1000</span>
+                                            <input type="number" class="pity-input hidden" id="pityInput" min="0" onblur="savePityInput()" onkeydown="if(event.key==='Enter')savePityInput()">
+                                            <span id="pityStage" class="pity-stage"></span>
+                                            <button class="btn btn-sm btn-outline" onclick="resetPityCounter()">重置</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 軟保底 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🎯 軟保底</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="form-grid">
+                                    <div class="form-group full">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="duckSoftPityEnabled">
+                                            啟用軟保底（漸進提升機率）
+                                        </label>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>軟保底起始點 (%)</label>
+                                        <input type="number" id="duckSoftPityStart" class="input" value="70" min="50" max="99">
+                                        <small style="color:var(--text-muted);">到達保底次數的此百分比時開始提升機率</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 連擊 Combo -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🔥 連擊機制</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="form-grid">
+                                    <div class="form-group full">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="duckComboEnabled">
+                                            啟用連擊機制
+                                        </label>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>連擊時間窗口 (秒)</label>
+                                        <input type="number" id="duckComboWindow" class="input" value="30" min="5" max="300">
+                                    </div>
+                                    <div class="form-group full">
+                                        <label>連擊倍率 (逗號分隔: 第1次, 第2次, 第3次, 第4次+)</label>
+                                        <input type="text" id="duckComboMultipliers" class="input" value="1, 1.5, 2, 3" placeholder="1, 1.5, 2, 3">
+                                        <small style="color:var(--text-muted);">同一用戶在時間窗口內連續抓到鴨子，鴨子數量乘以對應倍率</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 里程碑慶祝設定 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🎆 里程碑慶祝</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="milestone-info">
+                                    <div class="info-item">
+                                        <span class="info-label">🏆 累計第一</span>
+                                        <span class="info-value">達到 10,000🦆 且成為第一名時播放</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">🎯 單次最高</span>
+                                        <span class="info-value">單次抓到 5,000+🦆 創紀錄時播放（保底不計）</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>煙火影片</label>
                                     <div class="input-with-button">
-                                        <input type="text" id="duckQuackSound" class="input" placeholder="選擇音效檔案（可選）" readonly>
-                                        <button class="btn btn-outline" onclick="selectDuckQuackSound()">選擇</button>
-                                        <button class="btn btn-outline" onclick="clearDuckQuackSound()">清除</button>
+                                        <input type="text" id="milestoneFireworkVideo" placeholder="選擇煙火影片..." readonly>
+                                        <button class="btn btn-outline" onclick="selectMilestoneVideo()">選擇</button>
                                     </div>
                                 </div>
-                                <!-- 保底設定 -->
-                                <div class="form-group full" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="duckPityEnabled">
-                                        <span class="checkbox-box"></span>
-                                        🎯 啟用保底機制
-                                    </label>
-                                </div>
-                                <div class="form-group half">
-                                    <label>🎉 第一層保底次數</label>
-                                    <input type="number" id="duckPityThreshold" class="input" value="1000" min="100" max="10000">
-                                </div>
-                                <div class="form-group half">
-                                    <label>第一層最低鴨子數</label>
-                                    <input type="number" id="duckPityMinAmount" class="input" value="5000" min="100">
-                                </div>
-                                <div class="form-group half">
-                                    <label>🏆 終極保底次數</label>
-                                    <input type="number" id="duckPityThresholdJackpot" class="input" value="2000" min="200" max="20000">
-                                </div>
-                                <div class="form-group half">
-                                    <label>終極保底鴨子數</label>
-                                    <input type="number" id="duckPityJackpotAmount" class="input" value="10000" min="1000">
-                                </div>
-                                <div class="form-group full">
-                                    <div class="pity-display" id="pityDisplay" style="display: none;">
-                                        <span>保底進度：</span>
-                                        <span id="pityProgress" class="editable" onclick="showPityInput()" title="點擊輸入數字">0 / 1000</span>
-                                        <input type="number" class="pity-input hidden" id="pityInput" min="0" onblur="savePityInput()" onkeydown="if(event.key==='Enter')savePityInput()">
-                                        <span id="pityStage" style="margin-left: 8px; font-size: 12px; color: var(--text-muted);"></span>
-                                        <button class="btn btn-sm btn-outline" onclick="resetPityCounter()">重置</button>
-                                    </div>
-                                </div>
+                                <button class="btn btn-outline btn-sm" onclick="testMilestoneCelebration()">🎇 測試慶祝效果</button>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="grid-2">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>🎉 抓到影片</h3>
-                                <div class="header-buttons">
-                                    <button class="btn btn-sm btn-primary" onclick="smartImportDuckVideos('caught')">🪄 智能匯入</button>
-                                    <button class="btn-add" onclick="showAddDuckVideoDialog('caught')" title="單個添加">
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-content">
-                                <div class="list" id="duckCaughtVideoList">
-                                    <div class="empty-state">尚無設定</div>
-                                </div>
-                                <div class="hint">
-                                    <span class="hint-icon">💡</span>
-                                    智能匯入會從檔名解析鴨子數量並自動設定權重
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>😢 沒抓到影片</h3>
-                                <div class="header-buttons">
-                                    <button class="btn btn-sm btn-primary" onclick="smartImportDuckVideos('missed')">🪄 智能匯入</button>
-                                    <button class="btn-add" onclick="showAddDuckVideoDialog('missed')" title="單個添加">
-                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                            <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-content">
-                                <div class="list" id="duckMissedVideoList">
-                                    <div class="empty-state">尚無設定</div>
-                                </div>
-                                <div class="hint">
-                                    <span class="hint-icon">💡</span>
-                                    沒抓到影片權重統一設為 1（隨機播放）
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 排行榜 -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>🏆 排行榜 <span id="firebaseIndicator" class="firebase-indicator offline" title="Firebase 未連接">●</span></h3>
-                            <div class="header-buttons">
-                                <button class="btn btn-sm btn-outline" onclick="refreshLeaderboard()">🔄 刷新</button>
-                                <button class="btn btn-sm btn-danger" onclick="clearLeaderboard()">🗑️ 清除</button>
-                            </div>
-                        </div>
-                        <div class="card-content">
-                            <div class="leaderboard-info" style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                                累計排行每週一 00:00 重置 | 單次最高每天 00:00 重置
-                            </div>
-                            <div class="leaderboard-tabs">
-                                <button class="leaderboard-tab active" data-tab="total" onclick="switchLeaderboardTab('total')">📊 累計排行</button>
-                                <button class="leaderboard-tab" data-tab="single" onclick="switchLeaderboardTab('single')">🎯 單次最高</button>
-                                <button class="leaderboard-tab" data-tab="alltime" onclick="switchLeaderboardTab('alltime')">📚 總體資料庫</button>
-                                <button class="leaderboard-tab" data-tab="world" onclick="switchLeaderboardTab('world')">🌍 世界榜</button>
-                            </div>
-                            <div class="leaderboard-content" id="leaderboardTotal">
-                                <div class="leaderboard-list" id="totalRankingList">
-                                    <div class="empty-state">暫無資料</div>
-                                </div>
-                            </div>
-                            <div class="leaderboard-content hidden" id="leaderboardSingle">
-                                <div class="leaderboard-list" id="singleHighestList">
-                                    <div class="empty-state">暫無資料</div>
-                                </div>
-                            </div>
-                            <div class="leaderboard-content hidden" id="leaderboardAlltime">
-                                <div class="alltime-controls" style="margin-bottom: 10px; display: flex; gap: 8px;">
-                                    <input type="text" id="alltimeSearch" class="input" placeholder="搜尋用戶..." style="flex:1" oninput="filterAlltimeStats()">
-                                    <button class="btn btn-sm btn-primary" onclick="openAddUserDialog()">➕ 新增用戶</button>
-                                </div>
-                                <div class="leaderboard-list" id="alltimeStatsList">
-                                    <div class="empty-state">暫無資料</div>
-                                </div>
-                            </div>
-                            <div class="leaderboard-content hidden" id="leaderboardWorld">
-                                <div class="world-champion-banner" id="worldChampionBanner" style="background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%); padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
-                                    <span style="font-size: 32px;">👑</span>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: bold; color: #1a1a2e;" id="worldChampionName">載入中...</div>
-                                        <div style="color: #333;" id="worldChampionDucks">0 🦆</div>
-                                    </div>
-                                </div>
-                                <div class="leaderboard-list" id="worldLeaderboardList">
-                                    <div class="empty-state">載入中...</div>
-                                </div>
-                                <button class="btn btn-sm btn-secondary" onclick="refreshWorldLeaderboard()" style="margin-top: 8px;">🔄 刷新</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 里程碑慶祝設定 -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>🎆 里程碑慶祝</h3>
-                        </div>
-                        <div class="card-content">
-                            <div class="milestone-info">
-                                <div class="info-item">
-                                    <span class="info-label">🏆 累計第一</span>
-                                    <span class="info-value">達到 10,000🦆 且成為第一名時播放</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">🎯 單次最高</span>
-                                    <span class="info-value">單次抓到 5,000+🦆 創紀錄時播放（保底不計）</span>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>煙火影片</label>
-                                <div class="input-with-button">
-                                    <input type="text" id="milestoneFireworkVideo" placeholder="選擇煙火影片..." readonly>
-                                    <button class="btn btn-outline" onclick="selectMilestoneVideo()">選擇</button>
-                                </div>
-                            </div>
-                            <button class="btn btn-outline btn-sm" onclick="testMilestoneCelebration()">🎇 測試慶祝效果</button>
                         </div>
 
                         <!-- 世界榜特效設定 -->
@@ -587,18 +697,86 @@
                             <div class="card-header">
                                 <h3>🌍 世界榜特效</h3>
                             </div>
-                            <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">當世界榜第一名送禮時播放的特效影片</p>
-                            <div class="form-group">
-                                <label>送禮特效影片</label>
-                                <div class="input-with-button">
-                                    <input type="text" id="worldChampionGiftVideo" placeholder="選擇世界冠軍送禮特效影片..." readonly>
-                                    <button class="btn btn-outline" onclick="selectWorldChampionGiftVideo()">選擇</button>
+                            <div class="card-content">
+                                <p class="card-hint">當世界榜第一名送禮時播放的特效影片</p>
+                                <div class="form-group">
+                                    <label>送禮特效影片</label>
+                                    <div class="input-with-button">
+                                        <input type="text" id="worldChampionGiftVideo" placeholder="選擇世界冠軍送禮特效影片..." readonly>
+                                        <button class="btn btn-outline" onclick="selectWorldChampionGiftVideo()">選擇</button>
+                                    </div>
                                 </div>
+                                <button class="btn btn-outline btn-sm" onclick="testWorldChampionGiftEffect()">👑 測試送禮特效</button>
                             </div>
-                            <button class="btn btn-outline btn-sm" onclick="testWorldChampionGiftEffect()">👑 測試送禮特效</button>
+                        </div>
+
+                        <!-- 鴨子查詢設定 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>🔍 鴨子查詢</h3>
+                            </div>
+                            <div class="card-content">
+                                <p class="card-hint">觀眾在聊天室輸入關鍵字即可查詢自己的鴨子數量（綠幕彈出顯示）</p>
+                                <div class="form-grid">
+                                    <div class="form-group half">
+                                        <label>查詢關鍵字</label>
+                                        <input type="text" id="duckQueryKeyword" class="input" value="查看" placeholder="觀眾輸入此關鍵字">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>顯示秒數</label>
+                                        <input type="number" id="duckQueryDuration" class="input" value="5" min="1" max="30">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>彈窗大小</label>
+                                        <select id="duckQuerySize" class="input">
+                                            <option value="small">小</option>
+                                            <option value="medium" selected>中</option>
+                                            <option value="large">大</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>彈窗位置</label>
+                                        <select id="duckQueryPosition" class="input">
+                                            <option value="center" selected>置中</option>
+                                            <option value="top">上方</option>
+                                            <option value="bottom">下方</option>
+                                            <option value="top-left">左上</option>
+                                            <option value="top-right">右上</option>
+                                            <option value="bottom-left">左下</option>
+                                            <option value="bottom-right">右下</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>邊框顏色</label>
+                                        <input type="color" id="duckQueryBorderColor" class="input" value="#ffd700">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>文字顏色</label>
+                                        <input type="color" id="duckQueryTextColor" class="input" value="#ffffff">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>數字顏色</label>
+                                        <input type="color" id="duckQueryNumberColor" class="input" value="#ffd700">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label>背景顏色</label>
+                                        <input type="color" id="duckQueryBgColor" class="input" value="#000000">
+                                    </div>
+                                    <div class="form-group full">
+                                        <label>字體大小</label>
+                                        <div class="range-input">
+                                            <input type="range" id="duckQueryFontSize" value="48" min="20" max="100"
+                                                   oninput="document.getElementById('duckQueryFontSizeValue').textContent = this.value + 'px'">
+                                            <span id="duckQueryFontSizeValue" class="range-value">48px</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline btn-sm" onclick="testDuckQuery()">🔍 測試查詢顯示</button>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- 底部操作 — 始終顯示 -->
                     <div class="panel-footer">
                         <button class="btn btn-primary" onclick="saveDuckCatchConfig()">💾 儲存設定</button>
                         <button class="btn btn-outline" onclick="openSimulateDuckDialog()">🎲 模擬抓鴨子</button>
@@ -610,7 +788,7 @@
             <section class="panel" id="panel-entry">
                 <header class="panel-header">
                     <div class="panel-title">
-                        <span class="title-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">👋</span>
+                        <span class="title-icon icon-entry">👋</span>
                         <div>
                             <h1>進場特效</h1>
                             <p>有人進入直播間時播放影片或音效</p>
@@ -670,7 +848,7 @@
             <section class="panel" id="panel-chainbattle">
                 <header class="panel-header">
                     <div class="panel-title">
-                        <span class="title-icon" style="background: linear-gradient(135deg, #6b7280, #374151);">⛓️</span>
+                        <span class="title-icon icon-chain">⛓️</span>
                         <div>
                             <h1>鎖鏈對抗</h1>
                             <p>觀眾送禮鎖住畫面，主播按空白鍵掙脫</p>
@@ -684,70 +862,66 @@
                             <h3>🔓 啟動禮物</h3>
                         </div>
                         <div class="card-content">
-                            <div class="form-grid">
-                                <div class="form-group half">
+                            <div class="form-row">
+                                <div class="form-group">
                                     <label>禮物名稱（英文）</label>
                                     <input type="text" id="chainTriggerGift" class="input" placeholder="例如 Rose" onchange="saveChainBattleConfig()">
                                 </div>
-                                <div class="form-group half">
+                                <div class="form-group">
                                     <label>初始鎖鏈數</label>
                                     <input type="number" id="chainTriggerAmount" class="input" value="10" min="1" onchange="saveChainBattleConfig()">
                                 </div>
                             </div>
-                            <p style="color: #9ca3af; font-size: 12px; margin-top: 8px;">
-                                💡 只有這個禮物可以啟動鎖鏈對抗
-                            </p>
+                            <p class="card-hint">💡 只有這個禮物可以啟動鎖鏈對抗</p>
                         </div>
                     </div>
 
                     <!-- 增加禮物 -->
-                    <div class="card" style="margin-top: 16px;">
+                    <div class="card">
                         <div class="card-header">
                             <h3>➕ 增加禮物</h3>
                         </div>
                         <div class="card-content">
-                            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                                <input type="text" id="chainAddGiftName" class="input" placeholder="禮物名稱（英文）" style="flex: 1;">
-                                <input type="number" id="chainAddGiftAmount" class="input" placeholder="增加數" value="1" min="1" style="width: 80px;">
+                            <div class="input-with-button">
+                                <input type="text" id="chainAddGiftName" class="input" placeholder="禮物名稱（英文）">
+                                <input type="number" id="chainAddGiftAmount" class="input input-sm" placeholder="增減數" value="1">
                                 <button class="btn btn-primary" onclick="addChainAddGift()">新增</button>
                             </div>
                             <div id="chainAddGiftList" class="gift-list">
                                 <!-- 動態生成 -->
                             </div>
-                            <p style="color: #9ca3af; font-size: 12px; margin-top: 8px;">
-                                💡 對抗進行中，送這些禮物會增加鎖鏈數
-                            </p>
+                            <p class="card-hint">💡 對抗進行中，送這些禮物會增加鎖鏈數</p>
                         </div>
                     </div>
 
                     <!-- 進階設定 -->
-                    <div class="card" style="margin-top: 16px;">
+                    <div class="card">
                         <div class="card-header">
                             <h3>⚙️ 進階設定</h3>
                         </div>
                         <div class="card-content">
-                            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                            <div class="setting-toggle">
                                 <div>
-                                    <label style="font-weight: 500;">🦆 抓鴨子增加鎖鏈</label>
-                                    <p style="color: #9ca3af; font-size: 12px; margin-top: 4px;">開啟時，抓到鴨子會增加鎖鏈數</p>
+                                    <label>🦆 抓鴨子增加鎖鏈</label>
+                                    <p class="setting-desc">開啟時，抓到鴨子會增加鎖鏈數</p>
                                 </div>
                                 <label class="switch">
                                     <input type="checkbox" id="chainDuckAddsChain" checked onchange="saveChainBattleConfig()">
                                     <span class="switch-slider"></span>
                                 </label>
                             </div>
-                            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="setting-toggle">
                                 <div>
-                                    <label style="font-weight: 500;">⏱️ 點擊冷卻時間</label>
-                                    <p style="color: #9ca3af; font-size: 12px; margin-top: 4px;">每次按空白鍵的間隔時間（毫秒）</p>
+                                    <label>⏱️ 點擊冷卻時間</label>
+                                    <p class="setting-desc">每次按空白鍵的間隔時間（毫秒）</p>
                                 </div>
-                                <input type="number" id="chainClickCooldown" class="input" value="100" min="0" max="1000" style="width: 100px; text-align: center;" onchange="saveChainBattleConfig()">
+                                <input type="number" id="chainClickCooldown" class="input input-sm" value="100" min="0" max="1000" onchange="saveChainBattleConfig()">
                             </div>
                         </div>
                     </div>
 
                     <!-- 手動控制 -->
-                    <div class="card" style="margin-top: 16px;">
+                    <div class="card">
                         <div class="card-header">
                             <h3>手動控制</h3>
                         </div>
@@ -756,176 +930,169 @@
                                 <button class="btn btn-primary" onclick="startChainBattleManual()">⛓️ 啟動對抗</button>
                                 <button class="btn btn-danger" onclick="stopChainBattleManual()">🛑 停止對抗</button>
                             </div>
-                            <p style="color: #9ca3af; font-size: 12px; margin-top: 12px;">
-                                💡 主播按 <kbd style="background: #374151; padding: 2px 6px; border-radius: 4px;">空白鍵</kbd> 減少鎖鏈數
-                            </p>
+                            <p class="card-hint">💡 主播按 <kbd>空白鍵</kbd> 減少鎖鏈數</p>
                         </div>
                     </div>
 
                     <!-- 儲存按鈕 -->
-                    <div style="margin-top: 20px; text-align: center;">
-                        <button class="btn btn-primary btn-lg" onclick="saveChainBattleConfigAndNotify()" style="padding: 12px 40px; font-size: 16px;">
-                            💾 儲存設定
-                        </button>
+                    <div class="card">
+                        <div class="card-content" style="text-align: center;">
+                            <button class="btn btn-primary btn-lg" onclick="saveChainBattleConfigAndNotify()">
+                                💾 儲存設定
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- 禮物圖生成面板 -->
-            <section class="panel" id="panel-giftimage">
+            <!-- 窒息挑戰面板 -->
+            <section class="panel" id="panel-choking">
                 <header class="panel-header">
                     <div class="panel-title">
-                        <span class="title-icon" style="background: linear-gradient(135deg, #f472b6, #ec4899);">🖼️</span>
+                        <span class="title-icon icon-choking">🫁</span>
                         <div>
-                            <h1>禮物圖生成器</h1>
-                            <p>生成禮物清單圖片，可用於 OBS 或匯出分享</p>
+                            <h1>窒息挑戰</h1>
+                            <p>禮物觸發窒息挑戰，主播需持續說話維持血量</p>
                         </div>
                     </div>
                 </header>
                 <div class="panel-content">
-                    <div class="two-column-layout">
-                        <!-- 左側：禮物清單 -->
-                        <div class="column">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3>禮物清單</h3>
-                                    <button class="btn btn-sm btn-primary" onclick="addGiftImageItem()">+ 新增</button>
-                                </div>
-                                <div class="card-content">
-                                    <div class="gift-image-list" id="giftImageList">
-                                        <div class="empty-list">尚未新增禮物，點擊上方「新增」按鈕開始</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- 右側：樣式設定 -->
-                        <div class="column">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3>排列設定</h3>
-                                </div>
-                                <div class="card-content">
-                                    <div class="form-grid">
-                                        <div class="form-group half">
-                                            <label>欄數</label>
-                                            <select id="giftImageColumns" class="input" onchange="updateGiftImagePreview()">
-                                                <option value="1">1 欄（直式）</option>
-                                                <option value="2">2 欄</option>
-                                                <option value="3" selected>3 欄</option>
-                                                <option value="4">4 欄</option>
-                                                <option value="5">5 欄</option>
-                                                <option value="6">6 欄</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group half">
-                                            <label>圖示位置</label>
-                                            <select id="giftImageIconPosition" class="input" onchange="updateGiftImagePreview()">
-                                                <option value="left" selected>左邊</option>
-                                                <option value="right">右邊</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group half">
-                                            <label>間距 (px)</label>
-                                            <input type="number" id="giftImageGap" class="input" value="20" min="0" max="100" onchange="updateGiftImagePreview()">
-                                        </div>
-                                        <div class="form-group half">
-                                            <label>圖示大小 (px)</label>
-                                            <input type="number" id="giftImageIconSize" class="input" value="64" min="32" max="128" onchange="updateGiftImagePreview()">
-                                        </div>
-                                        <div class="form-group half">
-                                            <label>內邊距 (px)</label>
-                                            <input type="number" id="giftImagePadding" class="input" value="30" min="0" max="100" onchange="updateGiftImagePreview()">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3>背景設定</h3>
-                                </div>
-                                <div class="card-content">
-                                    <div class="form-grid">
-                                        <div class="form-group half">
-                                            <label>背景類型</label>
-                                            <select id="giftImageBgType" class="input" onchange="toggleGiftImageBgOptions(); updateGiftImagePreview()">
-                                                <option value="solid">純色</option>
-                                                <option value="transparent">透明</option>
-                                                <option value="gradient">漸層</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group half" id="giftImageBgColorGroup">
-                                            <label>背景顏色</label>
-                                            <input type="color" id="giftImageBgColor" class="input color-input" value="#1a1a2e" onchange="updateGiftImagePreview()">
-                                        </div>
-                                        <div class="form-group half" id="giftImageBgColor2Group" style="display:none">
-                                            <label>漸層顏色 2</label>
-                                            <input type="color" id="giftImageBgColor2" class="input color-input" value="#16213e" onchange="updateGiftImagePreview()">
-                                        </div>
-                                        <div class="form-group full">
-                                            <label class="checkbox-label">
-                                                <input type="checkbox" id="giftImageRounded" checked onchange="updateGiftImagePreview()">
-                                                <span class="checkbox-box"></span>
-                                                圓角背景
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3>文字設定</h3>
-                                </div>
-                                <div class="card-content">
-                                    <div class="form-grid">
-                                        <div class="form-group half">
-                                            <label>字體大小 (px)</label>
-                                            <input type="number" id="giftImageFontSize" class="input" value="24" min="12" max="48" onchange="updateGiftImagePreview()">
-                                        </div>
-                                        <div class="form-group half">
-                                            <label>文字顏色</label>
-                                            <input type="color" id="giftImageFontColor" class="input color-input" value="#ffffff" onchange="updateGiftImagePreview()">
-                                        </div>
-                                        <div class="form-group full">
-                                            <label class="checkbox-label">
-                                                <input type="checkbox" id="giftImageFontBold" checked onchange="updateGiftImagePreview()">
-                                                <span class="checkbox-box"></span>
-                                                粗體
-                                            </label>
-                                        </div>
-                                        <div class="form-group full">
-                                            <label class="checkbox-label">
-                                                <input type="checkbox" id="giftImageTextShadow" checked onchange="updateGiftImagePreview()">
-                                                <span class="checkbox-box"></span>
-                                                文字陰影
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 預覽區域 -->
-                    <div class="card" style="margin-top: 20px;">
+                    <div class="card">
                         <div class="card-header">
-                            <h3>預覽</h3>
-                            <div class="header-actions">
-                                <button class="btn btn-sm btn-outline" onclick="updateGiftImagePreview()">🔄 重新整理</button>
-                            </div>
+                            <h3>觸發設定</h3>
                         </div>
                         <div class="card-content">
-                            <div class="gift-image-preview-container" id="giftImagePreviewContainer">
-                                <div class="gift-image-preview" id="giftImagePreview">
-                                    <div class="preview-placeholder">新增禮物後即可預覽</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>觸發禮物（英文名稱）</label>
+                                    <input type="text" id="chokingTriggerGift" placeholder="例如: Rose" class="input">
                                 </div>
+                                <div class="form-group">
+                                    <label>每個禮物增加秒數</label>
+                                    <input type="number" id="chokingAddSeconds" value="5" min="1" max="60" class="input">
+                                </div>
+                            </div>
+                            <p class="form-hint">挑戰進行中再送同樣禮物會增加秒數</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>禁言禮物</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>禁言禮物（英文名稱）</label>
+                                    <input type="text" id="chokingSilentGift" placeholder="例如: GG" class="input">
+                                </div>
+                                <div class="form-group">
+                                    <label>每個禮物增加禁言秒數</label>
+                                    <input type="number" id="chokingSilentAddSeconds" value="3" min="1" max="30" class="input">
+                                </div>
+                            </div>
+                            <p class="form-hint">禁言期間不用說話，倒數暫停</p>
+                            <div class="form-group" style="margin-top: 12px;">
+                                <label>禁言觸發影片</label>
+                                <div class="input-with-button">
+                                    <input type="text" id="chokingSilentVideoPath" readonly placeholder="選擇影片..." class="input">
+                                    <button class="btn btn-outline" onclick="selectChokingSilentVideo()">選擇</button>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 8px;">
+                                <label>禁言影片音量：<span id="chokingSilentVolumeDisplay">100</span>%</label>
+                                <input type="range" id="chokingSilentVolume" min="0" max="100" value="100" class="form-range" oninput="document.getElementById('chokingSilentVolumeDisplay').textContent = this.value">
                             </div>
                         </div>
                     </div>
 
-                    <div class="panel-footer">
-                        <button class="btn btn-outline" id="btnSendGiftImage" onclick="toggleGiftImageOnGreenScreen()">📺 發送到綠幕</button>
-                        <button class="btn btn-secondary" id="btnRefreshGiftImage" onclick="refreshGiftImageOnGreenScreen()" style="display: none;">🔄 重新整理</button>
-                        <button class="btn btn-primary" onclick="exportGiftImage()">💾 匯出圖片</button>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>時間設定</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>倒數秒數</label>
+                                    <input type="number" id="chokingInitialSeconds" value="30" min="5" max="300" class="input">
+                                </div>
+                                <div class="form-group">
+                                    <label>開場禁言（秒）</label>
+                                    <input type="number" id="chokingSilentSeconds" value="5" min="0" max="60" class="input">
+                                </div>
+                            </div>
+                            <p class="form-hint">倒數歸零=存活，血量歸零=懲罰</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>血量設定</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>扣血速度（每秒）</label>
+                                    <input type="number" id="chokingDrainRate" value="5" min="1" max="50" class="input">
+                                </div>
+                                <div class="form-group">
+                                    <label>回血速度（每秒）</label>
+                                    <input type="number" id="chokingRecoverRate" value="8" min="1" max="50" class="input">
+                                </div>
+                            </div>
+                            <p class="form-hint">不說話扣血，說話回血</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>麥克風設定</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-group">
+                                <label>音量門檻：<span id="chokingThresholdDisplay">30</span>%</label>
+                                <input type="range" id="chokingVolumeThreshold" min="0" max="100" value="30" class="form-range" oninput="document.getElementById('chokingThresholdDisplay').textContent = this.value">
+                            </div>
+                            <p class="form-hint">音量高於門檻=回血，低於門檻=扣血</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>懲罰影片</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-group">
+                                <label>血量歸零時播放</label>
+                                <div class="input-with-button">
+                                    <input type="text" id="chokingPunishmentPath" readonly placeholder="選擇影片..." class="input">
+                                    <button class="btn btn-outline" onclick="selectChokingPunishment()">選擇</button>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 8px;">
+                                <label>懲罰影片音量：<span id="chokingPunishmentVolumeDisplay">100</span>%</label>
+                                <input type="range" id="chokingPunishmentVolume" min="0" max="100" value="100" class="form-range" oninput="document.getElementById('chokingPunishmentVolumeDisplay').textContent = this.value">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>操作</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-row">
+                                <button class="btn btn-primary" onclick="saveChokingConfig()">
+                                    💾 儲存設定
+                                </button>
+                                <button class="btn btn-secondary" onclick="testChoking()">
+                                    🧪 測試窒息挑戰
+                                </button>
+                                <button class="btn btn-danger" onclick="stopChoking()">
+                                    🛑 停止挑戰
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -934,7 +1101,7 @@
             <section class="panel" id="panel-logs">
                 <header class="panel-header">
                     <div class="panel-title">
-                        <span class="title-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">📋</span>
+                        <span class="title-icon icon-logs">📋</span>
                         <div>
                             <h1>即時日誌</h1>
                             <p>查看系統運行狀態和事件記錄</p>
@@ -962,7 +1129,7 @@
             <section class="panel" id="panel-settings">
                 <header class="panel-header">
                     <div class="panel-title">
-                        <span class="title-icon" style="background: linear-gradient(135deg, #64748b, #475569);">⚙️</span>
+                        <span class="title-icon icon-settings">⚙️</span>
                         <div>
                             <h1>系統設定</h1>
                             <p>配置連接和顯示選項</p>
@@ -987,6 +1154,23 @@
                                 <div class="form-group">
                                     <label>WebSocket 埠號</label>
                                     <input type="number" id="portInput" class="input input-sm" value="10010">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3>🌐 代理設定</h3></div>
+                            <div class="card-content">
+                                <div class="form-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="proxyEnabled">
+                                        <span class="checkbox-box"></span>
+                                        啟用代理
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>代理地址</label>
+                                    <input type="text" id="proxyUrl" class="input" placeholder="socks5://127.0.0.1:10808">
+                                    <small>V2Ray SOCKS: socks5://127.0.0.1:10808 ｜ HTTP: http://127.0.0.1:10809</small>
                                 </div>
                             </div>
                         </div>
@@ -1557,6 +1741,28 @@
         </div>
     </div>
 
+    <!-- 快捷補鴨子對話框 (F6) -->
+    <div class="modal" id="quickAddDialog">
+        <div class="modal-header">
+            <h3>🦆 快捷補鴨子 (F6)</h3>
+            <button class="modal-close" onclick="closeDialog('quickAddDialog')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>用戶 ID</label>
+                <input type="text" id="quickAddUserId" class="input" placeholder="輸入用戶 ID（可選）">
+            </div>
+            <div class="form-group">
+                <label>數量（次數）</label>
+                <input type="number" id="quickAddCount" class="input input-sm" value="1" min="1">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeDialog('quickAddDialog')">取消</button>
+            <button class="btn btn-primary" onclick="doQuickAdd()">補鴨子</button>
+        </div>
+    </div>
+
     <!-- 總體資料庫用戶編輯對話框 -->
     <div class="modal" id="userDuckDialog">
         <div class="modal-header">
@@ -1578,12 +1784,9 @@
                 <input type="number" id="userDuckAmount" class="input" value="0" min="0">
             </div>
             <div class="quick-btns" id="userDuckAdjustBtns" style="display:none">
-                <button class="btn btn-sm btn-danger" onclick="adjustUserDuckAmount(-100)">-100</button>
-                <button class="btn btn-sm btn-danger" onclick="adjustUserDuckAmount(-10)">-10</button>
-                <button class="btn btn-sm btn-danger" onclick="adjustUserDuckAmount(-1)">-1</button>
-                <button class="btn btn-sm btn-primary" onclick="adjustUserDuckAmount(1)">+1</button>
-                <button class="btn btn-sm btn-primary" onclick="adjustUserDuckAmount(10)">+10</button>
-                <button class="btn btn-sm btn-primary" onclick="adjustUserDuckAmount(100)">+100</button>
+                <button class="btn btn-sm btn-danger" onclick="adjustUserDuckAmount(-1)">−</button>
+                <input type="number" id="userDuckAdjustStep" class="input" value="1" min="1" style="width:80px;text-align:center">
+                <button class="btn btn-sm btn-primary" onclick="adjustUserDuckAmount(1)">＋</button>
             </div>
         </div>
         <div class="modal-footer">

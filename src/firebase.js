@@ -68,8 +68,8 @@ async function updateWorldLeaderboard(uniqueId, nickname, avatar, totalDucks) {
             lastUpdated: Date.now()
         });
 
-        // 檢查是否成為第一名
-        return await checkAndUpdateChampion(uniqueId, nickname, totalDucks);
+        // 檢查是否成為第一名（包含頭像）
+        return await checkAndUpdateChampion(uniqueId, nickname, avatar, totalDucks);
     } catch (error) {
         console.error('[Firebase] 更新世界榜失敗:', error);
         return { isNewChampion: false };
@@ -80,10 +80,11 @@ async function updateWorldLeaderboard(uniqueId, nickname, avatar, totalDucks) {
  * 檢查並更新世界冠軍
  * @param {string} uniqueId - 用戶唯一ID
  * @param {string} nickname - 用戶暱稱
+ * @param {string} avatar - 用戶頭像URL
  * @param {number} totalDucks - 總鴨子數
  * @returns {Promise<{isNewChampion: boolean, previousChampion?: object}>}
  */
-async function checkAndUpdateChampion(uniqueId, nickname, totalDucks) {
+async function checkAndUpdateChampion(uniqueId, nickname, avatar, totalDucks) {
     if (!db) return { isNewChampion: false };
 
     try {
@@ -97,14 +98,14 @@ async function checkAndUpdateChampion(uniqueId, nickname, totalDucks) {
 
         // 如果是新人登頂（不是同一個人）
         if (shouldBecomeChampion && (!currentChampion || uniqueId !== currentChampion.uniqueId)) {
-            await set(championRef, { uniqueId, nickname, totalDucks });
+            await set(championRef, { uniqueId, nickname, avatar: avatar || '', totalDucks });
             console.log(`[Firebase] 新的世界冠軍: ${nickname} (${totalDucks} 鴨)`);
             return { isNewChampion: true, previousChampion: currentChampion };
         }
 
-        // 如果是同一人，只更新數量
+        // 如果是同一人，只更新數量和頭像
         if (currentChampion && uniqueId === currentChampion.uniqueId && totalDucks > currentChampion.totalDucks) {
-            await set(championRef, { uniqueId, nickname, totalDucks });
+            await set(championRef, { uniqueId, nickname, avatar: avatar || currentChampion.avatar || '', totalDucks });
         }
 
         return { isNewChampion: false };
@@ -183,6 +184,46 @@ function onWorldChampionChange(callback) {
 }
 
 /**
+ * 同步世界冠軍（從排行榜第一名更新）
+ * 用於刪除冠軍後自動補上第二名
+ * @returns {Promise<object|null>} - 新的冠軍資料
+ */
+async function syncWorldChampion() {
+    if (!initFirebase()) {
+        return null;
+    }
+
+    try {
+        // 獲取排行榜第一名
+        const leaderboard = await getWorldLeaderboard(1);
+        if (!leaderboard || leaderboard.length === 0) {
+            // 沒有人在排行榜上，清空冠軍
+            const championRef = ref(db, 'worldChampion');
+            await set(championRef, null);
+            console.log('[Firebase] 世界榜為空，已清除冠軍');
+            return null;
+        }
+
+        const topUser = leaderboard[0];
+        const championRef = ref(db, 'worldChampion');
+
+        // 更新冠軍為排行榜第一名
+        await set(championRef, {
+            uniqueId: topUser.uniqueId,
+            nickname: topUser.nickname,
+            avatar: topUser.avatar || '',
+            totalDucks: topUser.totalDucks
+        });
+
+        console.log(`[Firebase] 已同步世界冠軍: ${topUser.nickname} (${topUser.totalDucks} 鴨)`);
+        return topUser;
+    } catch (error) {
+        console.error('[Firebase] 同步世界冠軍失敗:', error);
+        return null;
+    }
+}
+
+/**
  * 檢查 Firebase 是否已配置
  * @returns {boolean}
  */
@@ -203,6 +244,7 @@ module.exports = {
     updateWorldLeaderboard,
     getWorldLeaderboard,
     getWorldChampion,
+    syncWorldChampion,
     onWorldChampionChange,
     isConfigured,
     isInitialized

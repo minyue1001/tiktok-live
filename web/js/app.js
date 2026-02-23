@@ -281,10 +281,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     initVolumeSlider();
     initNavigation();  // 初始化側邊欄導航
     initLogFilters();  // 初始化日誌過濾器
-    initConfigUpdateListener();  // 監聽配置更新（即時同步）
+    initConfigUpdateListener();  // 監聯配置更新（即時同步）
     initSceneChangeListener();  // 監聯場景切換
     initLogUpdateListener();  // 監聽日誌更新（IPC 推送）
     initDialogs();  // 初始化對話框事件
+    initChainBattleCollapseState();  // 初始化鎖鏈對抗面板折疊狀態
+    initBackupListener();  // 監聽備份完成通知
+    loadLeaderboardDisplayConfig();  // 載入綠幕排行榜顯示設定
     await refreshAccountList();  // 載入帳號列表
     await updateChatDisplayStatus();  // 初始化彈幕顯示狀態
     await updateLogs();  // 初始載入日誌
@@ -311,7 +314,28 @@ function initDialogs() {
     });
 }
 
-// === 配置更新監聽（即時同步不需重開）===
+// === 備份完成通知 ===
+function initBackupListener() {
+    if (window.electronAPI && window.electronAPI.onBackupCompleted) {
+        window.electronAPI.onBackupCompleted((time) => {
+            const el = document.getElementById('lastBackupTime');
+            if (el) {
+                const d = new Date(time);
+                el.textContent = `💾 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                el.title = `上次備份: ${d.toLocaleString()}`;
+            }
+        });
+    }
+}
+
+// === 綠幕排行榜顯示設定 ===
+function loadLeaderboardDisplayConfig() {
+    document.getElementById('gsLeaderboardCount').value = config.greenscreen_leaderboard_count || 5;
+    document.getElementById('gsLeaderboardRotate').checked = config.greenscreen_leaderboard_rotate !== false;
+    document.getElementById('gsLeaderboardRotateInterval').value = config.greenscreen_leaderboard_rotate_interval || 5;
+}
+
+// === 配置更新監聯（即時同步不需重開）===
 function initConfigUpdateListener() {
     if (window.electronAPI && window.electronAPI.onConfigUpdate) {
         window.electronAPI.onConfigUpdate(async (newConfig) => {
@@ -476,6 +500,23 @@ function switchWheelSubTab(tabId) {
     }
 }
 
+// === 抓鴨子子標籤切換 ===
+function switchDuckSubTab(tabId) {
+    // 更新子標籤按鈕
+    document.querySelectorAll('.duck-subtab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    const activeTab = document.querySelector(`.duck-subtab[data-ducktab="${tabId}"]`);
+    if (activeTab) activeTab.classList.add('active');
+
+    // 切換內容區塊
+    document.querySelectorAll('.duck-subtab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    const activeContent = document.getElementById(`ducktab-${tabId}`);
+    if (activeContent) activeContent.classList.add('active');
+}
+
 // === 子面板狀態更新 ===
 function updateSubtabStatus(module, enabled) {
     const statusEl = document.getElementById(`${module}Status`);
@@ -530,14 +571,22 @@ async function loadConfig() {
         document.getElementById('entryEnabled').checked = config.entry_enabled || false;
         document.getElementById('giftboxEnabled').checked = config.giftbox_enabled || false;
         document.getElementById('chainBattleEnabled').checked = config.chain_battle_enabled || false;
+        document.getElementById('chokingEnabled').checked = config.choking_enabled || false;
         document.getElementById('portInput').value = config.port || 10010;
 
         // 更新子面板狀態顯示
         updateSubtabStatus('wheel', config.wheel_enabled);
         updateSubtabStatus('giftbox', config.giftbox_enabled || false);
+        const rvEl = document.getElementById('randomVideoEnabled');
+        if (rvEl) rvEl.checked = config.random_video_enabled || false;
+        updateSubtabStatus('randomVideo', config.random_video_enabled || false);
         document.getElementById('apiKeyInput').value = config.api_key || '';
         document.getElementById('autoOpenGreenScreen').checked = config.auto_open_green_screen || false;
         document.getElementById('languageSelect').value = config.language || 'zh-TW';
+
+        // 代理設定
+        document.getElementById('proxyEnabled').checked = config.proxy_enabled || false;
+        document.getElementById('proxyUrl').value = config.proxy_url || '';
 
         // 載入抓鴨子設定
         loadDuckCatchConfig();
@@ -545,6 +594,9 @@ async function loadConfig() {
 
         // 載入鎖鏈對抗設定
         loadChainBattleSettings();
+
+        // 載入窒息挑戰設定
+        loadChokingSettings();
 
         // 設定語言
         currentLang = config.language || 'zh-TW';
@@ -588,14 +640,21 @@ async function saveSettings() {
     const autoOpen = document.getElementById('autoOpenGreenScreen').checked;
     const lang = document.getElementById('languageSelect').value;
 
-    // 檢查 API Key 或 Port 是否有變更
-    const needRestart = (config.api_key !== apiKey || config.port !== port);
+    // 代理設定
+    const proxyEnabled = document.getElementById('proxyEnabled').checked;
+    const proxyUrl = document.getElementById('proxyUrl').value.trim();
+
+    // 檢查 API Key、Port 或代理是否有變更
+    const needRestart = (config.api_key !== apiKey || config.port !== port ||
+                         config.proxy_enabled !== proxyEnabled || config.proxy_url !== proxyUrl);
 
     config.tiktok_username = tiktokUsername;
     config.port = port;
     config.api_key = apiKey;
     config.auto_open_green_screen = autoOpen;
     config.language = lang;
+    config.proxy_enabled = proxyEnabled;
+    config.proxy_url = proxyUrl;
     currentLang = lang;
 
     await pywebview.api.update_config({
@@ -603,15 +662,17 @@ async function saveSettings() {
         port: port,
         api_key: apiKey,
         auto_open_green_screen: autoOpen,
-        language: lang
+        language: lang,
+        proxy_enabled: proxyEnabled,
+        proxy_url: proxyUrl
     });
 
     applyLanguage();
     addLogLocal(t('settingsSaved'));
 
-    // 如果 API Key 或 Port 變更，提示需要重啟
-    if (needRestart && (apiKey || config.api_key)) {
-        addLogLocal('⚠️ API Key 或埠號已變更，請重啟程式以套用新設定');
+    // 如果連接相關設定變更，提示需要重新連接
+    if (needRestart) {
+        addLogLocal('⚠️ 連接設定已變更，請重新連接以套用新設定');
     }
 }
 
@@ -678,6 +739,7 @@ document.getElementById('randomVideoEnabled')?.addEventListener('change', async 
     config.random_video_enabled = e.target.checked;
     await pywebview.api.update_config({ random_video_enabled: e.target.checked });
     addLogLocal(`隨機影片模組: ${e.target.checked ? '已啟用' : '已停用'}`);
+    updateSubtabStatus('randomVideo', e.target.checked);
 
     // 通知綠幕視窗
     try {
@@ -814,7 +876,8 @@ function openVideoSettings() {
 }
 
 function openGiftboxSettings() {
-    switchPanel('giftbox');
+    switchPanel('wheel');
+    switchWheelSubTab('giftbox');
 }
 
 // === 綠幕視窗 ===
@@ -965,6 +1028,27 @@ function showSimulateDialog() {
                 });
             }
         });
+    }
+
+    // 窒息挑戰禮物 - 檢查是否啟用
+    if (config.choking_enabled) {
+        const chokingCfg = config.choking_config || {};
+        // 觸發禮物
+        if (chokingCfg.trigger_gift && !addedGifts.has(chokingCfg.trigger_gift)) {
+            addedGifts.add(chokingCfg.trigger_gift);
+            giftOptions.push({
+                value: chokingCfg.trigger_gift,
+                text: `${chokingCfg.trigger_gift} [窒息-觸發]`
+            });
+        }
+        // 禁言禮物
+        if (chokingCfg.silent_gift && !addedGifts.has(chokingCfg.silent_gift)) {
+            addedGifts.add(chokingCfg.silent_gift);
+            giftOptions.push({
+                value: chokingCfg.silent_gift,
+                text: `${chokingCfg.silent_gift} [窒息-禁言]`
+            });
+        }
     }
 
     if (giftOptions.length === 0) {
@@ -2164,11 +2248,30 @@ function loadDuckCatchConfig() {
     document.getElementById('duckPityMinAmount').value = cfg.pity_min_amount || 5000;
     document.getElementById('duckPityThresholdJackpot').value = cfg.pity_threshold_jackpot || 2000;
     document.getElementById('duckPityJackpotAmount').value = cfg.pity_jackpot_amount || 10000;
+    // 軟保底
+    document.getElementById('duckSoftPityEnabled').checked = cfg.soft_pity_enabled || false;
+    document.getElementById('duckSoftPityStart').value = cfg.soft_pity_start || 70;
+    // 連擊
+    document.getElementById('duckComboEnabled').checked = cfg.combo_enabled || false;
+    document.getElementById('duckComboWindow').value = cfg.combo_window || 30;
+    document.getElementById('duckComboMultipliers').value = (cfg.combo_multipliers || [1, 1.5, 2, 3]).join(', ');
     updatePityDisplay();
     // 里程碑煙火影片
     document.getElementById('milestoneFireworkVideo').value = config.milestone_firework_video || '';
     // 世界冠軍送禮特效影片
     document.getElementById('worldChampionGiftVideo').value = config.world_champion_gift_video || '';
+    // 鴨子查詢設定
+    const dqCfg = config.duck_query_config || {};
+    document.getElementById('duckQueryKeyword').value = config.duck_query_keyword || dqCfg.keyword || '查看';
+    document.getElementById('duckQueryDuration').value = dqCfg.duration || 5;
+    document.getElementById('duckQuerySize').value = dqCfg.size || 'medium';
+    document.getElementById('duckQueryPosition').value = dqCfg.position || 'center';
+    document.getElementById('duckQueryBorderColor').value = dqCfg.borderColor || '#ffd700';
+    document.getElementById('duckQueryTextColor').value = dqCfg.textColor || '#ffffff';
+    document.getElementById('duckQueryNumberColor').value = dqCfg.numberColor || '#ffd700';
+    document.getElementById('duckQueryBgColor').value = dqCfg.bgColor || '#000000';
+    document.getElementById('duckQueryFontSize').value = dqCfg.fontSize || 48;
+    document.getElementById('duckQueryFontSizeValue').textContent = `${dqCfg.fontSize || 48}px`;
     toggleDuckTriggerOptions();
     renderDuckCaughtVideoList();
     renderDuckMissedVideoList();
@@ -2534,7 +2637,15 @@ async function saveDuckCatchConfig() {
         pity_threshold: parseInt(document.getElementById('duckPityThreshold').value) || 1000,
         pity_min_amount: parseInt(document.getElementById('duckPityMinAmount').value) || 5000,
         pity_threshold_jackpot: parseInt(document.getElementById('duckPityThresholdJackpot').value) || 2000,
-        pity_jackpot_amount: parseInt(document.getElementById('duckPityJackpotAmount').value) || 10000
+        pity_jackpot_amount: parseInt(document.getElementById('duckPityJackpotAmount').value) || 10000,
+        // 軟保底
+        soft_pity_enabled: document.getElementById('duckSoftPityEnabled').checked,
+        soft_pity_start: parseInt(document.getElementById('duckSoftPityStart').value) || 70,
+        // 連擊
+        combo_enabled: document.getElementById('duckComboEnabled').checked,
+        combo_window: parseInt(document.getElementById('duckComboWindow').value) || 30,
+        combo_multipliers: document.getElementById('duckComboMultipliers').value
+            .split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n) && n > 0)
     };
 
     // 驗證
@@ -2565,10 +2676,28 @@ async function saveDuckCatchConfig() {
     const worldChampionGiftVideo = document.getElementById('worldChampionGiftVideo').value || '';
     config.world_champion_gift_video = worldChampionGiftVideo;
 
+    // 鴨子查詢設定
+    const duckQueryKeyword = document.getElementById('duckQueryKeyword').value.trim() || '查看';
+    config.duck_query_keyword = duckQueryKeyword;
+    const duckQueryConfig = {
+        keyword: duckQueryKeyword,
+        duration: parseInt(document.getElementById('duckQueryDuration').value) || 5,
+        size: document.getElementById('duckQuerySize').value || 'medium',
+        position: document.getElementById('duckQueryPosition').value || 'center',
+        borderColor: document.getElementById('duckQueryBorderColor').value || '#ffd700',
+        textColor: document.getElementById('duckQueryTextColor').value || '#ffffff',
+        numberColor: document.getElementById('duckQueryNumberColor').value || '#ffd700',
+        bgColor: document.getElementById('duckQueryBgColor').value || '#000000',
+        fontSize: parseInt(document.getElementById('duckQueryFontSize').value) || 48
+    };
+    config.duck_query_config = duckQueryConfig;
+
     await pywebview.api.update_config({
         duck_catch_config: cfg,
         milestone_firework_video: milestoneVideo,
-        world_champion_gift_video: worldChampionGiftVideo
+        world_champion_gift_video: worldChampionGiftVideo,
+        duck_query_keyword: duckQueryKeyword,
+        duck_query_config: duckQueryConfig
     });
     addLogLocal('🦆 已儲存抓鴨子設定');
 }
@@ -2671,6 +2800,12 @@ async function testWorldChampionGiftEffect() {
             addLogLocal('❌ 測試世界冠軍特效失敗');
         }
     }, 500);
+}
+
+// 測試鴨子查詢顯示
+function testDuckQuery() {
+    pywebview.api.simulate_chat('測試玩家', config.duck_query_keyword || '查看');
+    addLogLocal('🔍 已發送測試查詢');
 }
 
 // 調整鴨子數量
@@ -2924,6 +3059,37 @@ function initDuckCatchEvents() {
             showSimulateDialog();
         });
     }
+
+    // 監聽 F6 快捷鍵開啟快捷補禮物
+    if (window.electronAPI && window.electronAPI.onOpenQuickAdd) {
+        window.electronAPI.onOpenQuickAdd(() => {
+            showQuickAddDialog();
+        });
+    }
+}
+
+// === 快捷補鴨子 (F6) ===
+function showQuickAddDialog() {
+    openDialog('quickAddDialog');
+    // 聚焦到數量輸入框
+    setTimeout(() => {
+        document.getElementById('quickAddCount')?.focus();
+        document.getElementById('quickAddCount')?.select();
+    }, 100);
+}
+
+async function doQuickAdd() {
+    const userId = document.getElementById('quickAddUserId').value.trim() || '快捷補鴨子';
+    const count = parseInt(document.getElementById('quickAddCount').value) || 1;
+
+    try {
+        await pywebview.api.quick_add_gift('duck', userId, count);
+        addLogLocal(`🦆 [F6] 補鴨子 x${count} (${userId})`);
+    } catch (e) {
+        console.error('快捷補鴨子失敗:', e);
+    }
+
+    closeDialog('quickAddDialog');
 }
 
 // 更新保底顯示
@@ -3029,6 +3195,55 @@ async function clearLeaderboard() {
     }
 }
 
+// 手動備份
+async function triggerManualBackup() {
+    try {
+        await pywebview.api.trigger_backup();
+        addLogLocal('💾 手動備份已完成');
+    } catch (e) {
+        console.error('備份失敗:', e);
+    }
+}
+
+// 匯出排行榜
+async function exportLeaderboard() {
+    try {
+        const result = await pywebview.api.export_leaderboard();
+        if (result.success) {
+            addLogLocal(`📤 排行榜已匯出到: ${result.path}`);
+        }
+    } catch (e) {
+        console.error('匯出失敗:', e);
+    }
+}
+
+// 匯入排行榜
+async function importLeaderboard() {
+    const mode = confirm('按「確定」覆蓋現有資料，按「取消」合併資料') ? 'overwrite' : 'merge';
+    if (mode === 'overwrite' && !confirm('覆蓋將取代所有現有排行榜資料，確定繼續？')) return;
+
+    try {
+        const result = await pywebview.api.import_leaderboard(mode);
+        if (result.success) {
+            await refreshLeaderboard();
+            addLogLocal(`📥 排行榜已匯入 (${mode === 'overwrite' ? '覆蓋' : '合併'})`);
+        } else if (result.error) {
+            alert(`匯入失敗: ${result.error}`);
+        }
+    } catch (e) {
+        console.error('匯入失敗:', e);
+    }
+}
+
+// 儲存綠幕排行榜顯示設定
+async function saveLeaderboardDisplayConfig() {
+    await pywebview.api.update_config({
+        greenscreen_leaderboard_count: parseInt(document.getElementById('gsLeaderboardCount').value) || 5,
+        greenscreen_leaderboard_rotate: document.getElementById('gsLeaderboardRotate').checked,
+        greenscreen_leaderboard_rotate_interval: parseInt(document.getElementById('gsLeaderboardRotateInterval').value) || 5
+    });
+}
+
 // 渲染排行榜
 function renderLeaderboard(data) {
     // 渲染累計排行
@@ -3119,12 +3334,22 @@ async function checkFirebaseConnection() {
 async function refreshWorldLeaderboard() {
     updateFirebaseIndicator('connecting');
     try {
+        // 先同步世界冠軍（確保刪除後第二名補上）
+        await pywebview.api.sync_world_champion();
+
         const [leaderboard, champion] = await Promise.all([
             pywebview.api.get_world_leaderboard(),
             pywebview.api.get_world_champion()
         ]);
         renderWorldLeaderboard(leaderboard, champion);
         updateFirebaseIndicator('online');
+
+        // 同時更新綠幕的世界榜顯示
+        try {
+            await pywebview.api.refresh_greenscreen_world();
+        } catch (e) {
+            console.log('綠幕更新跳過:', e);
+        }
     } catch (error) {
         console.error('刷新世界榜失敗:', error);
         updateFirebaseIndicator('offline');
@@ -3248,10 +3473,12 @@ function openEditUserDialog(uniqueId) {
     openDialog('userDuckDialog');
 }
 
-function adjustUserDuckAmount(delta) {
+function adjustUserDuckAmount(direction) {
     const input = document.getElementById('userDuckAmount');
+    const stepInput = document.getElementById('userDuckAdjustStep');
+    const step = Math.max(1, parseInt(stepInput.value) || 1);
     const current = parseInt(input.value) || 0;
-    input.value = Math.max(0, current + delta);
+    input.value = Math.max(0, current + direction * step);
 }
 
 async function saveUserDuck() {
@@ -3318,6 +3545,18 @@ document.getElementById('chainBattleEnabled')?.addEventListener('change', async 
         chain_battle_config: chainConfig
     });
     addLogLocal(`⛓️ 鎖鏈對抗模組已${e.target.checked ? '啟用' : '禁用'}`);
+});
+
+// 啟用/禁用窒息挑戰模組
+document.getElementById('chokingEnabled')?.addEventListener('change', async (e) => {
+    config.choking_enabled = e.target.checked;
+    const chokingConfig = getChokingConfig();
+    config.choking_config = chokingConfig;
+    await pywebview.api.update_config({
+        choking_enabled: e.target.checked,
+        choking_config: chokingConfig
+    });
+    addLogLocal(`🫁 窒息挑戰模組已${e.target.checked ? '啟用' : '禁用'}`);
 });
 
 // 基礎鎖鏈數變更時自動儲存
@@ -3806,7 +4045,7 @@ function renderChainAddGiftList() {
             <span style="font-size: 20px;">🎁</span>
             <div style="flex: 1;">
                 <div style="font-weight: bold; color: #fff;">${gift.name}</div>
-                <div style="font-size: 12px; color: #9ca3af;">每次 +${gift.amount} 鎖鏈</div>
+                <div style="font-size: 12px; color: ${gift.amount >= 0 ? '#9ca3af' : '#ef4444'};">每次 ${gift.amount >= 0 ? '+' : ''}${gift.amount} 鎖鏈</div>
             </div>
             <button class="btn btn-sm btn-danger" onclick="deleteChainAddGift(${index})">刪除</button>
         </div>
@@ -3871,6 +4110,36 @@ async function saveChainBattleConfigAndNotify() {
         console.error('儲存失敗:', e);
         showToast('❌ 儲存失敗');
     }
+}
+
+// 鎖鏈對抗面板折疊/展開
+function toggleChainBattleCollapse() {
+    const panel = document.getElementById('panel-chainbattle');
+    if (panel) {
+        panel.classList.toggle('collapsed');
+        // 記住折疊狀態到 localStorage
+        const isCollapsed = panel.classList.contains('collapsed');
+        localStorage.setItem('chainBattleCollapsed', isCollapsed);
+    }
+}
+
+// 初始化鎖鏈對抗面板折疊狀態
+function initChainBattleCollapseState() {
+    const isCollapsed = localStorage.getItem('chainBattleCollapsed') === 'true';
+    if (isCollapsed) {
+        const panel = document.getElementById('panel-chainbattle');
+        if (panel) {
+            panel.classList.add('collapsed');
+        }
+    }
+
+    // 快捷鍵 Ctrl+Shift+O 切換折疊
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'o') {
+            e.preventDefault();
+            toggleChainBattleCollapse();
+        }
+    });
 }
 
 // 手動啟動鎖鏈對抗
@@ -4063,431 +4332,106 @@ async function clearHighLevelUsers() {
     }
 }
 
-// ============ 禮物圖生成器 ============
-let giftImageItems = [];
+// ============ 窒息挑戰 ============
+// chokingAnimationPath 已移除（不再需要動畫影片）
+let chokingPunishmentPath = '';
+let chokingSilentVideoPath = '';
 
-function addGiftImageItem() {
-    showGiftImageDialog();
-}
-window.addGiftImageItem = addGiftImageItem;
-
-function showGiftImageDialog(editIndex = -1) {
-    const isEdit = editIndex >= 0;
-    const item = isEdit ? giftImageItems[editIndex] : { name: '', iconUrl: '', font: 'Microsoft JhengHei' };
-
-    const dialog = document.createElement('div');
-    dialog.className = 'gift-dialog-overlay';
-    dialog.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;';
-    dialog.innerHTML = `
-        <div class="gift-dialog-box" style="background:var(--bg-card, #1e1e2e);border-radius:12px;padding:0;min-width:400px;max-width:90%;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-            <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.1);">
-                <h3 style="margin:0;font-size:16px;font-weight:600;">${isEdit ? '編輯禮物' : '新增禮物'}</h3>
-                <button class="modal-close" onclick="this.closest('.gift-dialog-overlay').remove()" style="background:none;border:none;color:#999;font-size:24px;cursor:pointer;padding:0;width:32px;height:32px;">×</button>
-            </div>
-            <div class="modal-body" style="padding:20px;display:flex;flex-direction:column;gap:16px;">
-                <div class="preview-icon" id="giftDialogPreview" style="width:80px;height:80px;margin:0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1);border-radius:12px;font-size:40px;">
-                    ${item.iconUrl ? `<img src="${item.iconUrl}" style="max-width:100%;max-height:100%;" onerror="this.parentElement.innerHTML='🎁'">` : '🎁'}
-                </div>
-                <div class="form-group">
-                    <label style="display:block;margin-bottom:6px;font-size:13px;color:#aaa;">禮物名稱（顯示名稱）</label>
-                    <input type="text" id="giftDialogName" class="input" value="${item.name}" placeholder="例如: 烏薩奇" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;">
-                </div>
-                <div class="form-group">
-                    <label style="display:block;margin-bottom:6px;font-size:13px;color:#aaa;">字體</label>
-                    <select id="giftDialogFont" class="input" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;">
-                        <option value="Microsoft JhengHei" ${item.font === 'Microsoft JhengHei' ? 'selected' : ''}>微軟正黑體</option>
-                        <option value="Noto Sans TC" ${item.font === 'Noto Sans TC' ? 'selected' : ''}>Noto Sans TC</option>
-                        <option value="Arial" ${item.font === 'Arial' ? 'selected' : ''}>Arial</option>
-                        <option value="Times New Roman" ${item.font === 'Times New Roman' ? 'selected' : ''}>Times New Roman</option>
-                        <option value="Comic Sans MS" ${item.font === 'Comic Sans MS' ? 'selected' : ''}>Comic Sans MS</option>
-                        <option value="Impact" ${item.font === 'Impact' ? 'selected' : ''}>Impact</option>
-                        <option value="Georgia" ${item.font === 'Georgia' ? 'selected' : ''}>Georgia</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label style="display:block;margin-bottom:6px;font-size:13px;color:#aaa;">禮物圖片</label>
-                    <input type="file" id="giftDialogFile" accept="image/*" onchange="previewGiftDialogFile(this)" style="display:none;">
-                    <input type="hidden" id="giftDialogUrl" value="${item.iconUrl}">
-                    <div style="display:flex;gap:10px;">
-                        <button type="button" onclick="document.getElementById('giftDialogFile').click()" style="flex:1;padding:10px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;cursor:pointer;">選擇圖片檔案</button>
-                        <button type="button" onclick="clearGiftDialogImage()" style="padding:10px 12px;background:rgba(255,100,100,0.2);border:1px solid rgba(255,100,100,0.3);border-radius:8px;color:#ff6b6b;cursor:pointer;">清除</button>
-                    </div>
-                    <div id="giftDialogFileName" style="margin-top:8px;font-size:12px;color:#888;">${item.iconUrl ? '已選擇圖片' : '未選擇圖片'}</div>
-                </div>
-            </div>
-            <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);">
-                <button class="btn btn-outline" onclick="this.closest('.gift-dialog-overlay').remove()" style="padding:8px 16px;background:transparent;border:1px solid rgba(255,255,255,0.3);border-radius:8px;color:#fff;cursor:pointer;">取消</button>
-                <button class="btn btn-primary" onclick="saveGiftImageItem(${editIndex})" style="padding:8px 16px;background:#7c3aed;border:none;border-radius:8px;color:#fff;cursor:pointer;">${isEdit ? '儲存' : '新增'}</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(dialog);
-    document.getElementById('giftDialogName').focus();
+function loadChokingSettings() {
+    const cfg = config.choking_config || {};
+    document.getElementById('chokingTriggerGift').value = cfg.trigger_gift || '';
+    document.getElementById('chokingAddSeconds').value = cfg.add_seconds || 5;
+    document.getElementById('chokingSilentGift').value = cfg.silent_gift || '';
+    document.getElementById('chokingSilentAddSeconds').value = cfg.silent_add_seconds || 3;
+    document.getElementById('chokingInitialSeconds').value = cfg.initial_seconds || 30;
+    document.getElementById('chokingSilentSeconds').value = cfg.silent_seconds || 5;
+    document.getElementById('chokingDrainRate').value = cfg.drain_rate || 5;
+    document.getElementById('chokingRecoverRate').value = cfg.recover_rate || 8;
+    document.getElementById('chokingVolumeThreshold').value = cfg.volume_threshold || 30;
+    document.getElementById('chokingThresholdDisplay').textContent = cfg.volume_threshold || 30;
+    chokingPunishmentPath = cfg.punishment_video || '';
+    document.getElementById('chokingPunishmentPath').value = chokingPunishmentPath ? chokingPunishmentPath.split(/[/\\]/).pop() : '';
+    document.getElementById('chokingPunishmentVolume').value = cfg.punishment_volume ?? 100;
+    document.getElementById('chokingPunishmentVolumeDisplay').textContent = cfg.punishment_volume ?? 100;
+    chokingSilentVideoPath = cfg.silent_video || '';
+    document.getElementById('chokingSilentVideoPath').value = chokingSilentVideoPath ? chokingSilentVideoPath.split(/[/\\]/).pop() : '';
+    document.getElementById('chokingSilentVolume').value = cfg.silent_volume ?? 100;
+    document.getElementById('chokingSilentVolumeDisplay').textContent = cfg.silent_volume ?? 100;
 }
 
-function previewGiftDialogFile(input) {
-    const preview = document.getElementById('giftDialogPreview');
-    const fileNameDiv = document.getElementById('giftDialogFileName');
-    const urlInput = document.getElementById('giftDialogUrl');
-
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const dataUrl = e.target.result;
-            preview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:100%;">`;
-            urlInput.value = dataUrl;
-            fileNameDiv.textContent = file.name;
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-function clearGiftDialogImage() {
-    const preview = document.getElementById('giftDialogPreview');
-    const fileNameDiv = document.getElementById('giftDialogFileName');
-    const urlInput = document.getElementById('giftDialogUrl');
-    const fileInput = document.getElementById('giftDialogFile');
-
-    preview.innerHTML = '🎁';
-    urlInput.value = '';
-    fileInput.value = '';
-    fileNameDiv.textContent = '未選擇圖片';
-}
-
-function saveGiftImageItem(editIndex) {
-    const name = document.getElementById('giftDialogName').value.trim();
-    const iconUrl = document.getElementById('giftDialogUrl').value.trim();
-    const font = document.getElementById('giftDialogFont').value;
-
-    if (!name) {
-        alert('請輸入禮物名稱');
-        return;
-    }
-
-    const item = { name, iconUrl, font };
-
-    if (editIndex >= 0) {
-        giftImageItems[editIndex] = item;
-    } else {
-        giftImageItems.push(item);
-    }
-
-    document.querySelector('.gift-dialog-overlay')?.remove();
-    renderGiftImageList();
-    updateGiftImagePreview();
-    saveGiftImageConfig();
-}
-
-function deleteGiftImageItem(index) {
-    if (!confirm('確定要刪除此禮物嗎？')) return;
-    giftImageItems.splice(index, 1);
-    renderGiftImageList();
-    updateGiftImagePreview();
-    saveGiftImageConfig();
-}
-
-function moveGiftImageItem(index, direction) {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= giftImageItems.length) return;
-    [giftImageItems[index], giftImageItems[newIndex]] = [giftImageItems[newIndex], giftImageItems[index]];
-    renderGiftImageList();
-    updateGiftImagePreview();
-    saveGiftImageConfig();
-}
-
-function renderGiftImageList() {
-    const container = document.getElementById('giftImageList');
-    if (!container) return;
-
-    if (giftImageItems.length === 0) {
-        container.innerHTML = '<div class="empty-list">尚未新增禮物，點擊上方「新增」按鈕開始</div>';
-        return;
-    }
-
-    container.innerHTML = giftImageItems.map((item, i) => `
-        <div class="gift-image-item">
-            ${item.iconUrl
-                ? `<img class="gift-icon" src="${item.iconUrl}" onerror="this.className='gift-icon placeholder'; this.outerHTML='<div class=\\'gift-icon placeholder\\'>🎁</div>'">`
-                : '<div class="gift-icon placeholder">🎁</div>'
-            }
-            <div class="gift-info">
-                <div class="gift-name" style="font-family:'${item.font || 'Microsoft JhengHei'}',sans-serif;">${escapeHtml(item.name)}</div>
-                <div class="gift-url" style="font-size:11px;color:#888;">${item.font || '微軟正黑體'}</div>
-            </div>
-            <div class="gift-actions">
-                <button onclick="moveGiftImageItem(${i}, -1)" title="上移">⬆️</button>
-                <button onclick="moveGiftImageItem(${i}, 1)" title="下移">⬇️</button>
-                <button onclick="showGiftImageDialog(${i})" title="編輯">✏️</button>
-                <button class="delete" onclick="deleteGiftImageItem(${i})" title="刪除">🗑️</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function getGiftImageSettings() {
+function getChokingConfig() {
     return {
-        columns: parseInt(document.getElementById('giftImageColumns')?.value || 3),
-        gap: parseInt(document.getElementById('giftImageGap')?.value || 20),
-        iconSize: parseInt(document.getElementById('giftImageIconSize')?.value || 64),
-        padding: parseInt(document.getElementById('giftImagePadding')?.value || 30),
-        iconPosition: document.getElementById('giftImageIconPosition')?.value || 'left',
-        bgType: document.getElementById('giftImageBgType')?.value || 'solid',
-        bgColor: document.getElementById('giftImageBgColor')?.value || '#1a1a2e',
-        bgColor2: document.getElementById('giftImageBgColor2')?.value || '#16213e',
-        rounded: document.getElementById('giftImageRounded')?.checked !== false,
-        fontSize: parseInt(document.getElementById('giftImageFontSize')?.value || 24),
-        fontColor: document.getElementById('giftImageFontColor')?.value || '#ffffff',
-        fontBold: document.getElementById('giftImageFontBold')?.checked !== false,
-        textShadow: document.getElementById('giftImageTextShadow')?.checked !== false
+        trigger_gift: (document.getElementById('chokingTriggerGift')?.value || '').trim(),
+        add_seconds: parseInt(document.getElementById('chokingAddSeconds')?.value) || 5,
+        silent_gift: (document.getElementById('chokingSilentGift')?.value || '').trim(),
+        silent_add_seconds: parseInt(document.getElementById('chokingSilentAddSeconds')?.value) || 3,
+        initial_seconds: parseInt(document.getElementById('chokingInitialSeconds')?.value) || 30,
+        silent_seconds: parseInt(document.getElementById('chokingSilentSeconds')?.value) || 5,
+        drain_rate: parseInt(document.getElementById('chokingDrainRate')?.value) || 5,
+        recover_rate: parseInt(document.getElementById('chokingRecoverRate')?.value) || 8,
+        volume_threshold: parseInt(document.getElementById('chokingVolumeThreshold')?.value) || 30,
+        punishment_video: chokingPunishmentPath,
+        punishment_volume: parseInt(document.getElementById('chokingPunishmentVolume')?.value) ?? 100,
+        silent_video: chokingSilentVideoPath,
+        silent_volume: parseInt(document.getElementById('chokingSilentVolume')?.value) ?? 100
     };
 }
 
-function toggleGiftImageBgOptions() {
-    const bgType = document.getElementById('giftImageBgType')?.value;
-    const colorGroup = document.getElementById('giftImageBgColorGroup');
-    const color2Group = document.getElementById('giftImageBgColor2Group');
-
-    if (bgType === 'transparent') {
-        colorGroup.style.display = 'none';
-        color2Group.style.display = 'none';
-    } else if (bgType === 'gradient') {
-        colorGroup.style.display = '';
-        color2Group.style.display = '';
-    } else {
-        colorGroup.style.display = '';
-        color2Group.style.display = 'none';
-    }
+async function saveChokingConfig() {
+    const cfg = getChokingConfig();
+    config.choking_config = cfg;
+    await pywebview.api.update_config({ choking_config: cfg });
+    addLogLocal('🫁 窒息挑戰設定已儲存');
 }
 
-function updateGiftImagePreview() {
-    const container = document.getElementById('giftImagePreview');
-    if (!container) return;
-
-    if (giftImageItems.length === 0) {
-        container.innerHTML = '<div class="preview-placeholder">新增禮物後即可預覽</div>';
-        return;
-    }
-
-    const settings = getGiftImageSettings();
-
-    // 背景樣式
-    let bgStyle = '';
-    if (settings.bgType === 'transparent') {
-        bgStyle = 'background: transparent;';
-    } else if (settings.bgType === 'gradient') {
-        bgStyle = `background: linear-gradient(135deg, ${settings.bgColor}, ${settings.bgColor2});`;
-    } else {
-        bgStyle = `background: ${settings.bgColor};`;
-    }
-
-    // 文字樣式
-    const textStyle = `
-        font-size: ${settings.fontSize}px;
-        color: ${settings.fontColor};
-        font-weight: ${settings.fontBold ? 'bold' : 'normal'};
-        ${settings.textShadow ? 'text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);' : ''}
-    `;
-
-    // 圖示位置樣式
-    const itemFlexDirection = settings.iconPosition === 'right' ? 'row-reverse' : 'row';
-
-    container.innerHTML = `
-        <div class="gift-image-grid" style="
-            ${bgStyle}
-            padding: ${settings.padding}px;
-            gap: ${settings.gap}px;
-            grid-template-columns: repeat(${settings.columns}, 1fr);
-            ${settings.rounded ? 'border-radius: 16px;' : ''}
-        ">
-            ${giftImageItems.map(item => `
-                <div class="gift-image-grid-item" style="flex-direction: ${itemFlexDirection};">
-                    ${item.iconUrl
-                        ? `<img src="${item.iconUrl}" style="width: ${settings.iconSize}px; height: ${settings.iconSize}px;" onerror="this.style.display='none'">`
-                        : `<div style="width: ${settings.iconSize}px; height: ${settings.iconSize}px; display: flex; align-items: center; justify-content: center; font-size: ${settings.iconSize * 0.6}px;">🎁</div>`
-                    }
-                    <span class="gift-label" style="${textStyle} font-family: '${item.font || 'Microsoft JhengHei'}', sans-serif;">${escapeHtml(item.name)}</span>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-async function saveGiftImageConfig() {
+async function selectChokingPunishment() {
     try {
-        const settings = getGiftImageSettings();
-        const config = {
-            items: giftImageItems,
-            settings: settings
-        };
-        await pywebview.api.save_gift_image_config(config);
-    } catch (e) {
-        console.error('儲存禮物圖設定失敗:', e);
-    }
-}
-
-async function loadGiftImageConfig() {
-    try {
-        const config = await pywebview.api.get_gift_image_config();
-        if (config) {
-            giftImageItems = config.items || [];
-            const s = config.settings || {};
-
-            if (s.columns) document.getElementById('giftImageColumns').value = s.columns;
-            if (s.gap !== undefined) document.getElementById('giftImageGap').value = s.gap;
-            if (s.iconSize) document.getElementById('giftImageIconSize').value = s.iconSize;
-            if (s.padding !== undefined) document.getElementById('giftImagePadding').value = s.padding;
-            if (s.iconPosition) document.getElementById('giftImageIconPosition').value = s.iconPosition;
-            if (s.bgType) document.getElementById('giftImageBgType').value = s.bgType;
-            if (s.bgColor) document.getElementById('giftImageBgColor').value = s.bgColor;
-            if (s.bgColor2) document.getElementById('giftImageBgColor2').value = s.bgColor2;
-            if (s.rounded !== undefined) document.getElementById('giftImageRounded').checked = s.rounded;
-            if (s.fontSize) document.getElementById('giftImageFontSize').value = s.fontSize;
-            if (s.fontColor) document.getElementById('giftImageFontColor').value = s.fontColor;
-            if (s.fontBold !== undefined) document.getElementById('giftImageFontBold').checked = s.fontBold;
-            if (s.textShadow !== undefined) document.getElementById('giftImageTextShadow').checked = s.textShadow;
-
-            toggleGiftImageBgOptions();
-            renderGiftImageList();
-            updateGiftImagePreview();
+        const result = await pywebview.api.select_file('video');
+        if (result) {
+            chokingPunishmentPath = result;
+            document.getElementById('chokingPunishmentPath').value = result.split(/[/\\]/).pop();
+            await saveChokingConfig();
         }
     } catch (e) {
-        console.error('載入禮物圖設定失敗:', e);
+        console.error('選擇懲罰影片失敗:', e);
     }
 }
 
-// 禮物圖是否已發送到綠幕
-let giftImageSentToGreenScreen = false;
-
-async function sendGiftImageToGreenScreen() {
-    if (giftImageItems.length === 0) {
-        alert('請先新增禮物');
-        return;
-    }
-
-    const settings = getGiftImageSettings();
+async function selectChokingSilentVideo() {
     try {
-        await pywebview.api.send_gift_image_to_greenscreen({
-            items: giftImageItems,
-            settings: settings
+        const result = await pywebview.api.select_file('video');
+        if (result) {
+            chokingSilentVideoPath = result;
+            document.getElementById('chokingSilentVideoPath').value = result.split(/[/\\]/).pop();
+            await saveChokingConfig();
+        }
+    } catch (e) {
+        console.error('選擇禁言影片失敗:', e);
+    }
+}
+
+async function testChoking() {
+    const cfg = getChokingConfig();
+    try {
+        await pywebview.api.trigger_green_screen('startChoking', {
+            initialSeconds: cfg.initial_seconds,
+            silentSeconds: cfg.silent_seconds,
+            drainRate: cfg.drain_rate,
+            recoverRate: cfg.recover_rate,
+            volumeThreshold: cfg.volume_threshold,
+            punishmentVideo: cfg.punishment_video
         });
-        addLogLocal('已發送禮物圖到綠幕');
+        addLogLocal('🫁 測試窒息挑戰已觸發');
     } catch (e) {
-        console.error('發送失敗:', e);
-        alert('發送失敗: ' + e.message);
+        console.error('測試窒息挑戰失敗:', e);
     }
 }
 
-// 切換禮物圖顯示在綠幕上
-async function toggleGiftImageOnGreenScreen() {
-    const btn = document.getElementById('btnSendGiftImage');
-    const refreshBtn = document.getElementById('btnRefreshGiftImage');
-
-    if (giftImageSentToGreenScreen) {
-        // 取消發送 - 隱藏綠幕上的禮物圖
-        try {
-            await pywebview.api.hide_gift_image_on_greenscreen();
-            giftImageSentToGreenScreen = false;
-            btn.textContent = '📺 發送到綠幕';
-            btn.classList.remove('btn-danger');
-            btn.classList.add('btn-outline');
-            refreshBtn.style.display = 'none';
-            addLogLocal('已從綠幕移除禮物圖');
-        } catch (e) {
-            console.error('取消發送失敗:', e);
-        }
-    } else {
-        // 發送到綠幕
-        if (giftImageItems.length === 0) {
-            alert('請先新增禮物');
-            return;
-        }
-
-        const settings = getGiftImageSettings();
-        try {
-            await pywebview.api.send_gift_image_to_greenscreen({
-                items: giftImageItems,
-                settings: settings
-            });
-            giftImageSentToGreenScreen = true;
-            btn.textContent = '❌ 取消發送';
-            btn.classList.remove('btn-outline');
-            btn.classList.add('btn-danger');
-            refreshBtn.style.display = 'inline-block';
-            addLogLocal('已發送禮物圖到綠幕');
-        } catch (e) {
-            console.error('發送失敗:', e);
-            alert('發送失敗: ' + e.message);
-        }
-    }
-}
-
-// 重新整理綠幕上的禮物圖
-async function refreshGiftImageOnGreenScreen() {
-    if (!giftImageSentToGreenScreen) return;
-
-    if (giftImageItems.length === 0) {
-        alert('請先新增禮物');
-        return;
-    }
-
-    const settings = getGiftImageSettings();
+async function stopChoking() {
     try {
-        await pywebview.api.send_gift_image_to_greenscreen({
-            items: giftImageItems,
-            settings: settings
-        });
-        addLogLocal('已重新整理綠幕禮物圖');
+        await pywebview.api.trigger_green_screen('stopChoking', {});
+        addLogLocal('🫁 已停止窒息挑戰');
     } catch (e) {
-        console.error('重新整理失敗:', e);
-        alert('重新整理失敗: ' + e.message);
+        console.error('停止窒息挑戰失敗:', e);
     }
 }
-
-async function exportGiftImage() {
-    if (giftImageItems.length === 0) {
-        alert('請先新增禮物');
-        return;
-    }
-
-    const settings = getGiftImageSettings();
-    try {
-        const result = await pywebview.api.export_gift_image({
-            items: giftImageItems,
-            settings: settings
-        });
-        if (result.success) {
-            addLogLocal(`禮物圖已匯出: ${result.path}`);
-            alert('圖片已匯出！\n' + result.path);
-        } else {
-            alert('匯出失敗: ' + result.error);
-        }
-    } catch (e) {
-        console.error('匯出失敗:', e);
-        alert('匯出失敗: ' + e.message);
-    }
-}
-
-// 暴露禮物圖函數到全局作用域
-window.showGiftImageDialog = showGiftImageDialog;
-window.previewGiftDialogFile = previewGiftDialogFile;
-window.clearGiftDialogImage = clearGiftDialogImage;
-window.saveGiftImageItem = saveGiftImageItem;
-window.deleteGiftImageItem = deleteGiftImageItem;
-window.moveGiftImageItem = moveGiftImageItem;
-window.renderGiftImageList = renderGiftImageList;
-window.updateGiftImagePreview = updateGiftImagePreview;
-window.getGiftImageSettings = getGiftImageSettings;
-window.saveGiftImageConfig = saveGiftImageConfig;
-window.loadGiftImageConfig = loadGiftImageConfig;
-window.sendGiftImageToGreenScreen = sendGiftImageToGreenScreen;
-window.toggleGiftImageOnGreenScreen = toggleGiftImageOnGreenScreen;
-window.refreshGiftImageOnGreenScreen = refreshGiftImageOnGreenScreen;
-window.exportGiftImage = exportGiftImage;
-
-// 初始化時載入禮物圖設定
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        loadGiftImageConfig();
-    }, 500);
-});

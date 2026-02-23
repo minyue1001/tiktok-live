@@ -44,6 +44,11 @@ contextBridge.exposeInMainWorld('pywebview', {
         // 模擬送禮
         simulate_gift: (username, giftName, count) =>
             ipcRenderer.invoke('simulate-gift', username, giftName, count),
+        simulate_chat: (uniqueId, comment) =>
+            ipcRenderer.invoke('simulate-chat', uniqueId, comment),
+        // 快捷補鴨子 (F6)
+        quick_add_gift: (type, userId, count) =>
+            ipcRenderer.invoke('quick-add-gift', type, userId, count),
 
         // 測試隨機影片
         test_random_video: (rvConfig) =>
@@ -68,6 +73,12 @@ contextBridge.exposeInMainWorld('pywebview', {
         notify_duck_video_finished: () => ipcRenderer.invoke('notify-duck-video-finished'),
         notify_entry_effect_finished: () => ipcRenderer.invoke('notify-entry-effect-finished'),
 
+        // 備份 / 匯出匯入
+        get_last_backup_time: () => ipcRenderer.invoke('get-last-backup-time'),
+        trigger_backup: () => ipcRenderer.invoke('trigger-backup'),
+        export_leaderboard: () => ipcRenderer.invoke('export-leaderboard'),
+        import_leaderboard: (mode) => ipcRenderer.invoke('import-leaderboard', mode),
+
         // 排行榜
         get_leaderboard: () => ipcRenderer.invoke('get-leaderboard'),
         clear_leaderboard: () => ipcRenderer.invoke('clear-leaderboard'),
@@ -78,6 +89,8 @@ contextBridge.exposeInMainWorld('pywebview', {
         // 世界榜
         get_world_leaderboard: () => ipcRenderer.invoke('get-world-leaderboard'),
         get_world_champion: () => ipcRenderer.invoke('get-world-champion'),
+        sync_world_champion: () => ipcRenderer.invoke('sync-world-champion'),
+        refresh_greenscreen_world: () => ipcRenderer.invoke('refresh-greenscreen-world'),
 
         // 高等級用戶管理
         get_all_accounts: () => ipcRenderer.invoke('get-all-accounts'),
@@ -111,20 +124,16 @@ contextBridge.exposeInMainWorld('pywebview', {
         toggle_chat_display: (enabled) => ipcRenderer.invoke('toggle-chat-display', enabled),
         get_chat_display_status: () => ipcRenderer.invoke('get-chat-display-status'),
 
-        // 禮物圖生成器
-        get_gift_image_config: () => ipcRenderer.invoke('get-gift-image-config'),
-        save_gift_image_config: (config) => ipcRenderer.invoke('save-gift-image-config', config),
-        send_gift_image_to_greenscreen: (data) => ipcRenderer.invoke('send-gift-image-to-greenscreen', data),
-        hide_gift_image_on_greenscreen: () => ipcRenderer.invoke('hide-gift-image-on-greenscreen'),
-        export_gift_image: (data) => ipcRenderer.invoke('export-gift-image', data),
-
         // 鎖鏈對抗
         start_chain_battle: (data) => ipcRenderer.invoke('start-chain-battle', data),
         stop_chain_battle: () => ipcRenderer.invoke('stop-chain-battle'),
         add_chain_count: (amount) => ipcRenderer.invoke('add-chain-count', amount),
         remove_chain_count: (amount) => ipcRenderer.invoke('remove-chain-count', amount),
         get_chain_battle_status: () => ipcRenderer.invoke('get-chain-battle-status'),
-        chain_battle_ended: (won) => ipcRenderer.invoke('chain-battle-ended', won)
+        chain_battle_ended: (won) => ipcRenderer.invoke('chain-battle-ended', won),
+
+        // 窒息挑戰
+        choking_ended: (survived) => ipcRenderer.invoke('choking-ended', survived)
     }
 });
 
@@ -191,17 +200,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('leaderboard-updated', (_, data) => callback(data));
     },
 
+    // 備份完成通知
+    onBackupCompleted: (callback) => {
+        ipcRenderer.on('backup-completed', (_, time) => callback(time));
+    },
+
     // 快捷鍵開啟模擬送禮
     onOpenQuickSimulate: (callback) => {
         ipcRenderer.on('open-quick-simulate', () => callback());
     },
 
-    // 禮物圖生成器
-    getGiftImageConfig: () => ipcRenderer.invoke('get-gift-image-config'),
-    saveGiftImageConfig: (config) => ipcRenderer.invoke('save-gift-image-config', config),
-    sendGiftImageToGreenScreen: (data) => ipcRenderer.invoke('send-gift-image-to-greenscreen', data),
-    exportGiftImage: (data) => ipcRenderer.invoke('export-gift-image', data),
-    saveExportedImage: (filePath, base64Data) => ipcRenderer.invoke('save-exported-image', filePath, base64Data)
+    // 快捷鍵開啟快捷補禮物 (F6)
+    onOpenQuickAdd: (callback) => {
+        ipcRenderer.on('open-quick-add', () => callback());
+    },
+
 });
 
 // 標記已準備好（模擬 pywebviewready 事件）

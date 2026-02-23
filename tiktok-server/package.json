@@ -9,10 +9,14 @@
     "build": "pkg . --targets node18-win-x64 --output tiktok-server.exe"
   },
   "pkg": {
-    "targets": ["node18-win-x64"],
+    "targets": [
+      "node18-win-x64"
+    ],
     "outputPath": "dist"
   },
   "dependencies": {
+    "https-proxy-agent": "^7.0.6",
+    "socks-proxy-agent": "^8.0.5",
     "tiktok-live-connector": "^2.1.0",
     "ws": "^8.14.2"
   }

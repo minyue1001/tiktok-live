@@ -819,11 +819,13 @@
             min-width: 200px;
             height: 100px;
             padding: 0 25px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 5px solid rgba(255, 193, 7, 0.9);
-            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(10, 10, 25, 0.85), rgba(20, 12, 40, 0.9));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 193, 7, 0.35);
+            border-radius: 24px;
             gap: 12px;
-            box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
         }
 
         .duck-counter-box.hidden {
@@ -833,7 +835,6 @@
         .duck-counter-icon {
             font-size: 48px;
             animation: duckBounce 2s ease-in-out infinite;
-            filter: hue-rotate(180deg);
         }
 
         @keyframes duckBounce {
@@ -844,8 +845,8 @@
         .duck-counter-value {
             font-size: 64px;
             font-weight: bold;
-            color: #ffc107;
-            text-shadow: 0 0 20px rgba(255, 193, 7, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            color: #ffd54f;
+            text-shadow: 0 0 12px rgba(255, 193, 7, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.8);
             font-family: 'Arial Black', sans-serif;
         }
 
@@ -898,12 +899,14 @@
             min-width: 180px;
             height: 80px;
             padding: 0 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 4px solid rgba(147, 51, 234, 0.9);
-            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(10, 10, 25, 0.85), rgba(20, 12, 40, 0.9));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(168, 85, 247, 0.35);
+            border-radius: 20px;
             flex-direction: column;
             gap: 4px;
-            box-shadow: 0 4px 20px rgba(147, 51, 234, 0.3);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
         }
 
         .pity-counter-box.hidden {
@@ -913,34 +916,77 @@
         .pity-counter-label {
             font-size: 22px;
             font-weight: bold;
-            color: #c084fc;
-            text-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+            color: #d8b4fe;
+            text-shadow: 0 0 8px rgba(192, 132, 252, 0.5), 1px 1px 2px rgba(0, 0, 0, 0.8);
         }
 
         .pity-counter-value {
             font-size: 28px;
             font-weight: bold;
-            color: #a855f7;
-            text-shadow: 0 0 15px rgba(168, 85, 247, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            color: #c084fc;
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.8);
             font-family: 'Arial Black', sans-serif;
         }
 
         .pity-counter-value.stage2 {
-            color: #f59e0b;
-            text-shadow: 0 0 15px rgba(245, 158, 11, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            color: #fbbf24;
+            text-shadow: 0 0 10px rgba(245, 158, 11, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
 
         .pity-counter-stage {
             font-size: 12px;
-            color: #fbbf24;
-            text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+            color: #fde68a;
+            text-shadow: 0 0 6px rgba(251, 191, 36, 0.4), 1px 1px 2px rgba(0, 0, 0, 0.6);
+        }
+
+        .pity-boost-label {
+            font-size: 12px;
+            color: #4ade80;
+            text-shadow: 0 0 6px rgba(74, 222, 128, 0.5), 1px 1px 2px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Combo 連擊指示器 */
+        .combo-indicator {
+            position: fixed;
+            top: 20%;
+            right: 5%;
+            z-index: 9999;
+            font-family: 'Arial Black', sans-serif;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .combo-indicator.show {
+            opacity: 1;
+            animation: comboPopIn 0.5s ease-out;
+        }
+
+        .combo-text {
+            display: block;
+            font-size: 48px;
+            color: #ff6b35;
+            text-shadow: 0 0 20px rgba(255, 107, 53, 0.8), 3px 3px 6px rgba(0, 0, 0, 0.9);
+        }
+
+        .combo-multiplier-text {
+            display: block;
+            font-size: 32px;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        @keyframes comboPopIn {
+            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
         /* 排行榜顯示 */
         .leaderboard-box {
             position: absolute;
-            width: 280px;
-            height: 120px;
+            width: 400px;
+            height: 360px;
             right: 50px;
             top: 50px;
             z-index: 200;
@@ -950,101 +996,132 @@
             display: none !important;
         }
 
-        /* 霓虹邊框動畫 */
-        @keyframes neonPulse {
-            0%, 100% {
-                box-shadow: 0 0 5px #ffc107, 0 0 10px #ffc107, 0 0 20px #ffc107, 0 0 40px #ff9800;
-            }
-            50% {
-                box-shadow: 0 0 10px #ffc107, 0 0 20px #ffc107, 0 0 40px #ffc107, 0 0 80px #ff9800;
-            }
-        }
-
-        @keyframes neonAvatarPulse {
-            0%, 100% {
-                box-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 15px #00ffff;
-            }
-            50% {
-                box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
-            }
-        }
-
         .leaderboard-box .scalable-content {
-            min-width: 320px;
-            height: 100px;
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 10, 40, 0.95));
-            border: 2px solid transparent;
-            border-image: linear-gradient(135deg, #ffc107, #ff6b6b, #a855f7) 1;
-            border-radius: 12px;
-            gap: 6px;
-            padding: 10px 15px;
+            min-width: 380px;
+            min-height: 200px;
+            background: linear-gradient(135deg, rgba(10, 10, 25, 0.85), rgba(20, 12, 40, 0.9));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 193, 7, 0.25);
+            border-radius: 20px;
+            gap: 0;
+            padding: 0;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .leaderboard-box .scalable-content.neon-border {
-            animation: neonPulse 2s ease-in-out infinite;
-            box-shadow: 0 0 15px rgba(255, 193, 7, 0.4), inset 0 0 20px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
         }
+
+        .lb-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(255, 193, 7, 0.3);
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffd54f;
+            text-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+            flex-shrink: 0;
+        }
+
+        .lb-category-icon { font-size: 20px; }
+        .lb-category-title { flex: 1; }
+
+        .lb-entries {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            transition: opacity 0.3s;
+        }
+
+        .lb-entries.fade-out { opacity: 0; }
+
+        .lb-rank-badge {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .lb-rank-badge.rank-1 { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
+        .lb-rank-badge.rank-2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #000; }
+        .lb-rank-badge.rank-3 { background: linear-gradient(135deg, #cd7f32, #b8690e); color: #fff; }
+        .lb-rank-badge.rank-other { background: rgba(255, 255, 255, 0.15); color: #fff; }
 
         .lb-row {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             width: 100%;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex: 1;
+        }
+
+        .lb-row:last-child {
+            border-bottom: none;
         }
 
         .lb-icon {
-            font-size: 18px;
-            width: 24px;
+            font-size: 22px;
+            width: 28px;
             text-align: center;
-            filter: drop-shadow(0 0 5px currentColor);
         }
 
         .lb-icon.gold { color: #ffc107; }
         .lb-icon.purple { color: #a855f7; }
 
         .lb-avatar-mini {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             border: 2px solid;
             object-fit: cover;
             flex-shrink: 0;
         }
 
-        .lb-avatar-mini.gold-border { border-color: #ffc107; box-shadow: 0 0 8px rgba(255, 193, 7, 0.5); }
-        .lb-avatar-mini.purple-border { border-color: #a855f7; box-shadow: 0 0 8px rgba(168, 85, 247, 0.5); }
-        .lb-avatar-mini.world-border { border-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); }
+        .lb-avatar-mini.gold-border { border-color: #ffc107; box-shadow: 0 0 8px rgba(255, 193, 7, 0.4); }
+        .lb-avatar-mini.purple-border { border-color: #a855f7; box-shadow: 0 0 8px rgba(168, 85, 247, 0.4); }
+        .lb-avatar-mini.world-border { border-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
 
         .lb-avatar-mini.placeholder {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
-            font-size: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            font-size: 22px;
         }
 
         .lb-name {
-            font-size: 13px;
+            font-size: 16px;
             color: #fff;
             flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            font-weight: 600;
         }
 
         .lb-value {
-            font-size: 18px;
+            font-size: 22px;
             font-weight: bold;
             font-family: 'Arial Black', sans-serif;
             white-space: nowrap;
-            text-shadow: 0 0 10px currentColor, 1px 1px 2px rgba(0, 0, 0, 0.8);
+            text-shadow: 0 0 10px currentColor, 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
 
-        .lb-value.gold { color: #ffc107; }
-        .lb-value.purple { color: #a855f7; }
-        .lb-value.world { color: #3b82f6; }
+        .lb-value.gold { color: #ffd54f; }
+        .lb-value.purple { color: #c084fc; }
+        .lb-value.world { color: #60a5fa; }
         .lb-icon.world { color: #3b82f6; }
 
         /* 排行榜更新動畫 */
@@ -1245,52 +1322,6 @@
             font-size: 14px;
         }
 
-        /* 禮物圖顯示區域 */
-        .gift-image-display {
-            position: absolute;
-            z-index: 250;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            min-width: 100px;
-            min-height: 50px;
-            overflow: hidden;
-        }
-
-        .gift-image-display .gift-image-wrapper {
-            transform-origin: top left;
-            display: inline-block;
-        }
-
-        .gift-image-display .gift-image-content {
-            display: grid;
-            border-radius: 16px;
-            overflow: hidden;
-        }
-
-        .gift-image-display .gift-image-grid-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .gift-image-display .gift-image-grid-item img {
-            object-fit: contain;
-        }
-
-        .gift-image-display .gift-label {
-            white-space: nowrap;
-            /* 加強文字邊緣，避免色度摳像後模糊 */
-            text-shadow:
-                -2px -2px 0 #000,
-                2px -2px 0 #000,
-                -2px 2px 0 #000,
-                2px 2px 0 #000,
-                0 0 8px rgba(0,0,0,0.8);
-            -webkit-text-stroke: 1px rgba(0,0,0,0.5);
-            font-weight: bold;
-        }
-
         /* 里程碑慶祝容器 */
         .milestone-overlay {
             position: fixed;
@@ -1403,16 +1434,48 @@
             position: absolute;
             width: 400px;
             height: 300px;
-            overflow: hidden;
-            background: rgba(0, 0, 0, 0.3);
+            overflow: visible;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 165, 0, 0.7);
             border-radius: 8px;
             top: 100px;
             left: 100px;
+            z-index: 500;
         }
 
         .entry-video-container.hidden {
             display: none !important;
             visibility: hidden !important;
+        }
+
+        .entry-video-container.playing {
+            border-color: rgba(76, 175, 80, 0.8);
+        }
+
+        .entry-video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(255, 165, 0, 0.15), rgba(255, 100, 50, 0.15));
+            z-index: 0;
+            overflow: hidden;
+            border-radius: 6px;
+        }
+
+        .entry-video-placeholder-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .entry-video-placeholder-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
         }
 
         .entry-video-container .entry-thumbnail {
@@ -1423,6 +1486,11 @@
             height: 100%;
             object-fit: contain;
             z-index: 1;
+            border-radius: 6px;
+        }
+
+        .entry-video-container.playing .entry-video-placeholder {
+            display: none !important;
         }
 
         .entry-video-container.playing .entry-thumbnail {
@@ -2192,6 +2260,31 @@
         <div class="chain-floating-numbers" id="chainFloatingNumbers"></div>
     </div>
 
+    <!-- 窒息挑戰 -->
+    <div id="chokingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:8500; pointer-events:none;">
+        <div id="chokingHpContainer" style="position:fixed; top:65%; left:50%; transform:translate(-50%, -50%); width:60%; max-width:600px; text-align:center; z-index:8600;">
+            <!-- 標題 -->
+            <div id="chokingTitle" style="color:#fff; font-size:36px; font-weight:bold; text-shadow:0 0 15px rgba(139,92,246,0.9), 0 2px 4px rgba(0,0,0,0.8); margin-bottom:16px; letter-spacing:2px; white-space:nowrap;">
+                🫁 持續說話！
+            </div>
+            <!-- 血條容器 -->
+            <div style="background:rgba(0,0,0,0.6); padding:16px 20px; border-radius:16px; backdrop-filter:blur(8px); border:2px solid rgba(255,255,255,0.2);">
+                <!-- 血條 -->
+                <div style="width:100%; height:32px; background:rgba(0,0,0,0.5); border-radius:16px; overflow:hidden; border:2px solid rgba(255,255,255,0.3); position:relative;">
+                    <div id="chokingHpBar" style="height:100%; width:100%; background:linear-gradient(180deg, #66ff66 0%, #44dd44 100%); transition:width 0.1s ease, background 0.3s ease; border-radius:14px; box-shadow:0 0 10px rgba(68,255,68,0.5);"></div>
+                </div>
+                <!-- 倒數 + 血量 -->
+                <div id="chokingHpText" style="color:#fff; font-size:28px; font-weight:bold; margin-top:12px; text-shadow:0 2px 4px rgba(0,0,0,0.8);">⏱️ 30.0s | ❤️ 100%</div>
+                <!-- 音量條 -->
+                <div style="margin-top:14px; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                    <div id="chokingVolumeBar" style="height:100%; width:0%; background:linear-gradient(90deg, #00ff88, #00ddff); transition:width 0.1s ease; box-shadow:0 0 6px rgba(0,255,136,0.5);"></div>
+                </div>
+                <div id="chokingVolumeLabel" style="color:rgba(255,255,255,0.6); font-size:13px; margin-top:6px;">🎤 音量: 0%</div>
+            </div>
+        </div>
+    </div>
+    <video id="chokingPunishmentVideo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:10000; object-fit:cover;"></video>
+
     <!-- 隨機影片專用容器（可拖曳縮圖版） -->
     <div class="draggable random-video-box hidden" id="randomVideoContainer">
         <div class="random-video-placeholder">
@@ -2249,6 +2342,7 @@
             <span class="pity-counter-label">🎰 保底進度</span>
             <span class="pity-counter-value" id="pityCounterValue">0 / 1000</span>
             <span class="pity-counter-stage" id="pityCounterStage"></span>
+            <span class="pity-boost-label" id="pityBoostLabel" style="display:none;"></span>
         </div>
         <div class="resize-handle nw"></div>
         <div class="resize-handle n"></div>
@@ -2261,25 +2355,14 @@
     </div>
 
     <!-- 排行榜 -->
-    <div class="draggable leaderboard-box scalable-box hidden" id="leaderboardBox" data-base-width="320" data-base-height="100">
-        <div class="scalable-content lb-simple neon-border" id="gsLeaderboardSimple">
-            <div class="lb-row">
-                <span class="lb-icon gold">👑</span>
-                <div class="lb-avatar-mini gold-border placeholder">🦆</div>
-                <span class="lb-name">---</span>
-                <span class="lb-value gold">0🦆</span>
+    <div class="draggable leaderboard-box scalable-box hidden" id="leaderboardBox" data-base-width="400" data-base-height="360">
+        <div class="scalable-content neon-border" id="gsLeaderboardSimple">
+            <div class="lb-header" id="lbCategoryHeader">
+                <span class="lb-category-icon">👑</span>
+                <span class="lb-category-title">累計排行</span>
             </div>
-            <div class="lb-row">
-                <span class="lb-icon purple">⭐</span>
-                <div class="lb-avatar-mini purple-border placeholder">🦆</div>
-                <span class="lb-name">---</span>
-                <span class="lb-value purple">0🦆</span>
-            </div>
-            <div class="lb-row world-champion-row" id="worldChampionRow">
-                <span class="lb-icon world">🌍</span>
-                <div class="lb-avatar-mini world-border placeholder">🦆</div>
-                <span class="lb-name">---</span>
-                <span class="lb-value world">0🦆</span>
+            <div class="lb-entries" id="lbEntries">
+                <div class="lb-row"><span class="lb-name" style="opacity:0.5;">暫無資料</span></div>
             </div>
         </div>
         <div class="resize-handle nw"></div>
@@ -2292,19 +2375,10 @@
         <div class="resize-handle se"></div>
     </div>
 
-    <!-- 禮物圖顯示區域 -->
-    <div class="draggable gift-image-display" id="giftImageDisplay" style="display: none;">
-        <div class="gift-image-wrapper" id="giftImageWrapper">
-            <div class="gift-image-content" id="giftImageContent"></div>
-        </div>
-        <div class="resize-handle nw"></div>
-        <div class="resize-handle n"></div>
-        <div class="resize-handle ne"></div>
-        <div class="resize-handle w"></div>
-        <div class="resize-handle e"></div>
-        <div class="resize-handle sw"></div>
-        <div class="resize-handle s"></div>
-        <div class="resize-handle se"></div>
+    <!-- Combo 連擊指示器 -->
+    <div class="combo-indicator" id="comboIndicator">
+        <span class="combo-text" id="comboText"></span>
+        <span class="combo-multiplier-text" id="comboMultiplierText"></span>
     </div>
 
     <!-- 里程碑慶祝 -->
@@ -2334,6 +2408,10 @@
 
     <!-- 進場影片容器 -->
     <div class="draggable entry-video-container hidden" id="entryVideoContainer">
+        <div class="entry-video-placeholder">
+            <span class="entry-video-placeholder-icon">👋</span>
+            <span class="entry-video-placeholder-label">進場影片</span>
+        </div>
         <video class="entry-thumbnail" id="entryThumbnail" muted preload="metadata"></video>
         <video class="entry-player" id="entryPlayer"></video>
         <audio class="entry-player-audio" id="entryPlayerAudio"></audio>
@@ -2565,63 +2643,72 @@
 
         // === 初始化 ===
         document.addEventListener('DOMContentLoaded', async () => {
-            await waitForPywebview();
-
-            // 1. 先載入儲存的位置資料
-            savedPositions = await loadSavedPositions();
-
-            // 2. 載入轉盤選項、盲盒選項、影片列表和進場列表
-            await loadWheelOptions();
-            await loadGiftboxOptions();
-            await loadVideoGifts();  // 這裡會生成容器並套用位置
-            await loadEntryList();   // 載入進場效果列表
-
-            // 3. 套用轉盤、盲盒、進場文字、進場影片、隨機影片位置
-            applyWheelPosition();
-            applyGiftboxPosition();
-            applyEntryTextPosition();
-            applyEntryVideoPosition();
-            applyRandomVideoPosition();
-            applyDuckPositions();
-
-            // 載入初始保底計數
-            if (window.pywebview && window.pywebview.api) {
-                try {
-                    const pityData = await pywebview.api.get_pity_counter();
-                    if (pityData) {
-                        updatePityCounter(pityData);
-                    }
-                } catch (e) {
-                    console.error('載入保底計數失敗:', e);
-                }
-
-                // 載入初始排行榜和世界冠軍
-                try {
-                    const [lbData, champion] = await Promise.all([
-                        pywebview.api.get_leaderboard(),
-                        pywebview.api.get_world_champion()
-                    ]);
-                    window.worldChampionData = champion;
-                    if (lbData) {
-                        updateLeaderboard(lbData);
-                    }
-                } catch (e) {
-                    console.error('載入排行榜失敗:', e);
-                }
+            // 最優先：先初始化事件監聽和鍵盤快捷鍵，確保即使後續載入失敗也能操作
+            try {
+                initMessageListener();
+                initKeyboardShortcuts();
+                console.log('[初始化] 事件監聽和快捷鍵已就緒');
+            } catch (e) {
+                console.error('[初始化] 事件監聽設定失敗:', e);
             }
 
-            // 4. 檢查模組狀態
-            await loadModuleStatus();
+            try {
+                await waitForPywebview();
+                console.log('[初始化] pywebview API 已就緒');
+            } catch (e) {
+                console.error('[初始化] waitForPywebview 失敗:', e);
+            }
 
-            // 5. 初始化其他功能
-            drawWheel();
-            initDraggable();
-            initResizable();
-            initContextMenu();
-            applyElementZIndexes();  // 套用儲存的圖層順序
-            initMessageListener();
-            initKeyboardShortcuts();
+            // 載入 config（排行榜顯示設定等）
+            try {
+                window._gsConfig = await pywebview.api.get_config();
+            } catch (e) {
+                console.error('載入配置失敗:', e);
+                window._gsConfig = {};
+            }
+
+            // 1. 先載入儲存的位置資料
+            try {
+                savedPositions = await loadSavedPositions();
+            } catch (e) {
+                console.error('[初始化] 載入位置資料失敗:', e);
+                savedPositions = {};
+            }
+
+            // 2. 載入轉盤選項、盲盒選項、影片列表和進場列表
+            try { await loadWheelOptions(); } catch (e) { console.error('[初始化] 載入轉盤失敗:', e); }
+            try { await loadGiftboxOptions(); } catch (e) { console.error('[初始化] 載入盲盒失敗:', e); }
+            try { await loadVideoGifts(); } catch (e) { console.error('[初始化] 載入影片失敗:', e); }
+            try { await loadEntryList(); } catch (e) { console.error('[初始化] 載入進場失敗:', e); }
+
+            // 3. 套用轉盤、盲盒、進場文字、進場影片、隨機影片位置
+            try {
+                applyWheelPosition();
+                applyGiftboxPosition();
+                applyEntryTextPosition();
+                applyEntryVideoPosition();
+                applyRandomVideoPosition();
+                applyDuckPositions();
+            } catch (e) {
+                console.error('[初始化] 套用位置失敗:', e);
+            }
+
+            // ★ 先移除 initializing，確保後續步驟不會阻擋顯示
+            document.body.classList.remove('initializing');
+            console.log('[初始化] initializing class 已移除');
+
+            // 4. 檢查模組狀態（非阻塞）
+            try { console.log('[初始化] 載入模組狀態...'); await loadModuleStatus(); console.log('[初始化] 模組狀態完成'); } catch (e) { console.error('[初始化] 載入模組狀態失敗:', e); }
+
+            // 5. 立即初始化 UI 互動功能（不受資料載入影響）
+            try { drawWheel(); } catch (e) { console.error('[初始化] drawWheel 失敗:', e); }
+            try { initDraggable(); } catch (e) { console.error('[初始化] initDraggable 失敗:', e); }
+            try { initResizable(); } catch (e) { console.error('[初始化] initResizable 失敗:', e); }
+            try { initContextMenu(); } catch (e) { console.error('[初始化] initContextMenu 失敗:', e); }
+            try { applyElementZIndexes(); } catch (e) { console.error('[初始化] applyElementZIndexes 失敗:', e); }
             showHint();
+
+            console.log('[初始化] UI 互動功能已就緒');
 
             // 3秒後自動隱藏視窗控制列（但滑鼠移上去還是會顯示）
             setTimeout(() => {
@@ -2631,16 +2718,37 @@
                 }
             }, 3000);
 
-            // 移除初始化狀態，顯示所有已配置的元素
-            requestAnimationFrame(() => {
-                document.body.classList.remove('initializing');
-            });
-
             // 延遲重新載入縮圖
             setTimeout(() => {
                 debugLog('[初始化] 完成，重載縮圖');
                 reloadAllThumbnails();
             }, 500);
+
+            // 6. 非阻塞載入資料（保底、排行榜、世界冠軍）— 不 await，避免卡住
+            if (window.pywebview && window.pywebview.api) {
+                // 保底計數
+                pywebview.api.get_pity_counter().then(pityData => {
+                    if (pityData) updatePityCounter(pityData);
+                    console.log('[初始化] 保底計數完成');
+                }).catch(e => console.error('載入保底計數失敗:', e));
+
+                // 排行榜 + 世界冠軍（帶 10 秒超時）
+                const withTimeout = (promise, ms) => Promise.race([
+                    promise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('超時')), ms))
+                ]);
+
+                Promise.all([
+                    withTimeout(pywebview.api.get_leaderboard(), 10000),
+                    withTimeout(pywebview.api.get_world_champion(), 10000)
+                ]).then(([lbData, champion]) => {
+                    window.worldChampionData = champion;
+                    if (lbData) updateLeaderboard(lbData);
+                    console.log('[初始化] 排行榜完成');
+                }).catch(e => console.error('載入排行榜失敗:', e));
+            }
+
+            console.log('[初始化] 綠幕視窗初始化全部完成');
         });
 
         // 載入儲存的位置資料
@@ -2795,12 +2903,15 @@
                 setElementVisible(entryVideo, entryVideoVisible);
                 document.getElementById('toggleEntryVideo')?.classList.toggle('active', entryVideoVisible);
 
+                // 容器可見時重新載入縮圖（隱藏狀態下瀏覽器不渲染 video）
+                if (entryVideoVisible) {
+                    setTimeout(() => updateEntryThumbnail(), 100);
+                }
+
                 // 更新進場列表中的按鈕狀態
                 updateEntryVisibilityButtons();
 
-                console.log('[進場影片] 已套用位置:', data);
             } else {
-                console.log('[進場影片] 使用預設位置');
                 entryVideo.style.width = '400px';
                 entryVideo.style.height = '300px';
                 entryVideo.style.left = '100px';
@@ -3019,59 +3130,14 @@
                     console.log('[排行榜] 已套用位置:', data);
                 } else {
                     // 設置預設值到 style（確保保存時能讀取）
-                    leaderboard.style.width = '320px';
-                    leaderboard.style.height = '100px';
+                    leaderboard.style.width = '400px';
+                    leaderboard.style.height = '180px';
                     leaderboard.style.left = '50px';
                     leaderboard.style.top = '300px';
                     // 緩存使用預設值（已在聲明時設定）
                     // 預設縮放
-                    applyScalableBoxScale(leaderboard, 320, 100);
+                    applyScalableBoxScale(leaderboard, 400, 180);
                     console.log('[排行榜] 使用預設位置');
-                }
-            }
-
-            // 禮物圖顯示
-            const giftImageDisplay = document.getElementById('giftImageDisplay');
-            if (giftImageDisplay) {
-                if (savedPositions && savedPositions.giftImage) {
-                    const data = savedPositions.giftImage;
-                    // 套用尺寸
-                    if (data.width !== undefined && data.width > 0) {
-                        giftImageDisplay.style.width = data.width + 'px';
-                    }
-                    if (data.height !== undefined && data.height > 0) {
-                        giftImageDisplay.style.height = data.height + 'px';
-                    }
-                    // 套用位置
-                    if (data.left !== undefined) giftImageDisplay.style.left = data.left + 'px';
-                    if (data.top !== undefined) giftImageDisplay.style.top = data.top + 'px';
-                    // 禮物圖使用 transform 置中，需要移除置中效果才能使用自定義位置
-                    if (data.left !== undefined || data.top !== undefined) {
-                        giftImageDisplay.style.transform = 'none';
-                    }
-                    // 保存原始尺寸到 dataset（用於後續縮放計算）
-                    if (data.originalWidth > 0) {
-                        giftImageDisplay.dataset.originalWidth = data.originalWidth;
-                    }
-                    if (data.originalHeight > 0) {
-                        giftImageDisplay.dataset.originalHeight = data.originalHeight;
-                    }
-                    // 如果有保存的禮物圖資料，恢復內容
-                    if (data.data && data.visible) {
-                        // 延遲執行以確保函數已定義
-                        setTimeout(() => {
-                            showGiftImageOnGreenScreen(data.data);
-                            // 恢復縮放
-                            const wrapper = giftImageDisplay.querySelector('.gift-image-wrapper');
-                            if (wrapper && data.originalWidth > 0 && data.originalHeight > 0 && data.width > 0 && data.height > 0) {
-                                const scaleX = data.width / data.originalWidth;
-                                const scaleY = data.height / data.originalHeight;
-                                const scale = Math.min(scaleX, scaleY);
-                                wrapper.style.transform = `scale(${scale})`;
-                            }
-                        }, 100);
-                    }
-                    console.log('[禮物圖] 已套用位置:', data);
                 }
             }
         }
@@ -3153,8 +3219,11 @@
                     // 使用當前場景的影片設定
                     const activeScene = await pywebview.api.get_active_scene();
                     videoGifts = (activeScene && activeScene.video_gifts) || [];
+                    console.log(`載入了 ${videoGifts.length} 個影片設定`);
                     renderVideoList();
                     generateVideoContainers();
+                } else {
+                    console.log('loadVideoGifts: pywebview API 不可用');
                 }
             } catch (e) {
                 console.error('載入影片列表失敗:', e);
@@ -3332,19 +3401,11 @@
 
         // 在指定容器播放影片
         function triggerVideoInContainer(index, videoData) {
-            console.log(`[DEBUG] triggerVideoInContainer 被呼叫: index=${index}, path=${videoData.path}, count=${videoData.count || 1}`);
-
             const container = document.getElementById(`videoContainer_${index}`);
             if (!container) {
-                console.error(`[ERROR] 找不到影片容器: videoContainer_${index}`);
-                // 列出所有現有容器
-                const allContainers = document.querySelectorAll('.video-container');
-                console.log(`[DEBUG] 現有容器數量: ${allContainers.length}`);
-                allContainers.forEach(c => console.log(`  - ${c.id}`));
+                console.error(`找不到影片容器: videoContainer_${index}`);
                 return;
             }
-
-            console.log(`[DEBUG] 找到容器: ${container.id}, 尺寸: ${container.offsetWidth}x${container.offsetHeight}`);
 
             // 初始化容器狀態
             if (!containerPlayingState[index]) {
@@ -3384,7 +3445,7 @@
                     state.queue.push(newItem);
                 }
             }
-            console.log(`[DEBUG] 加入佇列 ${playCount} 次 (優先級: ${priority})，目前佇列長度: ${state.queue.length}`);
+            console.log(`影片 [${index}] 加入佇列 x${playCount}，佇列長度: ${state.queue.length}`);
 
             // 如果有強制插隊且正在播放，停止當前播放
             if (videoData.force_interrupt && state.isPlaying) {
@@ -3434,8 +3495,7 @@
                 if (hasStarted) return;
                 hasStarted = true;
 
-                console.log(`[DEBUG] 開始播放影片 [${index}]`);
-                console.log(`[DEBUG] 容器狀態: display=${container.style.display}, visibility=${container.style.visibility}, hidden=${container.classList.contains('hidden')}`);
+                console.log(`開始播放影片 [${index}]`);
 
                 // 確保容器可見
                 if (container.classList.contains('hidden')) {
@@ -3447,7 +3507,6 @@
 
                 // 確保容器有 playing class
                 container.classList.add('playing');
-                console.log(`[DEBUG] 容器 playing class 已添加: ${container.classList.contains('playing')}`);
 
                 // 隱藏縮圖
                 if (thumbnail) {
@@ -3460,7 +3519,6 @@
                 videoPlayer.style.visibility = 'visible';
                 videoPlayer.style.opacity = '1';
                 videoPlayer.style.zIndex = '999';
-                console.log(`[DEBUG] 播放器樣式已設置: display=${videoPlayer.style.display}, visibility=${videoPlayer.style.visibility}`);
 
                 // 確保播放器有正確的尺寸和位置（繼承裁切狀態）
                 const cropState = videoCropState[index];
@@ -3476,7 +3534,6 @@
                     playerTop = -(cropState.cropTop || 0);
                 }
 
-                console.log(`[DEBUG] 播放影片 [${index}] 尺寸: ${playerWidth}x${playerHeight}, 偏移: ${playerLeft},${playerTop}`);
 
                 videoPlayer.style.position = 'absolute';
                 videoPlayer.style.width = playerWidth + 'px';
@@ -3724,7 +3781,7 @@
                 const checkApi = () => {
                     if (window.pywebview && window.pywebview.api &&
                         typeof window.pywebview.api.get_greenscreen_positions === 'function') {
-                        console.log('[DEBUG] pywebview API 已就緒');
+                        console.log('pywebview API 已就緒');
                         resolve();
                         return true;
                     }
@@ -3833,6 +3890,8 @@
                     const activeScene = await pywebview.api.get_active_scene();
                     videoGifts = (activeScene && activeScene.video_gifts) || [];
                     renderVideoList();
+                    // 同時更新進場列表
+                    loadEntryList();
                 }
             } catch (e) {
                 console.error('更新影片列表失敗:', e);
@@ -3873,6 +3932,11 @@
                         await loadWheelOptions();
                         // 重新載入盲盒選項
                         await loadGiftboxOptions();
+                        // 更新排行榜顯示設定
+                        window._gsConfig = config;
+                        // 重置輪播（設定可能已變更）
+                        if (lbRotateTimer) { clearInterval(lbRotateTimer); lbRotateTimer = null; }
+                        if (leaderboardData) renderLeaderboard(leaderboardData);
                         console.log('[配置更新] 同步完成');
                     }, 300);
                 });
@@ -3906,6 +3970,7 @@
 
             // 抓鴨子影片事件
             window.addEventListener('triggerDuckVideo', (event) => {
+                console.log('[鴨子] 收到 triggerDuckVideo 事件:', event.detail?.username, event.detail?.path);
                 playDuckVideo(event.detail);
             });
 
@@ -3933,16 +3998,6 @@
                 triggerMilestoneCelebration(event.detail);
             });
 
-            // 禮物圖顯示事件
-            window.addEventListener('showGiftImage', (event) => {
-                showGiftImageOnGreenScreen(event.detail);
-            });
-
-            // 禮物圖隱藏事件
-            window.addEventListener('hideGiftImage', () => {
-                hideGiftImage();
-            });
-
             // 鎖鏈對抗事件
             window.addEventListener('startChainBattle', (event) => {
                 startChainBattle(event.detail);
@@ -3964,6 +4019,20 @@
                 stopChainBattle();
             });
 
+            // 窒息挑戰事件
+            window.addEventListener('startChoking', (event) => {
+                startChokingChallenge(event.detail);
+            });
+            window.addEventListener('stopChoking', () => {
+                stopChokingChallenge(true);
+            });
+            window.addEventListener('addChokingTime', (event) => {
+                addChokingTime(event.detail.seconds);
+            });
+            window.addEventListener('addChokingSilent', (event) => {
+                addChokingSilent(event.detail);  // { seconds, video }
+            });
+
             // 世界榜事件
             window.addEventListener('worldChampionCrown', (event) => {
                 showWorldChampionCrown(event.detail);
@@ -3973,13 +4042,22 @@
                 showWorldChampionEntry(event.detail);
             });
 
-            window.addEventListener('playChainVideo', (event) => {
-                playChainVideo(event.detail);
+            // 世界冠軍更新（即時推送）
+            window.addEventListener('updateWorldChampion', (event) => {
+                console.log('[綠幕] 收到世界冠軍更新:', event.detail);
+                window.worldChampionData = event.detail;
+                // 重新渲染排行榜
+                if (leaderboardData) {
+                    renderLeaderboard(leaderboardData);
+                }
             });
 
-            // 禮物圖匯出事件
-            window.addEventListener('exportGiftImage', (event) => {
-                exportGiftImageToFile(event.detail);
+            window.addEventListener('showDuckQuery', (event) => {
+                showDuckQuery(event.detail);
+            });
+
+            window.addEventListener('playChainVideo', (event) => {
+                playChainVideo(event.detail);
             });
 
             // 全域測試函數 - 可從控制台呼叫
@@ -4074,19 +4152,14 @@
 
             // 監聯配置更新
             window.addEventListener('configUpdated', async () => {
-                console.log('[DEBUG] 收到 configUpdated 事件');
-
                 // 如果是僅可見性更新，跳過容器重新生成
                 if (window._skipContainerRegeneration) {
-                    console.log('[DEBUG] 跳過容器重新生成（僅可見性更新）');
-                    // 只更新影片列表 UI，不重新生成容器
                     await refreshVideoListOnly();
                     return;
                 }
 
                 // 保存當前容器位置到 savedPositions，避免重新生成時位置被重置
                 if (savedPositions) {
-                    // 從 DOM 和 videoCropState 收集最新狀態
                     const currentVideoData = {};
                     document.querySelectorAll('.video-container').forEach(vc => {
                         const idx = parseInt(vc.dataset.index);
@@ -4104,22 +4177,14 @@
                             originalWidth: crop.originalWidth || cached.originalWidth || vc.offsetWidth || 300,
                             originalHeight: crop.originalHeight || cached.originalHeight || vc.offsetHeight || 200
                         };
-                        console.log(`[DEBUG] 容器 ${idx} 狀態:`, currentVideoData[idx]);
                     });
 
-                    // 更新 videoContainers 和 savedPositions
                     Object.assign(videoContainers, currentVideoData);
                     savedPositions.videoContainers = currentVideoData;
-                    console.log('[DEBUG] 已保存當前容器位置和裁切狀態到 savedPositions');
                 }
 
-                console.log('[DEBUG] 重新載入影片設定');
                 await loadVideoGifts();
-                // 延遲後重新載入縮圖，確保 DOM 已更新
-                setTimeout(() => {
-                    console.log('[DEBUG] 延遲重載縮圖');
-                    reloadAllThumbnails();
-                }, 300);
+                setTimeout(() => reloadAllThumbnails(), 300);
             });
 
             window.addEventListener('message', (event) => {
@@ -4198,54 +4263,86 @@
         // 進場影片容器相關
         let entryVideoVisible = false;
         let entryList = [];
+        let currentPreviewEntryId = null; // 目前預覽的進場 ID（index 或 'global'）
 
+        // 切換容器顯示（從影片控制 chip 呼叫）
         function toggleEntryVideoVisibility() {
             entryVideoVisible = !entryVideoVisible;
             const container = document.getElementById('entryVideoContainer');
             if (container) {
                 setElementVisible(container, entryVideoVisible);
+                if (entryVideoVisible) {
+                    const rect = container.getBoundingClientRect();
+                    if (rect.left < 0 || rect.top < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight) {
+                        container.style.left = '100px';
+                        container.style.top = '100px';
+                    }
+                    updateEntryThumbnail();
+                } else {
+                    currentPreviewEntryId = null;
+                }
             }
             document.getElementById('toggleEntryVideo').classList.toggle('active', entryVideoVisible);
-
-            // 更新所有進場列表中的顯示/隱藏按鈕狀態
             updateEntryVisibilityButtons();
-
             savePositions();
         }
 
-        // 更新所有進場效果的顯示/隱藏按鈕狀態（根據各自的 enabled 狀態）
-        async function updateEntryVisibilityButtons() {
-            // 更新專屬進場的按鈕
-            entryList.forEach((entry, index) => {
-                const enabled = entry.enabled !== false;
-                const item = document.getElementById(`entryItem_${index}`);
-                const btn = document.getElementById(`entryVisBtn_${index}`);
-                if (item) {
-                    item.classList.toggle('hidden-item', !enabled);
-                }
-                if (btn) {
-                    btn.className = `debug-btn small ${enabled ? 'secondary' : 'danger'}`;
-                    btn.innerHTML = enabled ? '👁️' : '🚫';
-                }
-            });
+        // 個別進場的 👁️ 按鈕：顯示該進場的影片在容器裡
+        function toggleEntryPreview(entryId) {
+            const container = document.getElementById('entryVideoContainer');
+            if (!container) return;
 
-            // 更新全局進場的按鈕
-            try {
-                const config = await pywebview.api.get_config();
-                const entryConfig = config.entry_config || {};
-                const globalEnabled = entryConfig.enabled !== false;
-                const item = document.getElementById('entryItem_global');
-                const btn = document.getElementById('entryVisBtn_global');
-                if (item) {
-                    item.classList.toggle('hidden-item', !globalEnabled);
+            // 如果已經在顯示這個進場，就關閉
+            if (entryVideoVisible && currentPreviewEntryId === entryId) {
+                entryVideoVisible = false;
+                currentPreviewEntryId = null;
+                setElementVisible(container, false);
+            } else {
+                // 顯示容器並載入這個進場的影片
+                entryVideoVisible = true;
+                currentPreviewEntryId = entryId;
+                setElementVisible(container, true);
+
+                // 確保容器在畫面可見範圍內
+                const rect = container.getBoundingClientRect();
+                if (rect.left < 0 || rect.top < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight) {
+                    container.style.left = '100px';
+                    container.style.top = '100px';
                 }
-                if (btn) {
-                    btn.className = `debug-btn small ${globalEnabled ? 'secondary' : 'danger'}`;
-                    btn.innerHTML = globalEnabled ? '👁️' : '🚫';
+
+                // 載入該進場的影片到縮圖
+                let videoPath = '';
+                if (entryId === 'global') {
+                    const config = window._gsConfig || {};
+                    const entryConfig = config.entry_config || {};
+                    videoPath = entryConfig.media_path || '';
+                } else {
+                    const entry = entryList[entryId];
+                    if (entry) videoPath = entry.media_path || '';
                 }
-            } catch (e) {
-                // 忽略錯誤
+
+                const thumbnail = document.getElementById('entryThumbnail');
+                if (thumbnail && videoPath && /\.(mp4|avi|mov|mkv|webm)$/i.test(videoPath)) {
+                    const url = formatVideoPath(videoPath);
+                    thumbnail.onloadedmetadata = () => { try { thumbnail.currentTime = 1; } catch(e) {} };
+                    thumbnail.src = url;
+                    thumbnail.load();
+                }
             }
+
+            document.getElementById('toggleEntryVideo').classList.toggle('active', entryVideoVisible);
+            updateEntryVisibilityButtons();
+            savePositions();
+        }
+
+        // 更新所有進場列表中的 👁️ 按鈕狀態
+        function updateEntryVisibilityButtons() {
+            document.querySelectorAll('.entry-vis-btn').forEach(btn => {
+                const id = btn.dataset.entryId;
+                const isActive = entryVideoVisible && currentPreviewEntryId == id;
+                btn.className = `debug-btn small entry-vis-btn ${isActive ? 'secondary' : 'danger'}`;
+                btn.innerHTML = isActive ? '👁️ 顯示' : '🚫 隱藏';
+            });
         }
 
         // === 快速隱藏/顯示全部 ===
@@ -4326,7 +4423,10 @@
                 const entryConfig = config.entry_config || {};
 
                 const container = document.getElementById('entryList');
-                if (!container) return;
+                if (!container) {
+                    console.error('[進場列表] 找不到 #entryList 容器');
+                    return;
+                }
 
                 if (entryList.length === 0 && !entryConfig.media_path) {
                     container.innerHTML = '<div class="empty-list">尚未設定進場效果</div>';
@@ -4339,23 +4439,24 @@
                 entryList.forEach((entry, index) => {
                     if (!entry.media_path) return;
                     const isVideo = /\.(mp4|avi|mov|mkv|webm)$/i.test(entry.media_path);
-                    const enabled = entry.enabled !== false;
+                    const fileName = entry.media_path.split('\\').pop().split('/').pop();
+                    const isActive = entryVideoVisible && currentPreviewEntryId == index;
                     html += `
-                        <div class="video-item ${enabled ? '' : 'hidden-item'}" id="entryItem_${index}">
+                        <div class="video-item" id="entryItem_${index}">
                             <div class="video-thumbnail">
                                 ${isVideo
-                                    ? `<video src="${formatVideoPath(entry.media_path)}" muted preload="metadata"></video>`
+                                    ? `<video src="${formatVideoPath(entry.media_path)}" muted preload="metadata" onloadedmetadata="this.currentTime=1" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;background:#553;color:#fa0;font-size:20px\\'>👋</div>'"></video>`
                                     : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#333;color:#fff;">🎵</div>`
                                 }
                             </div>
                             <div class="video-info">
                                 <div class="video-name">👤 ${entry.username || '未命名'}</div>
-                                <div class="video-type">${entry.media_path.split('\\').pop()}</div>
+                                <div class="video-type">${fileName}</div>
                             </div>
                             <div class="video-actions">
                                 <button class="debug-btn small" onclick="testEntryByIndex(${index})">▶️</button>
-                                <button class="debug-btn small ${enabled ? 'secondary' : 'danger'}" onclick="toggleEntryEnabled(${index})" id="entryVisBtn_${index}">
-                                    ${enabled ? '👁️' : '🚫'}
+                                <button class="debug-btn small entry-vis-btn ${isActive ? 'secondary' : 'danger'}" data-entry-id="${index}" onclick="toggleEntryPreview(${index})">
+                                    ${isActive ? '👁️ 顯示' : '🚫 隱藏'}
                                 </button>
                             </div>
                         </div>
@@ -4365,23 +4466,24 @@
                 // 顯示全局進場（如果有設定）
                 if (entryConfig.media_path) {
                     const isVideo = /\.(mp4|avi|mov|mkv|webm)$/i.test(entryConfig.media_path);
-                    const enabled = entryConfig.enabled !== false;
+                    const globalFileName = entryConfig.media_path.split('\\').pop().split('/').pop();
+                    const isGlobalActive = entryVideoVisible && currentPreviewEntryId === 'global';
                     html += `
-                        <div class="video-item ${enabled ? '' : 'hidden-item'}" id="entryItem_global">
+                        <div class="video-item" id="entryItem_global">
                             <div class="video-thumbnail">
                                 ${isVideo
-                                    ? `<video src="${formatVideoPath(entryConfig.media_path)}" muted preload="metadata"></video>`
+                                    ? `<video src="${formatVideoPath(entryConfig.media_path)}" muted preload="metadata" onloadedmetadata="this.currentTime=1" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;background:#553;color:#fa0;font-size:20px\\'>🌐</div>'"></video>`
                                     : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#333;color:#fff;">🎵</div>`
                                 }
                             </div>
                             <div class="video-info">
                                 <div class="video-name">🌐 全局進場</div>
-                                <div class="video-type">${entryConfig.media_path.split('\\').pop()}</div>
+                                <div class="video-type">${globalFileName}</div>
                             </div>
                             <div class="video-actions">
                                 <button class="debug-btn small" onclick="testGlobalEntry()">▶️</button>
-                                <button class="debug-btn small ${enabled ? 'secondary' : 'danger'}" onclick="toggleGlobalEntryEnabled()" id="entryVisBtn_global">
-                                    ${enabled ? '👁️' : '🚫'}
+                                <button class="debug-btn small entry-vis-btn ${isGlobalActive ? 'secondary' : 'danger'}" data-entry-id="global" onclick="toggleEntryPreview('global')">
+                                    ${isGlobalActive ? '👁️ 顯示' : '🚫 隱藏'}
                                 </button>
                             </div>
                         </div>
@@ -4469,8 +4571,24 @@
                 }
             }
 
+            // 如果沒有專屬進場，嘗試全局進場
+            if (!videoPath && window._gsConfig) {
+                const entryConfig = window._gsConfig.entry_config || {};
+                if (entryConfig.media_path && /\.(mp4|avi|mov|mkv|webm)$/i.test(entryConfig.media_path)) {
+                    videoPath = entryConfig.media_path;
+                }
+            }
+
             if (videoPath) {
-                thumbnail.src = formatVideoPath(videoPath);
+                const url = formatVideoPath(videoPath);
+                thumbnail.onloadedmetadata = () => {
+                    try { thumbnail.currentTime = 1; } catch (e) {}
+                };
+                thumbnail.onerror = () => {
+                    console.error('[進場縮圖] 載入失敗: ' + url);
+                };
+                thumbnail.src = url;
+                thumbnail.load();
             }
         }
 
@@ -4534,7 +4652,6 @@
             const duckCounter = document.getElementById('duckCounterBox');
             const pityCounter = document.getElementById('pityCounterBox');
             const leaderboard = document.getElementById('leaderboardBox');
-            const giftImageDisplay = document.getElementById('giftImageDisplay');
 
             // 收集影片容器資料
             const videoData = {};
@@ -4605,8 +4722,7 @@
             const duckVideoDim = getElementDimensions(duckVideo, 300, 200);
             const duckCounterDim = getElementDimensions(duckCounter, 200, 100);
             const pityCounterDim = getElementDimensions(pityCounter, 180, 80);
-            const leaderboardDim = getElementDimensions(leaderboard, 320, 100);
-            const giftImageDim = getElementDimensions(giftImageDisplay, 300, 200);
+            const leaderboardDim = getElementDimensions(leaderboard, 400, 180);
 
             const positions = {
                 wheel: {
@@ -4669,18 +4785,6 @@
                     left: leaderboardDim.left || 50,
                     top: leaderboardDim.top || 300,
                     visible: leaderboardVisible
-                },
-                giftImage: {
-                    width: giftImageDim.width,
-                    height: giftImageDim.height,
-                    left: giftImageDim.left,
-                    top: giftImageDim.top,
-                    visible: giftImageVisible,
-                    // 保存原始內容尺寸（用於計算縮放比例）
-                    originalWidth: giftImageDisplay ? (parseInt(giftImageDisplay.dataset.originalWidth) || 0) : 0,
-                    originalHeight: giftImageDisplay ? (parseInt(giftImageDisplay.dataset.originalHeight) || 0) : 0,
-                    // 保存禮物圖資料（用於恢復）
-                    data: giftImageData
                 },
                 videoContainers: videoData,
                 videoModuleVisible: videoVisible,
@@ -4776,255 +4880,6 @@
                 console.error('[進場影片測試] 錯誤:', e);
                 alert('測試失敗: ' + e.message);
             }
-        }
-
-        // === 禮物圖顯示功能 ===
-        let giftImageVisible = false;
-        let giftImageData = null;  // 保存禮物圖資料用於恢復
-
-        function showGiftImageOnGreenScreen(data) {
-            // 保存資料以便恢復
-            giftImageData = data;
-            console.log('[禮物圖] 顯示', data);
-            const container = document.getElementById('giftImageDisplay');
-            const content = document.getElementById('giftImageContent');
-            if (!container || !content) return;
-
-            const { items, settings } = data;
-            if (!items || items.length === 0) {
-                container.style.display = 'none';
-                giftImageVisible = false;
-                return;
-            }
-
-            // 背景樣式
-            let bgStyle = '';
-            if (settings.bgType === 'transparent') {
-                bgStyle = 'background: transparent;';
-            } else if (settings.bgType === 'gradient') {
-                bgStyle = `background: linear-gradient(135deg, ${settings.bgColor}, ${settings.bgColor2});`;
-            } else {
-                bgStyle = `background: ${settings.bgColor};`;
-            }
-
-            // 文字樣式
-            const textStyle = `
-                font-size: ${settings.fontSize}px;
-                color: ${settings.fontColor};
-                font-weight: ${settings.fontBold ? 'bold' : 'normal'};
-                ${settings.textShadow ? 'text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);' : ''}
-            `;
-
-            // 圖示位置樣式
-            const itemFlexDirection = settings.iconPosition === 'right' ? 'row-reverse' : 'row';
-
-            content.style.cssText = `
-                ${bgStyle}
-                padding: ${settings.padding}px;
-                gap: ${settings.gap}px;
-                grid-template-columns: repeat(${settings.columns}, 1fr);
-                ${settings.rounded ? 'border-radius: 16px;' : ''}
-            `;
-
-            content.innerHTML = items.map(item => `
-                <div class="gift-image-grid-item" style="flex-direction: ${itemFlexDirection};">
-                    ${item.iconUrl
-                        ? `<img src="${item.iconUrl}" style="width: ${settings.iconSize}px; height: ${settings.iconSize}px;" onerror="this.style.display='none'">`
-                        : `<div style="width: ${settings.iconSize}px; height: ${settings.iconSize}px; display: flex; align-items: center; justify-content: center; font-size: ${settings.iconSize * 0.6}px;">🎁</div>`
-                    }
-                    <span class="gift-label" style="${textStyle} font-family: '${item.font || 'Microsoft JhengHei'}', sans-serif;">${escapeHtmlGs(item.name)}</span>
-                </div>
-            `).join('');
-
-            container.style.display = 'block';
-            giftImageVisible = true;
-
-            // 使用 requestAnimationFrame 等待內容渲染完成後保存原始尺寸
-            const wrapper = container.querySelector('.gift-image-wrapper');
-            if (wrapper) {
-                // 重置縮放以取得真實尺寸
-                wrapper.style.transform = 'none';
-            }
-            requestAnimationFrame(() => {
-                // 保存原始尺寸到 dataset
-                const origW = content.offsetWidth || content.scrollWidth || 300;
-                const origH = content.offsetHeight || content.scrollHeight || 200;
-                container.dataset.originalWidth = origW;
-                container.dataset.originalHeight = origH;
-
-                // 如果容器有自訂尺寸，套用縮放
-                const containerW = parseInt(container.style.width);
-                const containerH = parseInt(container.style.height);
-                if (wrapper && containerW > 0 && containerH > 0) {
-                    const scaleX = containerW / origW;
-                    const scaleY = containerH / origH;
-                    const scale = Math.min(scaleX, scaleY);
-                    wrapper.style.transform = `scale(${scale})`;
-                }
-
-                savePositionsDebounced();
-            });
-        }
-
-        function hideGiftImage() {
-            const container = document.getElementById('giftImageDisplay');
-            if (container) {
-                container.style.display = 'none';
-                giftImageVisible = false;
-                giftImageData = null;  // 清除資料
-                savePositionsDebounced();  // 保存狀態
-            }
-        }
-
-        function toggleGiftImageVisible() {
-            if (giftImageVisible) {
-                hideGiftImage();
-            } else {
-                // 如果要顯示但沒有內容，提示用戶
-                const content = document.getElementById('giftImageContent');
-                if (!content || !content.innerHTML) {
-                    console.log('[禮物圖] 尚無內容，請從主介面發送');
-                    return;
-                }
-                document.getElementById('giftImageDisplay').style.display = 'block';
-                giftImageVisible = true;
-            }
-            savePositionsDebounced();
-        }
-
-        async function exportGiftImageToFile(data) {
-            console.log('[禮物圖] 匯出', data);
-            const { items, settings, savePath } = data;
-            if (!items || items.length === 0) return;
-
-            // 創建一個臨時的 canvas 來繪製禮物圖
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-
-            const columns = settings.columns || 3;
-            const gap = settings.gap || 20;
-            const iconSize = settings.iconSize || 64;
-            const padding = settings.padding || 30;
-            const fontSize = settings.fontSize || 24;
-
-            // 計算文字最大寬度（考慮每個項目的字體）
-            let maxTextWidth = 0;
-            items.forEach(item => {
-                const itemFont = item.font || 'Microsoft JhengHei';
-                ctx.font = `${settings.fontBold ? 'bold' : 'normal'} ${fontSize}px '${itemFont}', sans-serif`;
-                const w = ctx.measureText(item.name).width;
-                if (w > maxTextWidth) maxTextWidth = w;
-            });
-
-            const itemWidth = iconSize + 12 + maxTextWidth + 20;
-            const itemHeight = Math.max(iconSize, fontSize + 10);
-            const rows = Math.ceil(items.length / columns);
-
-            const canvasWidth = padding * 2 + columns * itemWidth + (columns - 1) * gap;
-            const canvasHeight = padding * 2 + rows * itemHeight + (rows - 1) * gap;
-
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-
-            // 背景
-            if (settings.bgType === 'gradient') {
-                const gradient = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight);
-                gradient.addColorStop(0, settings.bgColor);
-                gradient.addColorStop(1, settings.bgColor2);
-                ctx.fillStyle = gradient;
-            } else if (settings.bgType !== 'transparent') {
-                ctx.fillStyle = settings.bgColor;
-            }
-
-            if (settings.bgType !== 'transparent') {
-                if (settings.rounded) {
-                    roundRect(ctx, 0, 0, canvasWidth, canvasHeight, 16);
-                    ctx.fill();
-                } else {
-                    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-                }
-            }
-
-            // 載入所有圖片
-            const loadImage = (url) => {
-                return new Promise((resolve) => {
-                    if (!url) {
-                        resolve(null);
-                        return;
-                    }
-                    const img = new Image();
-                    img.crossOrigin = 'anonymous';
-                    img.onload = () => resolve(img);
-                    img.onerror = () => resolve(null);
-                    img.src = url;
-                });
-            };
-
-            const images = await Promise.all(items.map(item => loadImage(item.iconUrl)));
-
-            // 繪製每個禮物
-            ctx.fillStyle = settings.fontColor;
-            ctx.textBaseline = 'middle';
-
-            if (settings.textShadow) {
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                ctx.shadowBlur = 4;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-            }
-
-            items.forEach((item, i) => {
-                const col = i % columns;
-                const row = Math.floor(i / columns);
-                const x = padding + col * (itemWidth + gap);
-                const y = padding + row * (itemHeight + gap);
-
-                // 繪製圖示
-                const img = images[i];
-                if (img) {
-                    ctx.drawImage(img, x, y + (itemHeight - iconSize) / 2, iconSize, iconSize);
-                } else {
-                    // 繪製預設圖示
-                    ctx.save();
-                    ctx.font = `${iconSize * 0.6}px sans-serif`;
-                    ctx.fillText('🎁', x + iconSize / 4, y + itemHeight / 2);
-                    ctx.restore();
-                }
-
-                // 繪製文字（使用每個項目自己的字體）
-                const itemFont = item.font || 'Microsoft JhengHei';
-                ctx.font = `${settings.fontBold ? 'bold' : 'normal'} ${fontSize}px '${itemFont}', sans-serif`;
-                ctx.fillStyle = settings.fontColor;
-                ctx.fillText(item.name, x + iconSize + 12, y + itemHeight / 2);
-            });
-
-            // 匯出為圖片並保存
-            const dataUrl = canvas.toDataURL('image/png');
-            // 通知主進程保存文件
-            if (window.electronAPI && savePath) {
-                // 發送 base64 數據到主進程保存
-                const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
-                try {
-                    await window.electronAPI.saveExportedImage(savePath, base64Data);
-                    console.log('[禮物圖] 已匯出到:', savePath);
-                } catch (e) {
-                    console.error('[禮物圖] 匯出失敗:', e);
-                }
-            }
-        }
-
-        function roundRect(ctx, x, y, width, height, radius) {
-            ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
         }
 
         // === 盲盒功能 ===
@@ -5305,20 +5160,18 @@
 
         // 重新載入所有縮圖
         function reloadAllThumbnails() {
-            console.log('[DEBUG] 重新載入所有縮圖');
+            const containers = document.querySelectorAll('.video-container');
+            console.log(`重新載入 ${containers.length} 個縮圖`);
 
-            document.querySelectorAll('.video-container').forEach((container, i) => {
+            containers.forEach((container, i) => {
                 const thumbnail = container.querySelector('.thumbnail-video');
                 if (!thumbnail) return;
 
                 const idx = container.dataset.index;
                 const src = thumbnail.src || thumbnail.getAttribute('src');
 
-                console.log(`[DEBUG] 重新載入縮圖 [${idx}], src=${src ? src.substring(0, 80) : 'empty'}`);
-
                 if (!src || src === 'undefined' || src === '') {
-                    console.warn(`[WARN] 縮圖 [${idx}] 沒有有效的 src`);
-                    container.style.background = 'rgba(255, 165, 0, 0.3)';  // 橙色表示無 src
+                    container.style.background = 'rgba(255, 165, 0, 0.3)';
                     return;
                 }
 
@@ -5339,49 +5192,32 @@
 
                 // 設定事件處理
                 thumbnail.onloadedmetadata = () => {
-                    console.log(`[DEBUG] 縮圖重載 metadata 成功 [${idx}], readyState=${thumbnail.readyState}`);
-                    try {
-                        thumbnail.currentTime = 1;
-                    } catch (e) {
-                        console.warn(`[WARN] 設定縮圖時間失敗 [${idx}]:`, e);
-                    }
+                    try { thumbnail.currentTime = 1; } catch (e) {}
                 };
 
                 thumbnail.onloadeddata = () => {
-                    console.log(`[DEBUG] 縮圖重載 data 成功 [${idx}], readyState=${thumbnail.readyState}, currentTime=${thumbnail.currentTime}`);
                     if (thumbnail.currentTime === 0) {
-                        try {
-                            thumbnail.currentTime = 1;
-                        } catch (e) {
-                            console.warn(`[WARN] 設定縮圖時間失敗 (loadeddata) [${idx}]:`, e);
-                        }
+                        try { thumbnail.currentTime = 1; } catch (e) {}
                     }
                 };
 
-                thumbnail.oncanplay = () => {
-                    console.log(`[DEBUG] 縮圖可播放 [${idx}], currentTime=${thumbnail.currentTime}`);
-                };
-
-                thumbnail.onerror = (e) => {
-                    console.error(`[ERROR] 縮圖重載失敗 [${idx}]:`, e, thumbnail.error);
+                thumbnail.onerror = () => {
+                    console.error(`縮圖載入失敗 [${idx}]`);
                     thumbnail.style.display = 'none';
                     container.style.background = 'rgba(255, 0, 0, 0.3)';
                 };
 
                 // 重新設定 src 並載入
                 setTimeout(() => {
-                    console.log(`[DEBUG] 設定縮圖 src [${idx}]`);
                     thumbnail.src = src;
                     thumbnail.load();
                 }, 50 * i);  // 錯開載入時間
             });
-
-            console.log('[DEBUG] 縮圖重載已觸發');
         }
 
         // 重置所有裁切狀態
         async function resetAllCropStates() {
-            console.log('[DEBUG] 重置所有裁切狀態');
+            console.log('重置所有裁切狀態');
 
             // 重置每個容器
             document.querySelectorAll('.video-container').forEach(vc => {
@@ -5431,7 +5267,7 @@
 
             // 保存到配置文件
             await savePositions();
-            console.log('[DEBUG] 裁切狀態已重置並保存');
+            console.log('裁切狀態已重置並保存');
             alert('裁切狀態已重置！');
         }
 
@@ -5566,7 +5402,10 @@
         // === 影片播放 ===
         // 根據影片路徑找到對應的容器並播放
         function triggerVideo(videoData) {
-            if (!videoData.path) return;
+            if (!videoData.path) {
+                console.warn('[triggerVideo] path 為空，跳過');
+                return;
+            }
 
             // 找到對應的容器 (根據路徑匹配)
             let foundIndex = -1;
@@ -5585,6 +5424,7 @@
             }
 
             // 使用對應容器播放
+            console.log(`播放影片 [${foundIndex}]: ${videoData.path}`);
             triggerVideoInContainer(foundIndex, videoData);
         }
 
@@ -5689,8 +5529,8 @@
                 video.onended = null;
                 video.ontimeupdate = null;
                 video.onerror = null;
-                // 釋放影片記憶體
-                video.src = '';
+                video.pause();
+                video.removeAttribute('src');
                 video.load();
                 container.classList.remove('playing');
                 // 如果原本是隱藏的，恢復隱藏
@@ -5740,8 +5580,7 @@
                 video.onended = null;
                 video.ontimeupdate = null;
                 video.onerror = null;
-                // 釋放影片記憶體
-                video.src = '';
+                video.removeAttribute('src');
                 video.load();
             }
             if (container) {
@@ -5781,8 +5620,10 @@
 
         // 播放抓鴨子影片
         async function playDuckVideo(videoData) {
+            console.log('[鴨子] playDuckVideo 被呼叫, duckVideoPlaying:', duckVideoPlaying, 'path:', videoData?.path);
             // 如果正在播放，加入佇列
             if (duckVideoPlaying) {
+                console.log('[鴨子] 正在播放中，加入佇列，佇列長度:', duckVideoQueue.length + 1);
                 duckVideoQueue.push(videoData);
                 return;
             }
@@ -5791,6 +5632,7 @@
 
         // 立即播放抓鴨子影片
         async function playDuckVideoNow(videoData) {
+            console.log('[鴨子] playDuckVideoNow 開始, path:', videoData?.path);
             // 立即設定播放中狀態，防止競態條件（必須在任何 await 之前）
             duckVideoPlaying = true;
 
@@ -5798,6 +5640,7 @@
             const video = document.getElementById('duckVideoPlayer');
 
             if (!container || !video) {
+                console.error('[鴨子] 容器或影片元素不存在! container:', !!container, 'video:', !!video);
                 duckVideoPlaying = false;
                 playNextDuckVideo();
                 return;
@@ -5811,10 +5654,17 @@
                 pendingPityData = {
                     current: videoData.pityCounter,
                     threshold: videoData.pityThreshold,
-                    thresholdJackpot: videoData.pityThresholdJackpot
+                    thresholdJackpot: videoData.pityThresholdJackpot,
+                    softPityActive: videoData.softPityActive || false,
+                    effectiveCatchRate: videoData.effectiveCatchRate || 0
                 };
             } else {
                 pendingPityData = null;
+            }
+
+            // Combo 連擊指示器
+            if (videoData.comboCount > 1) {
+                showComboIndicator(videoData.comboCount, videoData.comboMultiplier);
             }
             // 儲存排行榜資料（影片播完後更新）
             pendingLeaderboardData = videoData.leaderboardData || null;
@@ -5827,6 +5677,7 @@
                 if (window.pywebview && window.pywebview.api) {
                     videoUrl = await window.pywebview.api.get_media_url(videoData.path);
                 }
+                console.log('[鴨子] 媒體 URL:', videoUrl);
 
                 // 先清空舊影片源以釋放記憶體
                 video.pause();
@@ -5870,6 +5721,7 @@
                 // 顯示容器並播放
                 container.classList.remove('hidden');
                 container.classList.add('playing');
+                console.log('[鴨子] 容器已顯示，準備播放');
 
                 // 處理播放結束
                 const onEnded = () => {
@@ -5891,8 +5743,9 @@
                 };
 
                 await video.play();
+                console.log('[鴨子] 影片開始播放成功');
             } catch (e) {
-                console.error('Duck video playback error:', e);
+                console.error('[鴨子] 播放失敗:', e);
                 finishDuckVideo();
             }
         }
@@ -6072,7 +5925,7 @@
         const scalableBoxCache = {
             pityCounterBox: { width: 180, height: 80, left: 50, top: 170 },
             duckCounterBox: { width: 200, height: 100, left: 50, top: 50 },
-            leaderboardBox: { width: 320, height: 100, left: 50, top: 300 }
+            leaderboardBox: { width: 400, height: 180, left: 50, top: 300 }
         };
 
         function updatePityCounter(data) {
@@ -6101,6 +5954,17 @@
                     if (counterStage) counterStage.textContent = '接近保底中...';
                 } else {
                     if (counterStage) counterStage.textContent = '';
+                }
+            }
+
+            // 軟保底機率提升顯示
+            const boostLabel = document.getElementById('pityBoostLabel');
+            if (boostLabel) {
+                if (data.softPityActive && data.effectiveCatchRate) {
+                    boostLabel.textContent = `⬆ 機率提升至 ${data.effectiveCatchRate}%`;
+                    boostLabel.style.display = 'block';
+                } else {
+                    boostLabel.style.display = 'none';
                 }
             }
 
@@ -6201,67 +6065,85 @@
             if (!data) return;
             leaderboardData = data;
 
-            // 同時獲取世界冠軍
+            // 同時獲取世界冠軍（每次都更新，用滾動動畫顯示變化）
             fetchWorldChampion().then(() => renderLeaderboard(data));
         }
 
+        // 排行榜多名次顯示
+        let lbRotateTimer = null;
+        let lbCurrentCategory = 'total'; // 'total' or 'single'
+        let lbDisplayCount = 5;
+        let lbAutoRotate = true;
+        let lbRotateInterval = 5;
+
         function renderLeaderboard(data) {
-            // 渲染排行榜（累計第一名 + 單次最高 + 世界榜第一）
-            const simpleList = document.getElementById('gsLeaderboardSimple');
-            if (simpleList) {
-                const totalItem = data.totalRanking && data.totalRanking.length > 0 ? data.totalRanking[0] : null;
-                const singleItem = data.singleHighest && data.singleHighest.length > 0 ? data.singleHighest[0] : null;
-                const worldItem = window.worldChampionData;
-
-                // 檢查是否有變化
-                const newTotalDucks = totalItem ? totalItem.totalDucks : 0;
-                const newSingleAmount = singleItem ? singleItem.amount : 0;
-                const newTotalUser = totalItem ? (totalItem.uniqueId || totalItem.nickname) : '';
-                const newSingleUser = singleItem ? (singleItem.uniqueId || singleItem.nickname) : '';
-                const newWorldDucks = worldItem ? worldItem.totalDucks : 0;
-                const newWorldUser = worldItem ? (worldItem.uniqueId || worldItem.nickname) : '';
-
-                const totalChanged = newTotalDucks !== lastLeaderboardState.totalDucks || newTotalUser !== lastLeaderboardState.totalUser;
-                const singleChanged = newSingleAmount !== lastLeaderboardState.singleAmount || newSingleUser !== lastLeaderboardState.singleUser;
-                const worldChanged = newWorldDucks !== lastLeaderboardState.worldDucks || newWorldUser !== lastLeaderboardState.worldUser;
-
-                // 更新狀態
-                lastLeaderboardState = {
-                    totalDucks: newTotalDucks, singleAmount: newSingleAmount,
-                    totalUser: newTotalUser, singleUser: newSingleUser,
-                    worldDucks: newWorldDucks, worldUser: newWorldUser
-                };
-
-                simpleList.innerHTML = `
-                    <div class="lb-row${totalChanged ? ' updating' : ''}">
-                        <span class="lb-icon gold">👑</span>
-                        ${totalItem && totalItem.avatar
-                            ? `<img class="lb-avatar-mini gold-border" src="${totalItem.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar-mini gold-border placeholder\\'>🦆</div>'">`
-                            : '<div class="lb-avatar-mini gold-border placeholder">🦆</div>'
-                        }
-                        <span class="lb-name">${totalItem ? escapeHtmlGs(totalItem.nickname || totalItem.name) : '---'}</span>
-                        <span class="lb-value gold">${totalItem ? totalItem.totalDucks.toLocaleString() : 0}🦆</span>
-                    </div>
-                    <div class="lb-row${singleChanged ? ' updating' : ''}">
-                        <span class="lb-icon purple">⭐</span>
-                        ${singleItem && singleItem.avatar
-                            ? `<img class="lb-avatar-mini purple-border" src="${singleItem.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar-mini purple-border placeholder\\'>🦆</div>'">`
-                            : '<div class="lb-avatar-mini purple-border placeholder">🦆</div>'
-                        }
-                        <span class="lb-name">${singleItem ? escapeHtmlGs(singleItem.nickname || singleItem.name) : '---'}</span>
-                        <span class="lb-value purple">${singleItem ? singleItem.amount.toLocaleString() : 0}🦆</span>
-                    </div>
-                    <div class="lb-row${worldChanged ? ' updating' : ''}">
-                        <span class="lb-icon world">🌍</span>
-                        ${worldItem && worldItem.avatar
-                            ? `<img class="lb-avatar-mini world-border" src="${worldItem.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar-mini world-border placeholder\\'>🦆</div>'">`
-                            : '<div class="lb-avatar-mini world-border placeholder">🦆</div>'
-                        }
-                        <span class="lb-name">${worldItem ? escapeHtmlGs(worldItem.nickname) : '---'}</span>
-                        <span class="lb-value world">${worldItem ? worldItem.totalDucks.toLocaleString() : 0}🦆</span>
-                    </div>
-                `;
+            // 從 config 讀取設定
+            if (window._gsConfig) {
+                lbDisplayCount = window._gsConfig.greenscreen_leaderboard_count || 5;
+                lbAutoRotate = window._gsConfig.greenscreen_leaderboard_rotate !== false;
+                lbRotateInterval = window._gsConfig.greenscreen_leaderboard_rotate_interval || 5;
             }
+
+            renderLeaderboardCategory(data, lbCurrentCategory);
+
+            // 設定自動輪播
+            if (lbAutoRotate && !lbRotateTimer) {
+                lbRotateTimer = setInterval(() => {
+                    lbCurrentCategory = (lbCurrentCategory === 'total') ? 'single' : 'total';
+                    if (leaderboardData) renderLeaderboardCategory(leaderboardData, lbCurrentCategory);
+                }, lbRotateInterval * 1000);
+            } else if (!lbAutoRotate && lbRotateTimer) {
+                clearInterval(lbRotateTimer);
+                lbRotateTimer = null;
+            }
+        }
+
+        function renderLeaderboardCategory(data, category) {
+            const header = document.getElementById('lbCategoryHeader');
+            const entriesEl = document.getElementById('lbEntries');
+            if (!header || !entriesEl) return;
+
+            let items, icon, title, valueKey;
+            if (category === 'total') {
+                items = (data.totalRanking || []).slice(0, lbDisplayCount);
+                icon = '👑'; title = '累計排行';
+                valueKey = 'totalDucks';
+            } else {
+                items = (data.singleHighest || []).slice(0, lbDisplayCount);
+                icon = '⭐'; title = '單次最高';
+                valueKey = 'amount';
+            }
+
+            // Fade 過渡
+            entriesEl.classList.add('fade-out');
+            setTimeout(() => {
+                header.innerHTML = `<span class="lb-category-icon">${icon}</span><span class="lb-category-title">${title}</span>`;
+
+                if (items.length === 0) {
+                    entriesEl.innerHTML = '<div class="lb-row"><span class="lb-name" style="opacity:0.5;">暫無資料</span></div>';
+                } else {
+                    const rankEmojis = ['🥇', '🥈', '🥉'];
+                    entriesEl.innerHTML = items.map((item, idx) => {
+                        const rankClass = idx < 3 ? `rank-${idx + 1}` : 'rank-other';
+                        const rankText = idx < 3 ? rankEmojis[idx] : (idx + 1);
+                        const val = item[valueKey] || 0;
+                        const colorClass = category === 'total' ? 'gold' : 'purple';
+                        return `
+                            <div class="lb-row">
+                                <div class="lb-rank-badge ${rankClass}">${rankText}</div>
+                                ${item.avatar
+                                    ? `<img class="lb-avatar-mini ${colorClass}-border" src="${item.avatar}" onerror="this.outerHTML='<div class=\\'lb-avatar-mini placeholder\\'>🦆</div>'">`
+                                    : '<div class="lb-avatar-mini placeholder">🦆</div>'
+                                }
+                                <span class="lb-name">${escapeHtmlGs(item.nickname || item.uniqueId || '---')}</span>
+                                <span class="lb-value ${colorClass}">${val.toLocaleString()}🦆</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                entriesEl.classList.remove('fade-out');
+            }, 300);
         }
 
         // HTML 轉義
@@ -6270,6 +6152,58 @@
             div.textContent = text || '';
             return div.innerHTML;
         }
+
+        // Combo 連擊指示器
+        let comboHideTimer = null;
+        function showComboIndicator(count, multiplier) {
+            const indicator = document.getElementById('comboIndicator');
+            const textEl = document.getElementById('comboText');
+            const multEl = document.getElementById('comboMultiplierText');
+            if (!indicator || !textEl || !multEl) return;
+
+            textEl.textContent = `COMBO x${count}!`;
+            multEl.textContent = `鴨子 x${multiplier}`;
+            indicator.style.display = 'block';
+            indicator.classList.add('show');
+
+            if (comboHideTimer) clearTimeout(comboHideTimer);
+            comboHideTimer = setTimeout(() => {
+                indicator.classList.remove('show');
+                setTimeout(() => { indicator.style.display = 'none'; }, 300);
+            }, 3000);
+        }
+
+        // 數字滾動動畫
+        function animateNumber(element, from, to, duration = 1500, suffix = '') {
+            if (from === to) return;
+
+            const startTime = performance.now();
+            const diff = to - from;
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // 使用 easeOutExpo 緩動函數
+                const easeProgress = 1 - Math.pow(2, -10 * progress);
+                const currentValue = Math.round(from + diff * easeProgress);
+
+                element.textContent = currentValue.toLocaleString() + suffix;
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        // 儲存上次的排行榜數值（用於動畫）
+        let lastAnimatedValues = {
+            totalDucks: 0,
+            singleAmount: 0,
+            worldDucks: 0
+        };
 
         // === 里程碑慶祝 ===
         let milestoneTimeout = null;
@@ -6346,7 +6280,8 @@
             const hideOverlay = () => {
                 overlay.classList.remove('active');
                 video.pause();
-                video.src = '';
+                video.removeAttribute('src');
+                video.load();
                 // 移除可能的佔位符
                 const placeholder = overlay.querySelector('.milestone-avatar.placeholder');
                 if (placeholder) {
@@ -6372,7 +6307,18 @@
         }
 
         function triggerEntry(data) {
-            console.log('[ENTRY] 觸發進場效果:', data);
+            console.log('[ENTRY] 觸發進場效果:', JSON.stringify({path: data.path, is_audio: data.is_audio, username: data.username}));
+
+            // 如果沒有媒體路徑，跳過播放直接完成
+            if (!data.path) {
+                console.warn('[ENTRY] 媒體路徑為空，跳過播放');
+                // 只顯示進場文字
+                if (data.show_text && data.text) {
+                    showEntryText(data);
+                }
+                notifyEntryEffectFinished();
+                return;
+            }
 
             // 決定使用哪個容器（縮圖容器或全屏容器）
             const useSmallContainer = entryVideoVisible && !data.is_audio;
@@ -6399,6 +6345,7 @@
 
             // 準備影片路徑
             const videoSrc = formatVideoPath(data.path);
+            console.log(`[ENTRY] 原始路徑: ${data.path}, 格式化URL: ${videoSrc}, is_audio: ${data.is_audio}`);
 
             if (data.is_audio) {
                 // 音效模式 - 使用縮圖容器的 audio 或全屏容器的 audio
@@ -6424,6 +6371,13 @@
             } else if (useSmallContainer && smallContainer && smallPlayer) {
                 // 影片模式 - 在縮圖容器中播放
                 console.log('[ENTRY] 使用縮圖容器播放');
+                // 確保容器可見（移除 hidden class）
+                if (smallContainer.classList.contains('hidden')) {
+                    smallContainer.classList.remove('hidden');
+                    smallContainer.style.display = 'block';
+                    smallContainer.style.visibility = 'visible';
+                    smallContainer.style.opacity = '1';
+                }
                 smallPlayer.src = videoSrc;
                 smallPlayer.volume = (data.volume || 100) / 100;
                 smallPlayer.muted = false;
@@ -6435,14 +6389,23 @@
                 smallPlayer.onended = () => {
                     console.log('[ENTRY] 影片播放結束（縮圖容器）');
                     smallContainer.classList.remove('playing');
-                    smallPlayer.src = '';
+                    smallPlayer.onended = null;
+                    smallPlayer.onerror = null;
+                    smallPlayer.pause();
+                    smallPlayer.removeAttribute('src');
+                    smallPlayer.load();
                     notifyEntryEffectFinished();
                 };
 
-                smallPlayer.onerror = (e) => {
-                    console.error('[ENTRY] 影片播放錯誤（縮圖容器）:', e);
+                smallPlayer.onerror = () => {
+                    const err = smallPlayer.error;
+                    console.error(`[ENTRY] 影片播放錯誤（縮圖容器）: code=${err?.code}, message=${err?.message}`);
                     smallContainer.classList.remove('playing');
-                    smallPlayer.src = '';
+                    smallPlayer.onended = null;
+                    smallPlayer.onerror = null;
+                    smallPlayer.pause();
+                    smallPlayer.removeAttribute('src');
+                    smallPlayer.load();
                     notifyEntryEffectFinished();
                 };
 
@@ -6474,14 +6437,23 @@
                 fullVideo.onended = () => {
                     console.log('[ENTRY] 影片播放結束');
                     fullContainer.classList.remove('active');
-                    fullVideo.src = '';
+                    fullVideo.onended = null;
+                    fullVideo.onerror = null;
+                    fullVideo.pause();
+                    fullVideo.removeAttribute('src');
+                    fullVideo.load();
                     notifyEntryEffectFinished();
                 };
 
-                fullVideo.onerror = (e) => {
-                    console.error('[ENTRY] 影片播放錯誤:', e);
+                fullVideo.onerror = () => {
+                    const err = fullVideo.error;
+                    console.error(`[ENTRY] 影片播放錯誤: code=${err?.code}, message=${err?.message}`);
                     fullContainer.classList.remove('active');
-                    fullVideo.src = '';
+                    fullVideo.onended = null;
+                    fullVideo.onerror = null;
+                    fullVideo.pause();
+                    fullVideo.removeAttribute('src');
+                    fullVideo.load();
                     notifyEntryEffectFinished();
                 };
 
@@ -6565,16 +6537,45 @@
             const audio = document.getElementById('entryAudio');
 
             if (video) {
+                video.onended = null;
+                video.onerror = null;
                 video.pause();
-                video.src = '';
+                video.removeAttribute('src');
+                video.load();
             }
             if (audio) {
+                audio.onended = null;
+                audio.onerror = null;
                 audio.pause();
-                audio.src = '';
+                audio.removeAttribute('src');
+                audio.load();
             }
             if (container) {
                 container.classList.remove('active');
             }
+
+            // 也清理小容器
+            const smallContainer = document.getElementById('entryVideoContainer');
+            const smallPlayer = document.getElementById('entryPlayer');
+            const smallAudio = document.getElementById('entryPlayerAudio');
+            if (smallPlayer) {
+                smallPlayer.onended = null;
+                smallPlayer.onerror = null;
+                smallPlayer.pause();
+                smallPlayer.removeAttribute('src');
+                smallPlayer.load();
+            }
+            if (smallAudio) {
+                smallAudio.onended = null;
+                smallAudio.onerror = null;
+                smallAudio.pause();
+                smallAudio.removeAttribute('src');
+                smallAudio.load();
+            }
+            if (smallContainer) {
+                smallContainer.classList.remove('playing');
+            }
+
             entryPlaying = false;
         }
 
@@ -6739,21 +6740,6 @@
 
                     resizeState.contentWidth = contentW;
                     resizeState.contentHeight = contentH;
-                }
-            }
-
-            // 禮物圖：儲存內容的實際尺寸
-            if (elem.id === 'giftImageDisplay') {
-                const wrapper = elem.querySelector('.gift-image-wrapper');
-                const content = elem.querySelector('.gift-image-content');
-                if (wrapper && content) {
-                    // 暫時重置 transform 以取得真實尺寸
-                    const prevTransform = wrapper.style.transform;
-                    wrapper.style.transform = 'none';
-                    // 使用 content 的尺寸（因為 wrapper 是 inline-block 會自動調整）
-                    resizeState.giftImageOrigWidth = content.offsetWidth || content.scrollWidth || 300;
-                    resizeState.giftImageOrigHeight = content.offsetHeight || content.scrollHeight || 200;
-                    wrapper.style.transform = prevTransform;
                 }
             }
 
@@ -6973,23 +6959,6 @@
                     console.log(`[ScalableBox] 緩存更新: ${elem.id}`, scalableBoxCache[elem.id]);
                 }
             }
-
-            // 禮物圖縮放內容
-            if (elem.id === 'giftImageDisplay') {
-                const wrapper = elem.querySelector('.gift-image-wrapper');
-                if (wrapper) {
-                    // 取得內容原始尺寸（儲存在 resizeState 或使用當前尺寸）
-                    const origW = resizeState.giftImageOrigWidth || 300;
-                    const origH = resizeState.giftImageOrigHeight || 200;
-                    // 計算縮放比例
-                    const scaleX = newWidth / origW;
-                    const scaleY = newHeight / origH;
-                    const scale = Math.min(scaleX, scaleY);
-                    wrapper.style.transform = `scale(${scale})`;
-                    // 儲存當前縮放比例到容器的 dataset
-                    elem.dataset.currentScale = scale;
-                }
-            }
         });
 
         document.addEventListener('mouseup', () => {
@@ -7198,7 +7167,7 @@
                 document.body.style.cursor = 'none';  // 隱藏游標
 
                 // 隱藏所有元素（除了鎖鏈對抗）
-                document.querySelectorAll('.draggable, .gift-image-display, #debugPanel').forEach(el => {
+                document.querySelectorAll('.draggable, #debugPanel').forEach(el => {
                     el.style.display = 'none';
                 });
 
@@ -7345,132 +7314,586 @@
             console.log('[鎖鏈對抗] 已強制結束');
         }
 
-        // ============ 世界榜特效 ============
-        // 世界冠軍登頂特效（成為新的第一名時觸發）
-        async function showWorldChampionCrown(data) {
-            console.log('[世界榜] 登頂特效:', data);
+        // ============ 窒息挑戰（秒數制） ============
+        let chokingActive = false;
+        let chokingSeconds = 0;          // 倒數秒數
+        let chokingHP = 100;             // 血量 (0-100)
+        let chokingMaxHP = 100;
+        let chokingSilentRemaining = 0;  // 禁言剩餘秒數
+        let chokingDrainRate = 2;        // 每秒扣血量
+        let chokingRecoverRate = 3;      // 每秒回血量
+        let chokingTickTimer = null;
+        let chokingAudioContext = null;
+        let chokingAnalyser = null;
+        let chokingMicStream = null;
+        let chokingVolumeLevel = 0;
+        let chokingAnimFrame = null;
+        let chokingPunishmentPath = '';
+        let chokingPunishmentVolume = 100;
+        let chokingVolumeThreshold = 30;
 
-            // 創建覆蓋層
-            const overlay = document.createElement('div');
-            overlay.className = 'world-champion-overlay';
-            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;pointer-events:none;';
+        async function initChokingMicrophone() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                chokingMicStream = stream;
+                chokingAudioContext = new AudioContext();
+                const source = chokingAudioContext.createMediaStreamSource(stream);
+                chokingAnalyser = chokingAudioContext.createAnalyser();
+                chokingAnalyser.fftSize = 256;
+                source.connect(chokingAnalyser);
+                monitorChokingVolume();
+                return true;
+            } catch (err) {
+                console.error('[窒息] 麥克風存取失敗:', err);
+                return false;
+            }
+        }
 
-            // 如果有影片，創建影片元素
-            let video = null;
-            if (data.videoPath) {
-                video = document.createElement('video');
-                video.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;';
-                video.autoplay = true;
-                video.muted = false;
-                overlay.appendChild(video);
+        function monitorChokingVolume() {
+            if (!chokingAnalyser) return;
+            const dataArray = new Uint8Array(chokingAnalyser.frequencyBinCount);
+            function update() {
+                if (!chokingActive) return;
+                chokingAnalyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                chokingVolumeLevel = (sum / dataArray.length) / 255 * 100;
+                // 更新音量指示條
+                const volBar = document.getElementById('chokingVolumeBar');
+                const volLabel = document.getElementById('chokingVolumeLabel');
+                if (volBar) volBar.style.width = chokingVolumeLevel + '%';
+                if (volLabel) {
+                    if (chokingSilentRemaining > 0) {
+                        volLabel.textContent = `禁言中: ${Math.ceil(chokingSilentRemaining)}s`;
+                    } else {
+                        volLabel.textContent = `音量: ${Math.round(chokingVolumeLevel)}%`;
+                    }
+                }
+                chokingAnimFrame = requestAnimationFrame(update);
+            }
+            update();
+        }
 
-                try {
-                    const mediaUrl = await pywebview.api.get_media_url(data.videoPath);
-                    video.src = mediaUrl;
-                    video.play().catch(e => console.error('[世界榜] 登頂影片播放失敗:', e));
-                } catch (e) {
-                    console.error('[世界榜] 獲取影片URL失敗:', e);
+        async function startChokingChallenge(data) {
+            if (chokingActive) return;
+
+            const { initialSeconds, silentSeconds, volumeThreshold, punishmentVideo, punishmentVolume, drainRate, recoverRate } = data;
+
+            chokingSeconds = initialSeconds || 30;
+            chokingHP = 100;
+            chokingMaxHP = 100;
+            chokingSilentRemaining = silentSeconds || 5;
+            chokingVolumeThreshold = volumeThreshold || 30;
+            chokingDrainRate = drainRate || 5;      // 每秒扣血
+            chokingRecoverRate = recoverRate || 8;  // 每秒回血
+            chokingPunishmentPath = punishmentVideo || '';
+            chokingPunishmentVolume = punishmentVolume ?? 100;
+            chokingActive = true;
+
+            // 顯示 overlay
+            const overlay = document.getElementById('chokingOverlay');
+            overlay.style.display = 'block';
+
+            // 初始化麥克風
+            const micOk = await initChokingMicrophone();
+            if (!micOk) {
+                console.warn('[窒息] 無法存取麥克風，血量會持續下降');
+            }
+
+            updateChokingDisplay();
+
+            // 遊戲循環（每 100ms 更新）
+            chokingTickTimer = setInterval(() => {
+                // 倒數一直跑
+                chokingSeconds -= 0.1;
+
+                if (chokingSilentRemaining > 0) {
+                    // 禁言期間 - 血量拉滿，不用說話
+                    chokingSilentRemaining -= 0.1;
+                    chokingHP = chokingMaxHP;
+                } else if (chokingVolumeLevel >= chokingVolumeThreshold) {
+                    // 音量足夠 - 回血
+                    chokingHP = Math.min(chokingMaxHP, chokingHP + chokingRecoverRate * 0.1);
+                } else {
+                    // 音量不足 - 扣血
+                    chokingHP -= chokingDrainRate * 0.1;
+                }
+
+                updateChokingDisplay();
+
+                // 倒數結束 = 存活
+                if (chokingSeconds <= 0) {
+                    chokingSeconds = 0;
+                    stopChokingInternal();
+                    console.log('[窒息] 倒數結束，存活！');
+                    try {
+                        window.pywebview.api.choking_ended(true);
+                    } catch (e) {}
+                    return;
+                }
+
+                // 血量歸零 = 失敗
+                if (chokingHP <= 0) {
+                    chokingHP = 0;
+                    stopChokingInternal();
+                    playChokingPunishment(chokingPunishmentPath);
+                    try {
+                        window.pywebview.api.choking_ended(false);
+                    } catch (e) {}
+                }
+            }, 100);
+
+            console.log('[窒息] 挑戰開始！', data);
+        }
+
+        function addChokingTime(seconds) {
+            if (!chokingActive) return;
+            chokingSeconds += seconds;
+            updateChokingDisplay();
+            console.log(`[窒息] +${seconds}秒，剩餘: ${chokingSeconds.toFixed(1)}秒`);
+
+            // 加時特效 - 綠色閃爍
+            showChokingEffect('time', seconds);
+        }
+
+        function addChokingSilent(data) {
+            if (!chokingActive) return;
+            const { seconds, video, volume } = data;
+            chokingSilentRemaining += seconds;
+            chokingHP = chokingMaxHP;  // 立即拉滿血量
+            updateChokingDisplay();
+            console.log(`[窒息] +${seconds}秒禁言，禁言剩餘: ${chokingSilentRemaining.toFixed(1)}秒`);
+
+            // 播放禁言影片
+            if (video) {
+                playChokingSilentVideo(video, volume ?? 100);
+            } else {
+                // 沒有影片就顯示特效
+                showChokingEffect('silent', seconds);
+            }
+        }
+
+        let chokingSilentVideo = null;
+        async function playChokingSilentVideo(videoPath, volume = 100) {
+            try {
+                // 建立或取得禁言影片元素
+                if (!chokingSilentVideo) {
+                    chokingSilentVideo = document.createElement('video');
+                    chokingSilentVideo.id = 'chokingSilentVideo';
+                    chokingSilentVideo.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100vw;
+                        height: 100vh;
+                        object-fit: contain;
+                        z-index: 100;
+                        pointer-events: none;
+                    `;
+                    document.body.appendChild(chokingSilentVideo);
+                }
+
+                const mediaUrl = await window.pywebview.api.get_media_url(videoPath);
+                chokingSilentVideo.src = mediaUrl;
+                chokingSilentVideo.volume = volume / 100;  // 設定音量
+                chokingSilentVideo.style.display = 'block';
+                chokingSilentVideo.play().catch(() => {});
+
+                chokingSilentVideo.onended = () => {
+                    chokingSilentVideo.style.display = 'none';
+                    chokingSilentVideo.removeAttribute('src');
+                    chokingSilentVideo.load();
+                };
+
+                console.log('[窒息] 播放禁言影片:', videoPath);
+            } catch (e) {
+                console.error('[窒息] 禁言影片載入失敗:', e);
+                showChokingEffect('silent', 0);  // fallback
+            }
+        }
+
+        function showChokingEffect(type, seconds) {
+            // 建立特效容器
+            let effectDiv = document.getElementById('chokingEffect');
+            if (!effectDiv) {
+                effectDiv = document.createElement('div');
+                effectDiv.id = 'chokingEffect';
+                effectDiv.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 80px;
+                    font-weight: bold;
+                    text-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
+                    z-index: 10001;
+                    pointer-events: none;
+                    opacity: 0;
+                    transition: opacity 0.2s;
+                    white-space: nowrap;
+                `;
+                document.body.appendChild(effectDiv);
+            }
+
+            if (type === 'time') {
+                effectDiv.textContent = `+${seconds}s ⏱️`;
+                effectDiv.style.color = '#4488ff';  // 藍色 - 增加時間
+            } else if (type === 'silent') {
+                effectDiv.textContent = `🤫 +${seconds}s`;
+                effectDiv.style.color = '#ff4444';  // 紅色 - 禁言
+            }
+
+            // 顯示動畫
+            effectDiv.style.opacity = '1';
+            effectDiv.style.transform = 'translate(-50%, -50%) scale(1.2)';
+
+            setTimeout(() => {
+                effectDiv.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 100);
+
+            setTimeout(() => {
+                effectDiv.style.opacity = '0';
+            }, 1000);
+        }
+
+        function updateChokingDisplay() {
+            const bar = document.getElementById('chokingHpBar');
+            const text = document.getElementById('chokingHpText');
+            const title = document.getElementById('chokingTitle');
+
+            // 血量百分比
+            const hpPct = Math.max(0, Math.min(100, chokingHP));
+
+            if (bar) {
+                bar.style.width = hpPct + '%';
+                if (chokingSilentRemaining > 0) {
+                    bar.style.background = 'linear-gradient(180deg, #66aaff 0%, #4488ff 100%)';  // 禁言期間藍色
+                    bar.style.boxShadow = '0 0 15px rgba(68,136,255,0.6)';
+                } else if (hpPct > 50) {
+                    bar.style.background = 'linear-gradient(180deg, #66ff66 0%, #44dd44 100%)';
+                    bar.style.boxShadow = '0 0 10px rgba(68,255,68,0.5)';
+                } else if (hpPct > 25) {
+                    bar.style.background = 'linear-gradient(180deg, #ffcc44 0%, #ffaa00 100%)';
+                    bar.style.boxShadow = '0 0 10px rgba(255,170,0,0.5)';
+                } else {
+                    bar.style.background = 'linear-gradient(180deg, #ff6666 0%, #ff4444 100%)';
+                    bar.style.boxShadow = '0 0 15px rgba(255,68,68,0.6)';
                 }
             }
 
-            // 添加文字覆蓋
-            const textOverlay = document.createElement('div');
-            textOverlay.style.cssText = 'position:relative;z-index:1;text-align:center;';
-            textOverlay.innerHTML = `
-                <div class="world-crown-animation" style="font-size:80px;animation:bounce 0.5s infinite alternate;">👑</div>
-                <div class="world-champion-text" style="font-size:36px;color:#ffd700;text-shadow:0 0 20px #ffd700,2px 2px 4px rgba(0,0,0,0.8);margin:10px 0;">🎉 ${data.nickname || '未知'} 成為世界榜第一名！</div>
-                <div class="world-champion-ducks" style="font-size:28px;color:#fff;text-shadow:2px 2px 4px rgba(0,0,0,0.8);">${(data.totalDucks || 0).toLocaleString()} 🦆</div>
-            `;
-            overlay.appendChild(textOverlay);
-            document.body.appendChild(overlay);
+            // 顯示倒數和血量
+            if (text) text.textContent = `⏱️ ${Math.max(0, chokingSeconds).toFixed(1)}s | ❤️ ${Math.round(hpPct)}%`;
 
-            // 觸發動畫
-            requestAnimationFrame(() => {
-                overlay.classList.add('active');
-            });
-
-            // 影片結束或超時後移除
-            const cleanup = () => {
-                overlay.classList.remove('active');
-                if (video) {
-                    video.pause();
-                    video.src = '';
+            if (title) {
+                if (chokingSilentRemaining > 0) {
+                    title.textContent = `🤫 禁言中... ${Math.ceil(chokingSilentRemaining)}s`;
+                } else {
+                    title.textContent = '🫁 持續說話！';
                 }
-                setTimeout(() => overlay.remove(), 500);
-            };
+            }
+        }
 
-            if (video) {
-                video.onended = cleanup;
-                // 超時保護（最多15秒）
-                setTimeout(cleanup, 15000);
-            } else {
-                // 無影片時5秒後移除
-                setTimeout(cleanup, 5000);
+        async function playChokingPunishment(videoPath) {
+            if (!videoPath) return;
+            const video = document.getElementById('chokingPunishmentVideo');
+            try {
+                const mediaUrl = await window.pywebview.api.get_media_url(videoPath);
+                video.src = mediaUrl;
+                video.volume = chokingPunishmentVolume / 100;  // 設定音量
+                video.style.display = 'block';
+                video.play().catch(() => {});
+                video.onended = () => {
+                    video.style.display = 'none';
+                    video.removeAttribute('src');
+                    video.load();
+                };
+            } catch (e) {
+                console.error('[窒息] 懲罰影片載入失敗:', e);
+            }
+        }
+
+        function stopChokingInternal() {
+            chokingActive = false;
+            if (chokingTickTimer) { clearInterval(chokingTickTimer); chokingTickTimer = null; }
+            if (chokingAnimFrame) { cancelAnimationFrame(chokingAnimFrame); chokingAnimFrame = null; }
+            if (chokingMicStream) {
+                chokingMicStream.getTracks().forEach(t => t.stop());
+                chokingMicStream = null;
+            }
+            if (chokingAudioContext) {
+                chokingAudioContext.close().catch(() => {});
+                chokingAudioContext = null;
+                chokingAnalyser = null;
+            }
+            // 停止禁言影片
+            if (chokingSilentVideo) {
+                chokingSilentVideo.pause();
+                chokingSilentVideo.style.display = 'none';
+                chokingSilentVideo.removeAttribute('src');
+            }
+            const overlay = document.getElementById('chokingOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function stopChokingChallenge(survived) {
+            stopChokingInternal();
+            try {
+                window.pywebview.api.choking_ended(survived !== false);
+            } catch (e) {}
+            console.log('[窒息] 挑戰結束 -', survived ? '存活' : '手動停止');
+        }
+
+        // ============ 世界榜特效 ============
+        // 世界冠軍登頂特效（成為新的第一名時觸發）
+        // 直接使用里程碑的影片播放方式
+        async function showWorldChampionCrown(data) {
+            console.log('[世界榜] 登頂特效:', data);
+            console.log('[世界榜] 頭像URL:', data.avatar || '(無)');
+
+            // 如果有影片，使用里程碑的覆蓋層來播放
+            if (data.videoPath) {
+                const overlay = document.getElementById('milestoneOverlay');
+                const video = document.getElementById('milestoneVideo');
+                const badge = document.getElementById('milestoneBadge');
+                const avatar = document.getElementById('milestoneAvatar');
+                const name = document.getElementById('milestoneName');
+                const amount = document.getElementById('milestoneAmount');
+
+                if (!overlay || !video) {
+                    console.error('[世界榜] 找不到里程碑覆蓋層');
+                    return;
+                }
+
+                // 設定內容
+                badge.textContent = '👑 世界第一';
+                name.textContent = data.nickname || '未知用戶';
+                amount.textContent = (data.totalDucks || 0).toLocaleString();
+
+                // 設定頭像
+                const existingPlaceholder = overlay.querySelector('.milestone-avatar.placeholder');
+                if (existingPlaceholder) existingPlaceholder.remove();
+                if (data.avatar) {
+                    avatar.src = data.avatar;
+                    avatar.style.display = 'block';
+                    avatar.onerror = () => {
+                        avatar.style.display = 'none';
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'milestone-avatar placeholder';
+                        placeholder.textContent = '👑';
+                        avatar.parentNode.insertBefore(placeholder, avatar);
+                    };
+                } else {
+                    avatar.style.display = 'none';
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'milestone-avatar placeholder';
+                    placeholder.textContent = '👑';
+                    avatar.parentNode.insertBefore(placeholder, avatar);
+                }
+
+                // 設定影片
+                try {
+                    const mediaUrl = await pywebview.api.get_media_url(data.videoPath);
+                    video.src = mediaUrl;
+                    video.currentTime = 0;
+                    video.play().catch(e => console.error('[世界榜] 登頂影片播放失敗:', e));
+                } catch (e) {
+                    console.error('[世界榜] 獲取影片URL失敗:', e);
+                    return;
+                }
+
+                // 顯示覆蓋層
+                overlay.classList.add('active');
+
+                // 影片結束或超時後隱藏
+                const hideOverlay = () => {
+                    overlay.classList.remove('active');
+                    video.pause();
+                    video.removeAttribute('src');
+                    video.load();
+                    // 清理佔位符
+                    const placeholder = overlay.querySelector('.milestone-avatar.placeholder');
+                    if (placeholder) placeholder.remove();
+                };
+
+                video.onended = hideOverlay;
+                setTimeout(hideOverlay, 15000);
             }
         }
 
         // 世界冠軍送禮特效（冠軍送禮時觸發）
+        // 直接使用里程碑的影片播放方式
         async function showWorldChampionEntry(data) {
             console.log('[世界榜] 送禮特效:', data);
 
-            // 創建覆蓋層
-            const entry = document.createElement('div');
-            entry.className = 'world-champion-entry';
-            entry.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;pointer-events:none;';
-
-            // 如果有影片，創建影片元素
-            let video = null;
+            // 如果有影片，使用里程碑的覆蓋層來播放
             if (data.videoPath) {
-                video = document.createElement('video');
-                video.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;';
-                video.autoplay = true;
-                video.muted = false;
-                entry.appendChild(video);
+                const overlay = document.getElementById('milestoneOverlay');
+                const video = document.getElementById('milestoneVideo');
+                const badge = document.getElementById('milestoneBadge');
+                const avatar = document.getElementById('milestoneAvatar');
+                const name = document.getElementById('milestoneName');
+                const amount = document.getElementById('milestoneAmount');
 
+                if (!overlay || !video) {
+                    console.error('[世界榜] 找不到里程碑覆蓋層');
+                    return;
+                }
+
+                // 設定內容
+                badge.textContent = '👑 世界第一';
+                name.textContent = data.nickname || '未知用戶';
+                amount.textContent = (data.totalDucks || 0).toLocaleString();
+
+                // 設定頭像
+                const existingPlaceholder = overlay.querySelector('.milestone-avatar.placeholder');
+                if (existingPlaceholder) existingPlaceholder.remove();
+                if (data.avatar) {
+                    avatar.src = data.avatar;
+                    avatar.style.display = 'block';
+                    avatar.onerror = () => {
+                        avatar.style.display = 'none';
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'milestone-avatar placeholder';
+                        placeholder.textContent = '👑';
+                        avatar.parentNode.insertBefore(placeholder, avatar);
+                    };
+                } else {
+                    avatar.style.display = 'none';
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'milestone-avatar placeholder';
+                    placeholder.textContent = '👑';
+                    avatar.parentNode.insertBefore(placeholder, avatar);
+                }
+
+                // 設定影片
                 try {
                     const mediaUrl = await pywebview.api.get_media_url(data.videoPath);
                     video.src = mediaUrl;
+                    video.currentTime = 0;
                     video.play().catch(e => console.error('[世界榜] 送禮影片播放失敗:', e));
                 } catch (e) {
                     console.error('[世界榜] 獲取影片URL失敗:', e);
+                    return;
                 }
-            }
 
-            // 添加文字覆蓋
-            const textOverlay = document.createElement('div');
-            textOverlay.style.cssText = 'position:relative;z-index:1;text-align:center;';
-            textOverlay.innerHTML = `
-                <div class="entry-crown" style="font-size:60px;">👑</div>
-                <div class="entry-title" style="font-size:24px;color:#ffd700;text-shadow:0 0 10px #ffd700,2px 2px 4px rgba(0,0,0,0.8);">世界第一</div>
-                <div class="entry-name" style="font-size:32px;color:#fff;text-shadow:2px 2px 4px rgba(0,0,0,0.8);margin:5px 0;">${data.nickname || '未知'}</div>
-                <div class="entry-ducks" style="font-size:20px;color:#ffd700;">${(data.totalDucks || 0).toLocaleString()} 🦆</div>
-            `;
-            entry.appendChild(textOverlay);
-            document.body.appendChild(entry);
+                // 顯示覆蓋層
+                overlay.classList.add('active');
 
-            // 觸發動畫
-            requestAnimationFrame(() => {
-                entry.classList.add('active');
-            });
-
-            // 影片結束或超時後移除
-            const cleanup = () => {
-                entry.classList.remove('active');
-                if (video) {
+                // 影片結束或超時後隱藏
+                const hideOverlay = () => {
+                    overlay.classList.remove('active');
                     video.pause();
-                    video.src = '';
-                }
-                setTimeout(() => entry.remove(), 500);
-            };
+                    video.removeAttribute('src');
+                    video.load();
+                    // 清理佔位符
+                    const placeholder = overlay.querySelector('.milestone-avatar.placeholder');
+                    if (placeholder) placeholder.remove();
+                };
 
-            if (video) {
-                video.onended = cleanup;
-                // 超時保護（最多15秒）
-                setTimeout(cleanup, 15000);
-            } else {
-                // 無影片時3秒後移除
-                setTimeout(cleanup, 3000);
+                video.onended = hideOverlay;
+                setTimeout(hideOverlay, 15000);
             }
+        }
+
+        // 觀眾查詢鴨子數量彈出顯示
+        function showDuckQuery(data) {
+            console.log('[綠幕] 鴨子查詢:', data);
+            const old = document.getElementById('duckQueryPopup');
+            if (old) old.remove();
+
+            const cfg = data.config || {};
+            const borderColor = cfg.borderColor || '#ffd700';
+            const textColor = cfg.textColor || '#ffffff';
+            const numberColor = cfg.numberColor || '#ffd700';
+            const bgColor = cfg.bgColor || '#000000';
+            const fontSize = cfg.fontSize || 48;
+            const duration = (cfg.duration || 5) * 1000;
+            const size = cfg.size || 'medium';
+            const position = cfg.position || 'center';
+
+            // 大小對應
+            const sizeMap = { small: 0.7, medium: 1, large: 1.4 };
+            const scale = sizeMap[size] || 1;
+            const avatarSize = Math.round(60 * scale);
+            const nameSize = Math.round(24 * scale);
+            const numSize = Math.round(fontSize * scale);
+            const padV = Math.round(12 * scale);
+            const padH = Math.round(30 * scale);
+            const gap = Math.round(15 * scale);
+            const borderW = Math.max(1, Math.round(2 * scale));
+            const radius = Math.round(50 * scale);
+
+            // 位置對應
+            const posMap = {
+                'center':       { top: '50%', left: '50%', tx: '-50%', ty: '-50%' },
+                'top':          { top: '10%', left: '50%', tx: '-50%', ty: '0%' },
+                'bottom':       { top: '85%', left: '50%', tx: '-50%', ty: '-100%' },
+                'top-left':     { top: '10%', left: '10%', tx: '0%', ty: '0%' },
+                'top-right':    { top: '10%', left: '90%', tx: '-100%', ty: '0%' },
+                'bottom-left':  { top: '85%', left: '10%', tx: '0%', ty: '-100%' },
+                'bottom-right': { top: '85%', left: '90%', tx: '-100%', ty: '-100%' }
+            };
+            const pos = posMap[position] || posMap['center'];
+
+            // 背景 RGBA
+            const bgR = parseInt(bgColor.slice(1,3), 16);
+            const bgG = parseInt(bgColor.slice(3,5), 16);
+            const bgB = parseInt(bgColor.slice(5,7), 16);
+
+            const popup = document.createElement('div');
+            popup.id = 'duckQueryPopup';
+            popup.style.cssText = `
+                position: fixed;
+                top: ${pos.top};
+                left: ${pos.left};
+                transform: translate(${pos.tx}, ${pos.ty}) scaleX(0);
+                background: rgba(${bgR}, ${bgG}, ${bgB}, 0.85);
+                border: ${borderW}px solid ${borderColor};
+                border-radius: ${radius}px;
+                padding: ${padV}px ${padH}px;
+                z-index: 9000;
+                display: flex;
+                align-items: center;
+                gap: ${gap}px;
+                white-space: nowrap;
+                animation: duckQueryIn 0.4s ease-out forwards;
+                box-shadow: 0 0 20px ${borderColor}44;
+            `;
+
+            const avatarHtml = data.avatar
+                ? `<img src="${data.avatar}" style="width:${avatarSize}px;height:${avatarSize}px;border-radius:50%;border:2px solid ${borderColor};flex-shrink:0;" onerror="this.style.display='none'">`
+                : '';
+
+            popup.innerHTML = `
+                ${avatarHtml}
+                <span style="color:${numberColor};font-size:${nameSize}px;font-weight:bold;">${data.nickname || '未知用戶'}</span>
+                <span style="color:${textColor};font-size:${nameSize}px;">🦆</span>
+                <span style="color:${numberColor};font-size:${numSize}px;font-weight:bold;">${(data.totalDucks || 0).toLocaleString()}</span>
+            `;
+
+            // 動畫樣式（橫向展開）
+            const styleId = 'duckQueryStyle';
+            const oldStyle = document.getElementById(styleId);
+            if (oldStyle) oldStyle.remove();
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                @keyframes duckQueryIn {
+                    0% { transform: translate(${pos.tx}, ${pos.ty}) scaleX(0); opacity: 0; }
+                    100% { transform: translate(${pos.tx}, ${pos.ty}) scaleX(1); opacity: 1; }
+                }
+                @keyframes duckQueryOut {
+                    0% { transform: translate(${pos.tx}, ${pos.ty}) scaleX(1); opacity: 1; }
+                    100% { transform: translate(${pos.tx}, ${pos.ty}) scaleX(0); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(popup);
+
+            setTimeout(() => {
+                popup.style.animation = 'duckQueryOut 0.3s ease-in forwards';
+                setTimeout(() => popup.remove(), 300);
+            }, duration);
         }
 
         // 播放鎖鏈影片（左/中/右）
