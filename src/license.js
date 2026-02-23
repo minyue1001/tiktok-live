@@ -12,7 +12,7 @@ const firebase = require('./firebase');
 // ============ 常數 ============
 const APP_SECRET = 'LiveGiftPro2026!@#SecretKey';
 const OFFLINE_GRACE_HOURS = 72;
-const REVALIDATE_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 小時
+const REVALIDATE_INTERVAL_MS = 10 * 60 * 1000; // 10 分鐘
 
 // 功能分級定義
 const FEATURE_TIERS = {
@@ -36,6 +36,7 @@ let licenseState = {
 let dataDir = '';          // 由 init() 設定
 let cachePath = '';        // license.dat 路徑
 let revalidateTimer = null;
+let onRevoked = null;      // 撤銷/過期時的回調
 
 // ============ 初始化 ============
 
@@ -488,8 +489,18 @@ function startRevalidateTimer() {
         const result = await validateLicense();
         if (!result.valid) {
             console.warn('[License] 重新驗證失敗:', result.message);
+            // 通知主程序（斷線 + 顯示啟用畫面）
+            if (onRevoked) onRevoked(result.message);
         }
     }, REVALIDATE_INTERVAL_MS);
+}
+
+/**
+ * 設定授權失效時的回調
+ * @param {function} callback - (message) => void
+ */
+function setOnRevokedCallback(callback) {
+    onRevoked = callback;
 }
 
 function stopRevalidateTimer() {
@@ -510,6 +521,7 @@ module.exports = {
     deactivateLicense,
     getLicenseStatus,
     isFeatureAllowed,
+    setOnRevokedCallback,
     // 管理員
     createLicense,
     listAllLicenses,

@@ -3807,6 +3807,14 @@ app.whenReady().then(() => {
 
     // 初始化卡密系統
     license.init(DATA_DIR);
+    license.setOnRevokedCallback((message) => {
+        console.log(`[License] 授權失效: ${message}，中斷連接`);
+        disconnectTikTok();
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('license-status-changed', license.getLicenseStatus());
+            state.mainWindow.webContents.send('license-revoked', message);
+        }
+    });
     license.validateLicense().then(result => {
         console.log(`[License] 啟動驗證: ${result.valid ? '有效' : result.message}`);
         // 通知前端 license 狀態

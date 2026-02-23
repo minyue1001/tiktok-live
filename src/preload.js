@@ -227,6 +227,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onLicenseStatusChanged: (callback) => {
         ipcRenderer.on('license-status-changed', (_, status) => callback(status));
     },
+    // 卡密被撤銷/過期（強制中斷）
+    onLicenseRevoked: (callback) => {
+        ipcRenderer.on('license-revoked', (_, message) => callback(message));
+    },
 
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "livegift-pro",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "LiveGift Pro - 直播互動系統",
   "main": "src/main.js",
   "scripts": {

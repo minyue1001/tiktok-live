@@ -4472,6 +4472,17 @@ async function initLicenseSystem() {
                 applyFeatureGating(status);
             });
         }
+
+        // 監聽授權被撤銷/過期（後端已自動斷線）
+        if (window.electronAPI && window.electronAPI.onLicenseRevoked) {
+            window.electronAPI.onLicenseRevoked((message) => {
+                console.warn('[License] 授權已失效:', message);
+                connected = false;
+                updateConnectionStatus(false);
+                showActivationOverlay();
+                showActivationError(message);
+            });
+        }
     } catch (e) {
         console.error('[License] 初始化失敗:', e);
         // 出錯也顯示啟用畫面
