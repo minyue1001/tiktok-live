@@ -11,6 +11,7 @@ const { spawn } = require('child_process');
 const express = require('express');
 const http = require('http');
 const firebase = require('./firebase');  // 世界榜 Firebase 服務
+const license = require('./license');  // 卡密授權系統
 
 // ============ 調試設定 ============
 const DEBUG_MODE = false;
@@ -93,7 +94,8 @@ const state = {
     autoBackupTimer: null,
     lastBackupTime: null,
     // 連擊 Combo
-    duckComboState: {}          // { uniqueId: { count, lastTime } }
+    duckComboState: {},          // { uniqueId: { count, lastTime } }
+    eulerApiKey: ''              // 從 Firebase 取得的 EulerStream API Key
 };
 
 // ============ 路徑設定 ============
@@ -548,9 +550,11 @@ function startNodeServer() {
             return reject(new Error('Server not found'));
         }
 
+        // EulerStream API Key：優先用 Firebase 取得的（state.eulerApiKey），fallback 到 config
+        const eulerKey = state.eulerApiKey || state.config.api_key || '';
         const env = {
             ...process.env,
-            EULER_API_KEY: state.config.api_key || '',
+            EULER_API_KEY: eulerKey,
             WS_PORT: String(state.config.port || 10010)
         };
 
@@ -612,6 +616,12 @@ function stopNodeServer() {
 }
 
 async function connectTikTok() {
+    // 卡密驗證
+    const licenseCheck = await license.validateLicense();
+    if (!licenseCheck.valid) {
+        return { success: false, message: `授權無效：${licenseCheck.message}` };
+    }
+
     const username = state.config.tiktok_username;
     if (!username) {
         return { success: false, message: '請先設定 TikTok 用戶名' };
@@ -2659,6 +2669,7 @@ function createMainWindow() {
     });
 }
 
+
 function createGreenScreen(orientation = 'landscape') {
     if (state.greenWindow && !state.greenWindow.isDestroyed()) {
         state.greenWindow.focus();
@@ -3761,6 +3772,14 @@ function setupIPC() {
             }
         }
     });
+
+    // ============ 卡密系統 IPC ============
+    ipcMain.handle('activate-license', (_, key) => license.activateLicense(key));
+    ipcMain.handle('validate-license', () => license.validateLicense());
+    ipcMain.handle('deactivate-license', () => license.deactivateLicense());
+    ipcMain.handle('get-license-status', () => license.getLicenseStatus());
+    ipcMain.handle('get-device-id', () => license.getDeviceFingerprint());
+    ipcMain.handle('is-feature-allowed', (_, feature) => license.isFeatureAllowed(feature));
 }
 
 // ============ 應用啟動 ============
@@ -3785,6 +3804,28 @@ app.whenReady().then(() => {
     setupLeaderboardResetTimer();  // 設定排行榜自動重置
     performBackup();               // 啟動時備份
     setupAutoBackup();             // 定時備份
+
+    // 初始化卡密系統
+    license.init(DATA_DIR);
+    license.validateLicense().then(result => {
+        console.log(`[License] 啟動驗證: ${result.valid ? '有效' : result.message}`);
+        // 通知前端 license 狀態
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+            state.mainWindow.webContents.send('license-status-changed', license.getLicenseStatus());
+        }
+    }).catch(err => {
+        console.error('[License] 啟動驗證失敗:', err);
+    });
+
+    // 從 Firebase 取得 EulerStream API Key
+    license.getEulerApiKey().then(key => {
+        if (key) {
+            state.eulerApiKey = key;
+            console.log('[License] 已從 Firebase 取得 EulerStream API Key');
+        }
+    }).catch(err => {
+        console.warn('[License] 取得 EulerStream Key 失敗:', err.message);
+    });
 
     // 定期清理過期 combo
     setInterval(() => {
@@ -3847,6 +3888,7 @@ app.whenReady().then(() => {
     startMediaServer();
     setupIPC();
     setupAutoUpdater();
+
     createMainWindow();
 
     // 註冊全域快捷鍵

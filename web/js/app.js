@@ -265,7 +265,6 @@ let config = {
     giftbox_enabled: false, // 盲盒模組
     entry_list: [],       // 進場用戶列表
     port: 10010,
-    api_key: '',          // Eulerstream API Key
     auto_open_green_screen: false,
     language: 'zh-TW'
 };
@@ -295,6 +294,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 檢查 Firebase 連接狀態
     checkFirebaseConnection();
+
+    // 初始化卡密系統
+    setupLicenseKeyInput();
+    await initLicenseSystem();
 
     // 隱藏啟動畫面
     const splashScreen = document.getElementById('splashScreen');
@@ -445,7 +448,6 @@ function switchPanel(panelId) {
             // 載入設定值
             document.getElementById('tiktokUsernameInput').value = config.tiktok_username || '';
             document.getElementById('portInput').value = config.port || 10010;
-            document.getElementById('apiKeyInput').value = config.api_key || '';
             document.getElementById('autoOpenGreenScreen').checked = config.auto_open_green_screen || false;
             document.getElementById('languageSelect').value = config.language || 'zh-TW';
         }
@@ -580,7 +582,6 @@ async function loadConfig() {
         const rvEl = document.getElementById('randomVideoEnabled');
         if (rvEl) rvEl.checked = config.random_video_enabled || false;
         updateSubtabStatus('randomVideo', config.random_video_enabled || false);
-        document.getElementById('apiKeyInput').value = config.api_key || '';
         document.getElementById('autoOpenGreenScreen').checked = config.auto_open_green_screen || false;
         document.getElementById('languageSelect').value = config.language || 'zh-TW';
 
@@ -636,7 +637,6 @@ function openSettingsPanel() {
 async function saveSettings() {
     const tiktokUsername = document.getElementById('tiktokUsernameInput').value.trim();
     const port = parseInt(document.getElementById('portInput').value) || 10010;
-    const apiKey = document.getElementById('apiKeyInput').value.trim();
     const autoOpen = document.getElementById('autoOpenGreenScreen').checked;
     const lang = document.getElementById('languageSelect').value;
 
@@ -644,13 +644,12 @@ async function saveSettings() {
     const proxyEnabled = document.getElementById('proxyEnabled').checked;
     const proxyUrl = document.getElementById('proxyUrl').value.trim();
 
-    // 檢查 API Key、Port 或代理是否有變更
-    const needRestart = (config.api_key !== apiKey || config.port !== port ||
+    // 檢查 Port 或代理是否有變更
+    const needRestart = (config.port !== port ||
                          config.proxy_enabled !== proxyEnabled || config.proxy_url !== proxyUrl);
 
     config.tiktok_username = tiktokUsername;
     config.port = port;
-    config.api_key = apiKey;
     config.auto_open_green_screen = autoOpen;
     config.language = lang;
     config.proxy_enabled = proxyEnabled;
@@ -660,7 +659,6 @@ async function saveSettings() {
     await pywebview.api.update_config({
         tiktok_username: tiktokUsername,
         port: port,
-        api_key: apiKey,
         auto_open_green_screen: autoOpen,
         language: lang,
         proxy_enabled: proxyEnabled,
@@ -4435,3 +4433,264 @@ async function stopChoking() {
         console.error('停止窒息挑戰失敗:', e);
     }
 }
+
+// ============================================================
+// 卡密授權系統
+// ============================================================
+
+let currentLicenseStatus = null;
+
+/**
+ * 初始化授權系統 — 檢查狀態，決定是否顯示啟用畫面
+ */
+async function initLicenseSystem() {
+    try {
+        // 取得設備 ID 顯示在啟用畫面
+        const deviceId = await pywebview.api.get_device_id();
+        const deviceEl = document.getElementById('activationDeviceId');
+        if (deviceEl) deviceEl.textContent = deviceId.substring(0, 16) + '...';
+
+        // 驗證 license
+        const result = await pywebview.api.validate_license();
+        currentLicenseStatus = result.data || { valid: false, status: 'inactive', features: [] };
+
+        if (!result.valid) {
+            // 顯示啟用覆蓋畫面
+            showActivationOverlay();
+        } else {
+            // 隱藏啟用畫面，更新 UI
+            hideActivationOverlay();
+            updateLicenseUI(currentLicenseStatus);
+            applyFeatureGating(currentLicenseStatus);
+        }
+
+        // 監聽 license 狀態變更
+        if (window.electronAPI && window.electronAPI.onLicenseStatusChanged) {
+            window.electronAPI.onLicenseStatusChanged((status) => {
+                currentLicenseStatus = status;
+                updateLicenseUI(status);
+                applyFeatureGating(status);
+            });
+        }
+    } catch (e) {
+        console.error('[License] 初始化失敗:', e);
+        // 出錯也顯示啟用畫面
+        showActivationOverlay();
+    }
+}
+
+function showActivationOverlay() {
+    const overlay = document.getElementById('activationOverlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function hideActivationOverlay() {
+    const overlay = document.getElementById('activationOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+/**
+ * 啟用卡密（啟用畫面的按鈕）
+ */
+async function activateLicenseKey() {
+    const input = document.getElementById('licenseKeyInput');
+    const errorEl = document.getElementById('activationError');
+    const btn = document.getElementById('activateBtn');
+    if (!input) return;
+
+    const key = input.value.trim().toUpperCase();
+    if (!key) {
+        showActivationError('請輸入授權碼');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '驗證中...';
+    errorEl.style.display = 'none';
+
+    try {
+        const result = await pywebview.api.activate_license(key);
+        if (result.success) {
+            currentLicenseStatus = result.data;
+            hideActivationOverlay();
+            updateLicenseUI(result.data);
+            applyFeatureGating(result.data);
+            showToast('授權啟用成功！');
+        } else {
+            showActivationError(result.message);
+        }
+    } catch (e) {
+        showActivationError('啟用失敗：' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔑 啟用授權';
+    }
+}
+
+function showActivationError(msg) {
+    const errorEl = document.getElementById('activationError');
+    if (errorEl) {
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+    }
+}
+
+/**
+ * 自動格式化卡密輸入框
+ */
+function setupLicenseKeyInput() {
+    const input = document.getElementById('licenseKeyInput');
+    if (!input) return;
+
+    input.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        // 前綴 LG 自動處理
+        if (val.startsWith('LG')) val = val.substring(2);
+        // 每 4 字元加 -
+        const parts = val.match(/.{1,4}/g) || [];
+        e.target.value = 'LG-' + parts.join('-');
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') activateLicenseKey();
+    });
+}
+
+/**
+ * 更新授權管理面板 UI
+ */
+function updateLicenseUI(status) {
+    if (!status) return;
+
+    // 卡密顯示
+    const keyEl = document.getElementById('licenseKeyDisplay');
+    if (keyEl) keyEl.textContent = status.key || '未啟用';
+
+    // 等級
+    const tierEl = document.getElementById('licenseTierDisplay');
+    if (tierEl) {
+        const tierMap = { basic: 'Basic', pro: 'Pro' };
+        tierEl.textContent = tierMap[status.tier] || '-';
+    }
+
+    // 狀態
+    const statusEl = document.getElementById('licenseStatusDisplay');
+    if (statusEl) {
+        const statusMap = {
+            active: ['status-active', '有效'],
+            expired: ['status-expired', '已過期'],
+            revoked: ['status-revoked', '已撤銷'],
+            inactive: ['status-inactive', '未啟用']
+        };
+        const [dotClass, label] = statusMap[status.status] || ['status-inactive', status.status];
+        statusEl.innerHTML = `<span class="status-dot ${dotClass}"></span> ${label}`;
+    }
+
+    // 到期日
+    const expiresEl = document.getElementById('licenseExpiresDisplay');
+    if (expiresEl) {
+        if (status.expires_at) {
+            const d = new Date(status.expires_at);
+            expiresEl.textContent = d.toLocaleDateString('zh-TW');
+        } else {
+            expiresEl.textContent = '-';
+        }
+    }
+
+    // 設備 ID
+    const deviceEl = document.getElementById('licenseDeviceDisplay');
+    if (deviceEl) {
+        deviceEl.textContent = status.device_id ? status.device_id.substring(0, 16) + '...' : '-';
+        deviceEl.title = status.device_id || '';
+    }
+
+    // 解除綁定按鈕
+    const deactBtn = document.getElementById('deactivateLicenseBtn');
+    if (deactBtn) {
+        deactBtn.style.display = status.valid ? '' : 'none';
+    }
+
+    // 功能權限列表
+    const features = status.features || [];
+    const allFeatures = ['wheel', 'video', 'duck_catch', 'entry', 'chain_battle', 'choking', 'giftbox'];
+    allFeatures.forEach(f => {
+        const el = document.getElementById(`feature-${f}`);
+        if (el) {
+            const unlocked = features.includes(f);
+            el.className = `feature-badge ${unlocked ? 'feature-unlocked' : 'feature-locked'}`;
+            el.textContent = unlocked ? '✓' : '🔒';
+        }
+    });
+}
+
+/**
+ * 功能門禁 — 禁用未授權功能的 switch
+ */
+function applyFeatureGating(status) {
+    if (!status) return;
+    const features = status.features || [];
+
+    // 功能對應 checkbox ID 和面板
+    const featureMap = {
+        duck_catch: { checkboxId: 'duckCatchEnabled', panel: 'duckcatch' },
+        entry: { checkboxId: 'entryEnabled', panel: 'entry' },
+        chain_battle: { checkboxId: 'chainBattleEnabled', panel: 'chainbattle' },
+        choking: { checkboxId: 'chokingEnabled', panel: 'choking' },
+        giftbox: { checkboxId: 'giftboxEnabled', panel: null }
+    };
+
+    Object.entries(featureMap).forEach(([feature, { checkboxId, panel }]) => {
+        const checkbox = document.getElementById(checkboxId);
+        if (!checkbox) return;
+
+        const allowed = features.includes(feature);
+        if (!allowed) {
+            checkbox.checked = false;
+            checkbox.disabled = true;
+            // 加鎖頭標記到側邊欄
+            if (panel) {
+                const menuItem = document.querySelector(`.menu-item[data-panel="${panel}"]`);
+                if (menuItem && !menuItem.querySelector('.lock-icon')) {
+                    const lock = document.createElement('span');
+                    lock.className = 'lock-icon';
+                    lock.textContent = '🔒';
+                    lock.style.cssText = 'margin-left:auto;font-size:12px;opacity:0.5';
+                    menuItem.appendChild(lock);
+                }
+            }
+        } else {
+            checkbox.disabled = false;
+            // 移除鎖頭
+            if (panel) {
+                const menuItem = document.querySelector(`.menu-item[data-panel="${panel}"]`);
+                if (menuItem) {
+                    const lock = menuItem.querySelector('.lock-icon');
+                    if (lock) lock.remove();
+                }
+            }
+        }
+    });
+}
+
+/**
+ * 解除授權
+ */
+async function deactivateLicenseKey() {
+    if (!confirm('確定要解除授權嗎？解除後需要重新輸入卡密。')) return;
+
+    try {
+        const result = await pywebview.api.deactivate_license();
+        if (result.success) {
+            showToast('已解除授權');
+            currentLicenseStatus = { valid: false, status: 'inactive', features: [] };
+            updateLicenseUI(currentLicenseStatus);
+            applyFeatureGating(currentLicenseStatus);
+            showActivationOverlay();
+        } else {
+            showToast(result.message, 'error');
+        }
+    } catch (e) {
+        showToast('操作失敗：' + e.message, 'error');
+    }
+}
+

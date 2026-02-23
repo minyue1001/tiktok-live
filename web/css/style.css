@@ -2711,3 +2711,190 @@ input[type="range"]::-webkit-slider-thumb:hover {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============ 授權啟用覆蓋畫面 ============ */
+.activation-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: var(--bg-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.activation-card {
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl, 16px);
+    padding: 48px 40px;
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.activation-logo {
+    margin-bottom: 16px;
+}
+
+.activation-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+}
+
+.activation-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 28px;
+}
+
+.activation-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.activation-input {
+    text-align: center;
+    font-size: 18px !important;
+    letter-spacing: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 12px 16px !important;
+}
+
+.activation-error {
+    color: #ef4444;
+    font-size: 13px;
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: var(--radius-md, 8px);
+}
+
+.activation-btn {
+    font-size: 16px;
+    padding: 12px 24px !important;
+}
+
+.activation-info {
+    margin-top: 24px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.activation-device-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    word-break: break-all;
+    user-select: all;
+}
+
+/* ============ 授權管理面板 ============ */
+.license-status-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.license-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.license-info-row:last-child {
+    border-bottom: none;
+}
+
+.license-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    min-width: 60px;
+}
+
+.license-value {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 500;
+    text-align: right;
+    word-break: break-all;
+}
+
+.license-device-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.license-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.status-dot.status-active { background: #22c55e; }
+.status-dot.status-inactive { background: #6b7280; }
+.status-dot.status-expired { background: #ef4444; }
+.status-dot.status-revoked { background: #ef4444; }
+
+/* 功能權限列表 */
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg-surface-3);
+    border-radius: var(--radius-md, 8px);
+}
+
+.feature-icon {
+    font-size: 18px;
+    width: 28px;
+    text-align: center;
+}
+
+.feature-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.feature-badge {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.feature-badge.feature-unlocked {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.feature-badge.feature-locked {
+    background: rgba(107, 114, 128, 0.15);
+    color: #6b7280;
+}
+

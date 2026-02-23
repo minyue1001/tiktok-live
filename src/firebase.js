@@ -4,7 +4,7 @@
  */
 
 const { initializeApp } = require('firebase/app');
-const { getDatabase, ref, set, get, onValue, query, orderByChild, limitToLast } = require('firebase/database');
+const { getDatabase, ref, set, get, remove, onValue, query, orderByChild, limitToLast } = require('firebase/database');
 
 // Firebase 配置
 const firebaseConfig = {
@@ -239,6 +239,100 @@ function isInitialized() {
     return initialized;
 }
 
+// ============ 卡密系統 RTDB 操作 ============
+
+/**
+ * 讀取單一卡密
+ * @param {string} key - 卡密字串
+ * @returns {Promise<object|null>}
+ */
+async function getLicense(key) {
+    if (!initFirebase()) return null;
+    try {
+        const snapshot = await get(ref(db, `licenses/${key}`));
+        return snapshot.val();
+    } catch (error) {
+        console.error('[Firebase] 讀取卡密失敗:', error);
+        return null;
+    }
+}
+
+/**
+ * 寫入/更新卡密
+ * @param {string} key - 卡密字串
+ * @param {object} data - 卡密資料
+ */
+async function setLicense(key, data) {
+    if (!initFirebase()) return false;
+    try {
+        await set(ref(db, `licenses/${key}`), data);
+        return true;
+    } catch (error) {
+        console.error('[Firebase] 寫入卡密失敗:', error);
+        return false;
+    }
+}
+
+/**
+ * 刪除卡密
+ * @param {string} key - 卡密字串
+ */
+async function deleteLicense(key) {
+    if (!initFirebase()) return false;
+    try {
+        await remove(ref(db, `licenses/${key}`));
+        return true;
+    } catch (error) {
+        console.error('[Firebase] 刪除卡密失敗:', error);
+        return false;
+    }
+}
+
+/**
+ * 讀取所有卡密（管理用）
+ * @returns {Promise<object>} - { key: data, ... }
+ */
+async function getAllLicenses() {
+    if (!initFirebase()) return {};
+    try {
+        const snapshot = await get(ref(db, 'licenses'));
+        return snapshot.val() || {};
+    } catch (error) {
+        console.error('[Firebase] 讀取所有卡密失敗:', error);
+        return {};
+    }
+}
+
+/**
+ * 讀取 app_config（含 euler_api_key）
+ * @returns {Promise<object|null>}
+ */
+async function getAppConfig() {
+    if (!initFirebase()) return null;
+    try {
+        const snapshot = await get(ref(db, 'app_config'));
+        return snapshot.val();
+    } catch (error) {
+        console.error('[Firebase] 讀取 app_config 失敗:', error);
+        return null;
+    }
+}
+
+/**
+ * 更新 app_config
+ * @param {object} data - 要更新的資料
+ */
+async function setAppConfig(data) {
+    if (!initFirebase()) return false;
+    try {
+        await set(ref(db, 'app_config'), data);
+        return true;
+    } catch (error) {
+        console.error('[Firebase] 更新 app_config 失敗:', error);
+        return false;
+    }
+}
+
 module.exports = {
     initFirebase,
     updateWorldLeaderboard,
@@ -247,5 +341,12 @@ module.exports = {
     syncWorldChampion,
     onWorldChampionChange,
     isConfigured,
-    isInitialized
+    isInitialized,
+    // 卡密系統
+    getLicense,
+    setLicense,
+    deleteLicense,
+    getAllLicenses,
+    getAppConfig,
+    setAppConfig
 };

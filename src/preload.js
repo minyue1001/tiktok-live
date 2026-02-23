@@ -133,7 +133,15 @@ contextBridge.exposeInMainWorld('pywebview', {
         chain_battle_ended: (won) => ipcRenderer.invoke('chain-battle-ended', won),
 
         // 窒息挑戰
-        choking_ended: (survived) => ipcRenderer.invoke('choking-ended', survived)
+        choking_ended: (survived) => ipcRenderer.invoke('choking-ended', survived),
+
+        // 卡密系統
+        activate_license: (key) => ipcRenderer.invoke('activate-license', key),
+        validate_license: () => ipcRenderer.invoke('validate-license'),
+        deactivate_license: () => ipcRenderer.invoke('deactivate-license'),
+        get_license_status: () => ipcRenderer.invoke('get-license-status'),
+        get_device_id: () => ipcRenderer.invoke('get-device-id'),
+        is_feature_allowed: (feature) => ipcRenderer.invoke('is-feature-allowed', feature)
     }
 });
 
@@ -213,6 +221,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // 快捷鍵開啟快捷補禮物 (F6)
     onOpenQuickAdd: (callback) => {
         ipcRenderer.on('open-quick-add', () => callback());
+    },
+
+    // 卡密狀態變更
+    onLicenseStatusChanged: (callback) => {
+        ipcRenderer.on('license-status-changed', (_, status) => callback(status));
     },
 
 });

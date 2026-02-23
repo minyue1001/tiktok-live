@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveGift Pro - 卡密管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0f0f14;
+            --s1: #16161e;
+            --s2: #1e1e2a;
+            --s3: #262636;
+            --s4: #2e2e42;
+            --accent: #8b5cf6;
+            --accent-h: #7c3aed;
+            --t1: #e8e8ef;
+            --t2: #9d9db5;
+            --t3: #5e5e7a;
+            --border: rgba(255,255,255,0.06);
+            --red: #ef4444;
+            --green: #22c55e;
+            --yellow: #f59e0b;
+            --r: 8px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--t1); min-height: 100vh; }
+        .header { padding: 16px 24px; background: var(--s1); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--accent); color: white; font-weight: 600; }
+        .container { max-width: 960px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+        .card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); }
+        .card-h { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .card-h .right { margin-left: auto; display: flex; gap: 8px; }
+        .card-b { padding: 20px; }
+
+        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .form-g { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        .form-g label { font-size: 12px; color: var(--t2); font-weight: 500; }
+        input, select { background: var(--s4); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--t1); font-size: 13px; outline: none; transition: border-color 0.2s; }
+        input:focus, select:focus { border-color: var(--accent); }
+        input::placeholder { color: var(--t3); }
+
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-p { background: var(--accent); color: white; }
+        .btn-p:hover:not(:disabled) { background: var(--accent-h); }
+        .btn-d { background: var(--red); color: white; }
+        .btn-d:hover:not(:disabled) { background: #dc2626; }
+        .btn-g { background: transparent; color: var(--t2); border: 1px solid var(--border); }
+        .btn-g:hover { background: var(--s3); color: var(--t1); }
+        .btn-s { padding: 4px 10px; font-size: 12px; }
+
+        .result { margin-top: 12px; padding: 14px 18px; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: var(--r); font-family: 'Consolas', monospace; font-size: 16px; color: var(--green); text-align: center; letter-spacing: 1px; user-select: all; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 10px 14px; border-bottom: 2px solid var(--border); color: var(--t2); font-weight: 600; font-size: 12px; white-space: nowrap; }
+        td { padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        tr:hover td { background: var(--s3); }
+        .mono { font-family: 'Consolas', monospace; font-size: 12px; }
+
+        .st-active { color: var(--green); }
+        .st-expired { color: var(--red); }
+        .st-revoked { color: var(--yellow); }
+
+        .stats { display: flex; gap: 16px; padding: 16px 20px 0; }
+        .stat { flex: 1; background: var(--s3); border-radius: var(--r); padding: 12px 16px; text-align: center; }
+        .stat-v { font-size: 24px; font-weight: 700; color: var(--accent); }
+        .stat-l { font-size: 11px; color: var(--t3); margin-top: 2px; }
+
+        .euler-row { display: flex; gap: 8px; align-items: flex-end; }
+        .euler-row input { flex: 1; }
+
+        .toast { position: fixed; bottom: 24px; right: 24px; padding: 10px 20px; border-radius: var(--r); font-size: 13px; font-weight: 500; color: white; z-index: 9999; animation: tIn 0.3s ease; }
+        .toast.ok { background: var(--green); }
+        .toast.err { background: var(--red); }
+        @keyframes tIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        .note { font-size: 11px; color: var(--t3); max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔑 LiveGift Pro 卡密管理</h1>
+        <span class="badge">Admin</span>
+    </div>
+
+    <div class="container">
+        <!-- EulerStream -->
+        <div class="card">
+            <div class="card-h">🌐 EulerStream API Key</div>
+            <div class="card-b">
+                <div class="euler-row">
+                    <div class="form-g">
+                        <label>API Key（用戶端會自動從 Firebase 取得）</label>
+                        <input type="text" id="eulerKey" placeholder="sk-live-..." style="font-family:monospace">
+                    </div>
+                    <button class="btn btn-p" onclick="saveEuler()">儲存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 建立新卡密 -->
+        <div class="card">
+            <div class="card-h">✨ 建立新卡密</div>
+            <div class="card-b">
+                <div class="form-row">
+                    <div class="form-g">
+                        <label>等級</label>
+                        <select id="newTier">
+                            <option value="basic">Basic（轉盤+影片）</option>
+                            <option value="pro" selected>Pro（全功能）</option>
+                        </select>
+                    </div>
+                    <div class="form-g">
+                        <label>有效天數</label>
+                        <input type="number" id="newDays" value="30" min="1">
+                    </div>
+                    <div class="form-g">
+                        <label>備註</label>
+                        <input type="text" id="newNote" placeholder="選填">
+                    </div>
+                </div>
+                <button class="btn btn-p" id="createBtn" onclick="create()">生成卡密</button>
+                <div id="result" class="result" style="display:none"></div>
+            </div>
+        </div>
+
+        <!-- 列表 -->
+        <div class="card">
+            <div class="card-h">
+                📋 卡密列表
+                <div class="right">
+                    <button class="btn btn-s btn-g" onclick="load()">🔄 刷新</button>
+                </div>
+            </div>
+            <div class="card-b" style="padding:0">
+                <div class="stats" id="stats">
+                    <div class="stat"><div class="stat-v" id="sTotal">-</div><div class="stat-l">總數</div></div>
+                    <div class="stat"><div class="stat-v" id="sActive">-</div><div class="stat-l">有效</div></div>
+                    <div class="stat"><div class="stat-v" id="sBound">-</div><div class="stat-l">已綁定</div></div>
+                    <div class="stat"><div class="stat-v" id="sExpired">-</div><div class="stat-l">過期/撤銷</div></div>
+                </div>
+                <div style="padding:12px 20px 20px; overflow-x:auto">
+                    <table>
+                        <thead><tr>
+                            <th>卡密</th><th>等級</th><th>狀態</th><th>建立</th><th>到期</th><th>設備</th><th>備註</th><th>操作</th>
+                        </tr></thead>
+                        <tbody id="tbody">
+                            <tr><td colspan="8" style="text-align:center;color:var(--t3);padding:32px">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const API = '';
+
+async function api(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(API + path, opts);
+    return r.json();
+}
+
+// EulerStream
+async function loadEuler() {
+    const r = await api('GET', '/api/euler-key');
+    document.getElementById('eulerKey').value = r.key || '';
+}
+async function saveEuler() {
+    const key = document.getElementById('eulerKey').value.trim();
+    if (!key) return toast('請輸入 API Key', 1);
+    const r = await api('POST', '/api/euler-key', { key });
+    toast(r.success ? '已儲存' : (r.error || '失敗'), r.success ? 0 : 1);
+}
+
+// 建立卡密
+async function create() {
+    const tier = document.getElementById('newTier').value;
+    const days = parseInt(document.getElementById('newDays').value) || 30;
+    const note = document.getElementById('newNote').value.trim();
+    const btn = document.getElementById('createBtn');
+    btn.disabled = true; btn.textContent = '生成中...';
+    try {
+        const r = await api('POST', '/api/licenses', { tier, days, note });
+        if (r.success) {
+            const el = document.getElementById('result');
+            el.textContent = r.key; el.style.display = 'block';
+            copy(r.key);
+            toast('卡密已生成並複製');
+            load();
+        } else {
+            toast(r.error || '失敗', 1);
+        }
+    } finally {
+        btn.disabled = false; btn.textContent = '生成卡密';
+    }
+}
+
+// 列表
+async function load() {
+    const tbody = document.getElementById('tbody');
+    try {
+        const list = await api('GET', '/api/licenses');
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:32px">尚無卡密</td></tr>';
+            updateStats([]); return;
+        }
+        list.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+        updateStats(list);
+        tbody.innerHTML = list.map(l => {
+            const sc = `st-${l.status||'active'}`;
+            const sl = {active:'有效',expired:'已過期',revoked:'已撤銷'}[l.status]||l.status;
+            const cr = l.created_at ? new Date(l.created_at).toLocaleDateString('zh-TW') : '-';
+            const ex = l.expires_at ? new Date(l.expires_at).toLocaleDateString('zh-TW') : '-';
+            const dv = l.device_id ? l.device_id.substring(0,8)+'...' : '未綁定';
+            const tr = l.tier==='pro' ? '<b>Pro</b>' : 'Basic';
+            const nt = l.note ? `<span class="note" title="${esc(l.note)}">${esc(l.note)}</span>` : '-';
+            return `<tr>
+                <td class="mono">${l.key}</td>
+                <td>${tr}</td>
+                <td class="${sc}">${sl}</td>
+                <td>${cr}</td><td>${ex}</td>
+                <td class="mono" style="font-size:11px" title="${l.device_id||''}">${dv}</td>
+                <td>${nt}</td>
+                <td>
+                    <button class="btn btn-s btn-g" onclick="copy('${l.key}')">📋</button>
+                    ${l.status==='active'?`<button class="btn btn-s btn-d" onclick="revoke('${l.key}')">撤銷</button>`:''}
+                    <button class="btn btn-s btn-g" onclick="del('${l.key}')">🗑️</button>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);padding:20px">${e.message}</td></tr>`;
+    }
+}
+
+function updateStats(list) {
+    document.getElementById('sTotal').textContent = list.length;
+    document.getElementById('sActive').textContent = list.filter(l=>l.status==='active').length;
+    document.getElementById('sBound').textContent = list.filter(l=>l.device_id).length;
+    document.getElementById('sExpired').textContent = list.filter(l=>l.status==='expired'||l.status==='revoked').length;
+}
+
+async function revoke(key) {
+    if (!confirm(`撤銷？\n${key}`)) return;
+    const r = await api('POST', `/api/licenses/${key}/revoke`);
+    toast(r.success?'已撤銷':(r.error||'失敗'), r.success?0:1);
+    load();
+}
+
+async function del(key) {
+    if (!confirm(`永久刪除？\n${key}`)) return;
+    const r = await api('DELETE', `/api/licenses/${key}`);
+    toast(r.success?'已刪除':(r.error||'失敗'), r.success?0:1);
+    load();
+}
+
+function copy(t) {
+    navigator.clipboard.writeText(t).then(()=>toast('已複製')).catch(()=>{
+        const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');document.body.removeChild(a);toast('已複製');
+    });
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toast(m,err){const e=document.createElement('div');e.className=`toast ${err?'err':'ok'}`;e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),2500);}
+
+// 初始化
+loadEuler();
+load();
+</script>
+</body>
+</html>

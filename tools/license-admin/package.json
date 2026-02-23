@@ -1,0 +1,13 @@
+{
+  "name": "livegift-license-admin",
+  "version": "1.0.0",
+  "description": "LiveGift Pro 卡密管理工具",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "firebase": "^12.8.0"
+  }
+}

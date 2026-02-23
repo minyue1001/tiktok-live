@@ -28,6 +28,35 @@
         </div>
     </div>
 
+    <!-- 授權啟用覆蓋畫面 -->
+    <div id="activationOverlay" class="activation-overlay" style="display:none">
+        <div class="activation-card">
+            <div class="activation-logo">
+                <svg width="56" height="56" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="url(#actGradient)"/>
+                    <path d="M10 16L14 20L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="actGradient" x1="0" y1="0" x2="32" y2="32">
+                            <stop stop-color="#06b6d4"/>
+                            <stop offset="1" stop-color="#8b5cf6"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <h1 class="activation-title">LiveGift Pro</h1>
+            <p class="activation-subtitle">請輸入授權碼以啟用軟體</p>
+            <div class="activation-form">
+                <input type="text" id="licenseKeyInput" class="input activation-input" placeholder="LG-XXXX-XXXX-XXXX-XXXX" maxlength="23" autocomplete="off" spellcheck="false">
+                <div id="activationError" class="activation-error" style="display:none"></div>
+                <button class="btn btn-primary activation-btn" id="activateBtn" onclick="activateLicenseKey()">🔑 啟用授權</button>
+            </div>
+            <div class="activation-info">
+                <span class="activation-device-label">設備 ID：</span>
+                <span class="activation-device-id" id="activationDeviceId">載入中...</span>
+            </div>
+        </div>
+    </div>
+
     <div class="app">
         <!-- 側邊欄 -->
         <aside class="sidebar">
@@ -103,6 +132,10 @@
                     </label>
                 </a>
                 <div class="menu-label">系統</div>
+                <a class="menu-item" data-panel="license">
+                    <span class="menu-icon">🔑</span>
+                    <span class="menu-text">授權管理</span>
+                </a>
                 <a class="menu-item" data-panel="logs">
                     <span class="menu-icon">📋</span>
                     <span class="menu-text">日誌</span>
@@ -1126,6 +1159,101 @@
             </section>
 
             <!-- 設定面板 -->
+            <!-- 授權管理面板 -->
+            <section class="panel" id="panel-license">
+                <header class="panel-header">
+                    <div class="panel-title">
+                        <span class="title-icon icon-license">🔑</span>
+                        <div>
+                            <h1>授權管理</h1>
+                            <p>管理卡密授權與功能</p>
+                        </div>
+                    </div>
+                </header>
+                <div class="panel-content">
+                    <div class="settings-list">
+                        <!-- 當前授權狀態 -->
+                        <div class="card">
+                            <div class="card-header"><h3>📄 當前授權</h3></div>
+                            <div class="card-content">
+                                <div class="license-status-card" id="licenseStatusCard">
+                                    <div class="license-info-row">
+                                        <span class="license-label">卡密</span>
+                                        <span class="license-value" id="licenseKeyDisplay">未啟用</span>
+                                    </div>
+                                    <div class="license-info-row">
+                                        <span class="license-label">等級</span>
+                                        <span class="license-value" id="licenseTierDisplay">-</span>
+                                    </div>
+                                    <div class="license-info-row">
+                                        <span class="license-label">狀態</span>
+                                        <span class="license-value" id="licenseStatusDisplay">
+                                            <span class="status-dot status-inactive"></span> 未啟用
+                                        </span>
+                                    </div>
+                                    <div class="license-info-row">
+                                        <span class="license-label">到期日</span>
+                                        <span class="license-value" id="licenseExpiresDisplay">-</span>
+                                    </div>
+                                    <div class="license-info-row">
+                                        <span class="license-label">設備 ID</span>
+                                        <span class="license-value license-device-mono" id="licenseDeviceDisplay">-</span>
+                                    </div>
+                                </div>
+                                <div class="license-actions">
+                                    <button class="btn btn-danger" id="deactivateLicenseBtn" onclick="deactivateLicenseKey()" style="display:none">解除綁定</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 功能列表 -->
+                        <div class="card">
+                            <div class="card-header"><h3>🎯 功能權限</h3></div>
+                            <div class="card-content">
+                                <div class="feature-list" id="featureList">
+                                    <div class="feature-item" data-feature="wheel">
+                                        <span class="feature-icon">🎡</span>
+                                        <span class="feature-name">轉盤/盲盒</span>
+                                        <span class="feature-badge feature-locked" id="feature-wheel">🔒</span>
+                                    </div>
+                                    <div class="feature-item" data-feature="video">
+                                        <span class="feature-icon">🎬</span>
+                                        <span class="feature-name">影片</span>
+                                        <span class="feature-badge feature-locked" id="feature-video">🔒</span>
+                                    </div>
+                                    <div class="feature-item" data-feature="duck_catch">
+                                        <span class="feature-icon">🦆</span>
+                                        <span class="feature-name">抓鴨子</span>
+                                        <span class="feature-badge feature-locked" id="feature-duck_catch">🔒</span>
+                                    </div>
+                                    <div class="feature-item" data-feature="entry">
+                                        <span class="feature-icon">👋</span>
+                                        <span class="feature-name">進場特效</span>
+                                        <span class="feature-badge feature-locked" id="feature-entry">🔒</span>
+                                    </div>
+                                    <div class="feature-item" data-feature="chain_battle">
+                                        <span class="feature-icon">⛓️</span>
+                                        <span class="feature-name">鎖鏈對抗</span>
+                                        <span class="feature-badge feature-locked" id="feature-chain_battle">🔒</span>
+                                    </div>
+                                    <div class="feature-item" data-feature="choking">
+                                        <span class="feature-icon">🫁</span>
+                                        <span class="feature-name">窒息挑戰</span>
+                                        <span class="feature-badge feature-locked" id="feature-choking">🔒</span>
+                                    </div>
+                                    <div class="feature-item" data-feature="giftbox">
+                                        <span class="feature-icon">🎁</span>
+                                        <span class="feature-name">盲盒</span>
+                                        <span class="feature-badge feature-locked" id="feature-giftbox">🔒</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
             <section class="panel" id="panel-settings">
                 <header class="panel-header">
                     <div class="panel-title">
@@ -1145,11 +1273,6 @@
                                     <label>TikTok 用戶名</label>
                                     <input type="text" id="tiktokUsernameInput" class="input" placeholder="例如: example_user">
                                     <small>輸入要監控的直播間用戶名（@ 後面的 ID）</small>
-                                </div>
-                                <div class="form-group">
-                                    <label>Eulerstream API Key</label>
-                                    <input type="password" id="apiKeyInput" class="input" placeholder="euler_xxxxxxxx...">
-                                    <small>從 <a href="https://www.eulerstream.com" target="_blank">eulerstream.com</a> 取得</small>
                                 </div>
                                 <div class="form-group">
                                     <label>WebSocket 埠號</label>
